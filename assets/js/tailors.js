@@ -5,7 +5,8 @@
 
     /* marquee */
     const names = base.map(v => v.name).concat(['Aso Ebi Atelier', 'Bogolan Studio', 'Lagos Island Fashion House']);
-    $('#mq').innerHTML = [...names, ...names].map(n => `<span>${FT.STAR}${FT.esc(n)}</span>`).join('');
+    const row = names.map(n => `<span>${FT.STAR}${FT.esc(n)}</span>`).join('');
+    $('#mq').innerHTML = FT.render.marquee === false ? row : row + row;
 
     /* rank simulator */
     const list = $('#simList'), els = new Map();

@@ -18,7 +18,8 @@
     /* marquee */
     const star = FT.STAR;
     const names = FTApi.SAMPLE_VENDORS.map(v => v.name).concat(['Aso Ebi Atelier', 'Bogolan Studio', 'Lagos Island Fashion House']);
-    $('#mq').innerHTML = names.map(n => `<span>${star}${FT.esc(n)}</span>`).join('') + names.map(n => `<span>${star}${FT.esc(n)}</span>`).join('');
+    const row = names.map(n => `<span>${star}${FT.esc(n)}</span>`).join('');
+    $('#mq').innerHTML = FT.render.marquee === false ? row : row + row; // the scrolling version needs two copies
 
     /* compare demo: FLIP reorder */
     const list = $('#cmpList'), all = FTApi.SAMPLE_VENDORS.slice(0, 4);

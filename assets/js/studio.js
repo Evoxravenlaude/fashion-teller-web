@@ -32,7 +32,7 @@
 
     /* ───────── stage ───────── */
     const setVideo = () => {
-      const src = FT.videoSrc(S.design?.videoUrl || '/assets/media/kaftan.mp4');
+      const src = FT.videoSrc(S.design?.videoUrl || '/assets/media/kaftan.mp4', video);
       if (video.getAttribute('src') !== src) video.setAttribute('src', src);
       video.play().catch(() => {});
     };

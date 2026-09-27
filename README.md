@@ -36,12 +36,27 @@ Edit assets/js/config.js only.
 - formEndpoint empty: tailor applications and contact messages are kept in the visitor's browser only.
   Set it to any JSON POST endpoint (your API, Formspree, a Vercel function) to receive them. The payload includes "kind".
 
-## Performance
+## Display and rendering per device
 
-Phones, tablets, low-core or low-memory devices and data-saver users get a lighter mode (the `lite` class is set in <head>):
-no pointer trail or custom cursor, no frosted-glass blur, a 480px video, lower-resolution canvases.
-On every device, animations stop when they finish, videos load only near the viewport and pause off screen,
-and scroll handlers run at most once per frame. At rest a page does almost no work.
+Every visitor starts on the full experience. Before the first paint, `assets/js/device.js` classes the
+device (phone / tablet / laptop / desktop, from touch and screen size) and sets `html[data-device]`,
+`html[data-quality]` and feature-flag classes. Then `site.js` measures real frame times on that device
+(first seconds, then on every scroll) and steps the quality down one level, once, only if frames are
+being dropped. The result is remembered per device type. There are three levels:
+
+- full: everything (frosted-glass nav, gold cursor, magnetic buttons, self-drawing thread over the hero, full shadows)
+- balanced: solid nav, thread follows a mouse only, lighter shadows, smaller canvases
+- lite: no cursor/thread/magnetic effects, 480px video, cheapest canvases
+
+People can override under Graphics (menu on phones, footer everywhere): Auto / Full / Balanced / Lite.
+All of it is tuned in `assets/js/config.js` -> `render` (profiles, quality levels, monitor thresholds).
+
+Preview any combination in the browser: `?render=phone|tablet|laptop|desktop` and `?quality=full|balanced|lite`
+(each sticks for the tab; `=auto` clears it).
+
+Layout is fitted per screen shape: narrow phones, landscape phones (split-screen studio, slim nav),
+portrait and landscape tablets (two-column studio from 760px), laptops, and large monitors (bigger type
+and spacing from 1800px). Videos load only near the viewport and pause off screen; animations stop when finished.
 
 ## Editing
 

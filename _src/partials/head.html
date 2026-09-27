@@ -19,11 +19,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="preload" as="image" href="/assets/media/poster.jpg">
 <link rel="stylesheet" href="/assets/css/site.css">
-<script>(function(h){h.classList.add('js');
-/* lite: touch screens, low-core or low-memory devices, data saver. Heavier effects switch off. */
-var n=navigator,c=n.connection||{};if(matchMedia('(pointer:coarse)').matches||(n.hardwareConcurrency||8)<=4||(n.deviceMemory||8)<=4||c.saveData)h.classList.add('lite');
-try{if(sessionStorage.getItem('ft.seen'))h.classList.add('seen');if(sessionStorage.getItem('ft.wipe'))h.classList.add('wiping')}catch(e){}})(document.documentElement)</script>
 <script src="/assets/js/config.js"></script>
+<script src="/assets/js/device.js"></script>
 <script src="/assets/js/api.js" defer></script>
 <script src="/assets/js/site.js" defer></script>
 {{scripts}}
@@ -63,5 +60,5 @@ try{if(sessionStorage.getItem('ft.seen'))h.classList.add('seen');if(sessionStora
     <a href="/tailors" data-nav="tailors" style="--i:3">For tailors</a>
     <a href="/about" data-nav="about" style="--i:4">About</a>
   </nav>
-  <div class="menu-foot"><span>Design smarter, wear better.</span><a class="btn gold" href="/studio">Open studio</a></div>
+  <div class="menu-foot"><span>Design smarter, wear better.</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><a class="btn gold" href="/studio">Open studio</a></div>
 </div>

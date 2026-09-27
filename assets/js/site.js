@@ -36,10 +36,20 @@
      throwing off sparks at the needle like the embroidery in the concept video.
      Performance: no canvas shadowBlur (the glow is two cheap translucent strokes), one Path2D per pass,
      capped sparks, capped pixel ratio, and the loop stops a moment after the stitch is finished. */
-  const lite = document.documentElement.classList.contains('lite');
-  FT.lite = lite;
+  let R = window.FT_RENDER || {};
+  FT.render = R;
+  const LEVELS = window.FT_QUALITY_LEVELS || ['lite', 'balanced', 'full'];
+  const cap = t => t[0].toUpperCase() + t.slice(1);
+  FT.setQuality = (level, { remember = true, reason } = {}) => {
+    if (!window.FT_RENDER_APPLY || level === R.quality) return;
+    R = FT.render = window.FT_RENDER_APPLY(level);
+    if (remember) { try { localStorage.setItem('ft.quality.auto.' + R.device, level); } catch {} }
+    document.dispatchEvent(new CustomEvent('ft:quality', { detail: { level, reason } }));
+    syncQualityControls();
+  };
   function fit(canvas) {
-    const dpr = Math.min(lite ? 1 : 1.5, window.devicePixelRatio || 1);
+    const dpr = Math.min(R.canvasDpr || 1.5, window.devicePixelRatio || 1);
+    canvas.dataset.dpr = dpr;
     const r = canvas.getBoundingClientRect();
     canvas.width = Math.max(1, Math.round(r.width * dpr)); canvas.height = Math.max(1, Math.round(r.height * dpr));
     const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -51,7 +61,7 @@
     ctx.strokeStyle = light ? '#C9A02F' : '#F2CF72'; ctx.lineWidth = width; ctx.stroke(path);
     ctx.strokeStyle = light ? 'rgba(255,236,170,.9)' : 'rgba(255,250,230,.95)'; ctx.lineWidth = width * 0.38; ctx.stroke(path);
   }
-  const MAX_SPARKS = lite ? 36 : 90;
+  const MAX_SPARKS = () => R.sparks || 90;
   function drawSparks(ctx, sparks, light) {
     ctx.fillStyle = light ? '#D4AF37' : '#FFE3A0';
     for (let i = sparks.length - 1; i >= 0; i--) {
@@ -63,11 +73,11 @@
     ctx.globalAlpha = 1;
   }
   const spark = (x, y, k = 1) => ({ x, y, vx: (Math.random() - 0.5) * 1.8 * k, vy: (Math.random() - 0.65) * 1.8 * k, r: Math.random() * 1.1 + 0.5, life: 1, decay: 0.015 + Math.random() * 0.02 });
-  const addSpark = (arr, s) => { if (arr.length < MAX_SPARKS) arr.push(s); };
+  const addSpark = (arr, s) => { if (arr.length < MAX_SPARKS()) arr.push(s); };
 
   FT.thread = (canvas, { paths, duration = 1800, width = 2, light = false, glints = 0.35, linger } = {}) => {
     let { ctx, w, h } = fit(canvas);
-    linger = linger ?? (lite ? 900 : 2200);          // how long the finished stitch keeps twinkling
+    linger = linger ?? R.linger ?? 2200;          // how long the finished stitch keeps twinkling
     const segs = []; let total = 0;
     for (const p of paths) for (let i = 1; i < p.length; i++) {
       const len = Math.hypot((p[i][0] - p[i - 1][0]) * w, (p[i][1] - p[i - 1][1]) * h);
@@ -86,7 +96,7 @@
       strokePath(ctx, path, width, light); return tip;
     };
     const api = { done, stop() { stopped = true; cancelAnimationFrame(raf); }, clear() { stopped = true; cancelAnimationFrame(raf); ctx.clearRect(0, 0, w, h); } };
-    if (reduced) { paint(total); res(); return api; }
+    if (reduced || R.thread === false) { paint(total); res(); return api; }
     const frame = ts => {
       if (stopped) return;
       if (t0 == null) t0 = ts;
@@ -114,11 +124,20 @@
   /* A gold thread that trails the pointer across a host element (desktop mice only).
      The loop runs only while there is a trail to draw, so a still page costs nothing. */
   FT.trail = (canvas, host) => {
-    if (reduced || lite || !fine) { canvas.remove(); return; }
+    const mode = R.trail;                       // 'idle' | 'pointer' | false
+    if (reduced || !mode || (mode === 'pointer' && !fine)) { canvas.remove(); return; }
     let { ctx, w, h } = fit(canvas);
     new ResizeObserver(() => ({ ctx, w, h } = fit(canvas))).observe(host);
-    const pts = [], sparks = []; let running = false;
+    const pts = [], sparks = []; let running = false, visible = true, lastPointer = 0, lastDraw = 0, idle = mode === 'idle';
+    const IDLE_FPS = 30;                        // the self-drawn drift needs no more than this
+    new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible) start(); }).observe(host);
+    document.addEventListener('ft:quality', () => { idle = R.trail === 'idle'; if (!R.trail) { pts.length = 0; sparks.length = 0; } else start(); });
     const loop = now => {
+      if (!visible || document.hidden) { running = false; ctx.clearRect(0, 0, w, h); return; }
+      const drifting = idle && now - lastPointer > 1600;
+      if (drifting && now - lastDraw < 1000 / IDLE_FPS) { requestAnimationFrame(loop); return; }
+      if (drifting) { const t = now / 1500; pts.push({ x: w * (0.5 + 0.26 * Math.sin(t)), y: h * (0.32 + 0.11 * Math.sin(t * 2)), t: now }); }
+      lastDraw = now;
       while (pts.length && now - pts[0].t > 480) pts.shift();
       ctx.clearRect(0, 0, w, h);
       for (let i = 1; i < pts.length; i++) {
@@ -127,15 +146,21 @@
         ctx.globalAlpha = Math.max(0, 1 - age); strokePath(ctx, seg, 2.2 * (1 - age * 0.6), false);
       }
       ctx.globalAlpha = 1;
+      const head = pts[pts.length - 1];
+      if (head && drifting && Math.random() < 0.45) addSpark(sparks, spark(head.x, head.y, 0.8));
       drawSparks(ctx, sparks, false);
-      if (pts.length || sparks.length) requestAnimationFrame(loop); else running = false;
+      if (pts.length || sparks.length || idle) requestAnimationFrame(loop); else running = false;
     };
+    const start = () => { if (!running && R.trail && visible) { running = true; requestAnimationFrame(loop); } };
     host.addEventListener('pointermove', e => {
+      if (!R.trail) return;
       const r = host.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-      pts.push({ x, y, t: performance.now() });
+      lastPointer = performance.now(); pts.push({ x, y, t: lastPointer });
       if (Math.random() < 0.6) addSpark(sparks, spark(x, y, 0.9));
-      if (!running) { running = true; requestAnimationFrame(loop); }
+      start();
     }, { passive: true });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) start(); });
+    start();
   };
 
   /* Brand path: the two ribbons of the F mark. */
@@ -155,7 +180,7 @@
   /* ═════════ Loader ═════════ */
   function loader() {
     const L = $('#ft-loader');
-    if (!L || document.documentElement.classList.contains('seen') || reduced) { L?.remove(); ss.set('ft.seen', '1'); return Promise.resolve(); }
+    if (!L || document.documentElement.classList.contains('seen') || reduced || R.loader === false) { L?.remove(); ss.set('ft.seen', '1'); return Promise.resolve(); }
     ss.set('ft.seen', '1');
     const art = $('.ld-art', L), bar = $('.ld-bar i', L), pct = $('.ld-pct', L);
     const th = FT.thread($('canvas', L), { paths: FT.PATH_F, duration: 1500, width: 3, light: true, glints: 0 });
@@ -182,7 +207,7 @@
 
   /* ═════════ Page wipe between pages ═════════ */
   FT.go = url => {
-    if (reduced) { location.href = url; return; }
+    if (reduced || R.wipe === false) { location.href = url; return; }
     const w = $('#ft-wipe');
     ss.set('ft.wipe', '1');
     w.classList.remove('reveal'); void w.offsetWidth; w.classList.add('cover');
@@ -237,7 +262,7 @@
 
   /* ═════════ Cursor + magnetic buttons ═════════ */
   function cursor() {
-    if (!fine || reduced || lite) return;
+    if (!fine || reduced || R.cursor === false) return;
     const c = $('#ft-cursor'); if (!c) return;
     let x = -100, y = -100, cx = -100, cy = -100, running = false;
     const loop = () => {
@@ -255,7 +280,7 @@
     document.addEventListener('pointerout', e => { if (e.target.closest(hot)) c.classList.remove('big'); });
   }
   FT.magnetic = (root = document) => {
-    if (!fine || reduced || lite) return;
+    if (!fine || reduced || R.magnetic === false) return;
     $$('.mag', root).forEach(b => {
       if (b.dataset.mag) return; b.dataset.mag = '1';
       b.addEventListener('pointermove', e => {
@@ -289,6 +314,7 @@
   }
   function reveals() {
     $$('.split').forEach(split);
+    if (R.reveals === false) { $$('.split,.rv,[data-inview]').forEach(el => { el.classList.add('in'); el.dispatchEvent(new CustomEvent('ft:in')); }); return; }
     const io = new IntersectionObserver(es => es.forEach(e => {
       if (!e.isIntersecting) return;
       e.target.classList.add('in'); io.unobserve(e.target);
@@ -381,13 +407,17 @@
   /* ═════════ Videos ═════════
      <video data-src> loads only when it gets near the viewport, plays only while visible,
      and phones get the 480px encode (a third of the pixels to decode). */
-  FT.videoSrc = src => (lite && src === '/assets/media/kaftan.mp4' ? '/assets/media/kaftan-480.mp4' : src);
+  FT.videoSrc = (src, el) => {
+    if (src !== '/assets/media/kaftan.mp4') return src;
+    const want = R.video === 'auto' ? ((el ? el.getBoundingClientRect().width : innerWidth) * Math.min(2, devicePixelRatio || 1) > 560 ? 720 : 480) : R.video;
+    return want === 480 ? '/assets/media/kaftan-480.mp4' : src;
+  };
   function videos() {
     const vids = $$('video[data-src]'); if (!vids.length) return;
     const near = new IntersectionObserver(es => es.forEach(e => {
       if (!e.isIntersecting) return;
       const v = e.target; near.unobserve(v);
-      v.src = FT.videoSrc(v.dataset.src); v.load();
+      v.src = FT.videoSrc(v.dataset.src, v); v.load();
     }), { rootMargin: '300px 0px' });
     const vis = new IntersectionObserver(es => es.forEach(e => {
       const v = e.target;
@@ -433,10 +463,57 @@
     });
   };
 
+  /* ═════════ Frame monitor + Graphics control ═════════
+     Samples real frame times on this device (first seconds, then on every scroll and reveal).
+     Drops a quality level, once per visit, if frames are being dropped; remembered per device type. */
+  function monitor() {
+    const M = ((window.FT_CONFIG || {}).render || {}).monitor || {};
+    if (reduced || M.enabled === false) return;
+    let stepped = false, active = false, until = 0, frames = [], last = 0;
+    const sample = ts => {
+      if (last) frames.push(ts - last);
+      last = ts;
+      if (ts < until) { requestAnimationFrame(sample); return; }
+      active = false; last = 0; judge(); frames = [];
+    };
+    const judge = () => {
+      if (frames.length < 30 || stepped || R.userChoice) return;
+      const sorted = [...frames].sort((a, b) => a - b), median = sorted[sorted.length >> 1]; // 16.7ms at 60Hz, 8.3 at 120Hz
+      const dropped = frames.filter(f => f > median * (M.dropFactor || 2.4)).length / frames.length;
+      if (dropped > (M.dropRatio || 0.18) || median > 24) {
+        const i = LEVELS.indexOf(R.quality);
+        if (i > 0) {
+          stepped = true; FT.setQuality(LEVELS[i - 1], { reason: 'frames' });
+          FT.toast(`Graphics set to ${cap(LEVELS[i - 1])} for smoother motion. Change it under Graphics in the menu.`);
+        }
+      }
+    };
+    const run = ms => { until = Math.max(until, performance.now() + ms); if (!active) { active = true; last = 0; frames = []; requestAnimationFrame(sample); } };
+    FT.ready.then(() => run(4000));
+    addEventListener('scroll', () => run(1500), { passive: true });
+    document.addEventListener('ft:in', () => run(1200));
+  }
+  function syncQualityControls() {
+    $$('.qsel').forEach(sel => {
+      sel.value = R.userChoice ? R.quality : 'auto';
+      const auto = sel.querySelector('option[value="auto"]'); if (auto) auto.textContent = `Auto (${cap(R.quality)})`;
+    });
+  }
+  function qualityControls() {
+    $$('.qsel').forEach(sel => sel.addEventListener('change', () => {
+      try {
+        if (sel.value === 'auto') localStorage.removeItem('ft.quality'); else localStorage.setItem('ft.quality', sel.value);
+        localStorage.removeItem('ft.quality.auto.' + R.device);   // a fresh Auto starts from the profile again
+      } catch {}
+      location.reload();
+    }));
+    syncQualityControls();
+  }
+
   /* ═════════ Boot ═════════ */
   document.addEventListener('DOMContentLoaded', async () => {
     const yr = $('[data-year]'); if (yr) yr.textContent = new Date().getFullYear();
-    nav(); cursor(); FT.magnetic(); accordions(); marquees(); videos();
+    nav(); cursor(); FT.magnetic(); accordions(); marquees(); videos(); qualityControls(); monitor();
     await Promise.all([loader(), wipeIn()]);
     reveals();
     readyResolve();

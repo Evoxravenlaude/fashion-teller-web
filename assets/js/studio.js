@@ -28,10 +28,11 @@
     const phase = () => (S.order ? A.phaseIndex(S.order.phase) : 0);
     const cur = () => S.vendors.find(v => v.id === S.vendorId) || S.vendors[0];
     $('#stSample').hidden = !A.sample;
+    document.addEventListener('visibilitychange', () => { if (document.hidden) video.pause(); else if (S.design) video.play().catch(() => {}); });
 
     /* ───────── stage ───────── */
     const setVideo = () => {
-      const src = S.design?.videoUrl || '/assets/media/kaftan.mp4';
+      const src = FT.videoSrc(S.design?.videoUrl || '/assets/media/kaftan.mp4');
       if (video.getAttribute('src') !== src) video.setAttribute('src', src);
       video.play().catch(() => {});
     };
@@ -104,6 +105,7 @@
       if (busy || approved()) return;
       if (!A.signedIn()) { openLogin(generate); return; }
       busy = 'gen'; S.prompt = text; render(); genUI(true);
+      if (matchMedia('(max-width: 980px)').matches) stage.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
       const full = `${text} (${S.garment}, ${S.fabric}, ${S.accent} accents)`;
       const req = A.createDesign(full); req.catch(() => {});
       try {

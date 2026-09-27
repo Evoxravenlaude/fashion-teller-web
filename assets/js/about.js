@@ -5,13 +5,19 @@
     const st = $('#statement');
     st.innerHTML = st.textContent.split(/(\s+)/).map(w => (/^\s+$/.test(w) ? w : `<span class="dim">${FT.esc(w)}</span>`)).join('');
     const words = [...st.querySelectorAll('.dim')];
+    let lit = 0, queued = false;
     const upd = () => {
+      queued = false;
       const r = st.getBoundingClientRect(), vh = innerHeight;
       const p = Math.min(1, Math.max(0, (vh * 0.85 - r.top) / (r.height + vh * 0.35)));
       const n = Math.round(p * words.length);
-      words.forEach((w, i) => w.classList.toggle('lit', i < n));
+      if (n === lit) return;
+      const [a, b] = n > lit ? [lit, n] : [n, lit];
+      for (let i = a; i < b; i++) words[i].classList.toggle('lit', i < n);
+      lit = n;
     };
-    addEventListener('scroll', upd, { passive: true }); addEventListener('resize', upd); upd();
+    const q = () => { if (!queued) { queued = true; requestAnimationFrame(upd); } };
+    addEventListener('scroll', q, { passive: true }); addEventListener('resize', q); upd();
 
     const form = $('#contactForm');
     FT.form(form, {

@@ -33,61 +33,60 @@
 
   /* ═════════ Gold thread ═════════
      Draws glowing gold stitches along normalised paths ([[x,y],...] in 0..1 of the canvas box),
-     throwing off sparks at the needle like the embroidery in the concept video. */
+     throwing off sparks at the needle like the embroidery in the concept video.
+     Performance: no canvas shadowBlur (the glow is two cheap translucent strokes), one Path2D per pass,
+     capped sparks, capped pixel ratio, and the loop stops a moment after the stitch is finished. */
+  const lite = document.documentElement.classList.contains('lite');
+  FT.lite = lite;
   function fit(canvas) {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = Math.min(lite ? 1 : 1.5, window.devicePixelRatio || 1);
     const r = canvas.getBoundingClientRect();
-    canvas.width = Math.max(1, r.width * dpr); canvas.height = Math.max(1, r.height * dpr);
+    canvas.width = Math.max(1, Math.round(r.width * dpr)); canvas.height = Math.max(1, Math.round(r.height * dpr));
     const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     return { ctx, w: r.width, h: r.height };
   }
-  function stroke(ctx, ax, ay, bx, by, width, light) {
-    ctx.lineCap = 'round';
-    ctx.shadowColor = light ? 'rgba(212,175,55,.55)' : 'rgba(255,190,70,.95)';
-    ctx.shadowBlur = light ? 8 : 16;
-    ctx.strokeStyle = light ? '#C9A02F' : '#F2CF72';
-    ctx.lineWidth = width;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = light ? 'rgba(255,236,170,.9)' : 'rgba(255,250,230,.95)';
-    ctx.lineWidth = width * 0.38;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  function strokePath(ctx, path, width, light) {
+    ctx.strokeStyle = light ? 'rgba(212,175,55,.22)' : 'rgba(255,186,64,.26)'; ctx.lineWidth = width * 4.5; ctx.stroke(path);
+    ctx.strokeStyle = light ? '#C9A02F' : '#F2CF72'; ctx.lineWidth = width; ctx.stroke(path);
+    ctx.strokeStyle = light ? 'rgba(255,236,170,.9)' : 'rgba(255,250,230,.95)'; ctx.lineWidth = width * 0.38; ctx.stroke(path);
   }
+  const MAX_SPARKS = lite ? 36 : 90;
   function drawSparks(ctx, sparks, light) {
+    ctx.fillStyle = light ? '#D4AF37' : '#FFE3A0';
     for (let i = sparks.length - 1; i >= 0; i--) {
       const s = sparks[i];
       s.x += s.vx; s.y += s.vy; s.vy += 0.03; s.life -= s.decay;
       if (s.life <= 0) { sparks.splice(i, 1); continue; }
-      ctx.globalAlpha = Math.max(0, s.life);
-      ctx.fillStyle = light ? '#D4AF37' : '#FFE3A0';
-      ctx.shadowColor = 'rgba(255,200,90,.9)'; ctx.shadowBlur = light ? 0 : 8;
-      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = s.life; ctx.fillRect(s.x - s.r, s.y - s.r, s.r * 2, s.r * 2);
     }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
   }
-  const spark = (x, y, k = 1) => ({ x, y, vx: (Math.random() - 0.5) * 1.8 * k, vy: (Math.random() - 0.65) * 1.8 * k, r: Math.random() * 1.3 + 0.4, life: 1, decay: 0.012 + Math.random() * 0.02 });
+  const spark = (x, y, k = 1) => ({ x, y, vx: (Math.random() - 0.5) * 1.8 * k, vy: (Math.random() - 0.65) * 1.8 * k, r: Math.random() * 1.1 + 0.5, life: 1, decay: 0.015 + Math.random() * 0.02 });
+  const addSpark = (arr, s) => { if (arr.length < MAX_SPARKS) arr.push(s); };
 
-  FT.thread = (canvas, { paths, duration = 1800, width = 2, light = false, glints = 0.35 } = {}) => {
+  FT.thread = (canvas, { paths, duration = 1800, width = 2, light = false, glints = 0.35, linger } = {}) => {
     let { ctx, w, h } = fit(canvas);
+    linger = linger ?? (lite ? 900 : 2200);          // how long the finished stitch keeps twinkling
     const segs = []; let total = 0;
     for (const p of paths) for (let i = 1; i < p.length; i++) {
       const len = Math.hypot((p[i][0] - p[i - 1][0]) * w, (p[i][1] - p[i - 1][1]) * h);
       segs.push({ a: p[i - 1], b: p[i], len, start: total }); total += len;
     }
-    const sparks = []; let raf, t0 = null, resolved = false, stopped = false, res;
+    const sparks = []; let raf = 0, t0 = null, doneAt = 0, stopped = false, res;
     const done = new Promise(r => (res = r));
     const paint = L => {
-      let tip = null;
+      const path = new Path2D(); let tip = null;
       for (const s of segs) {
         if (L <= s.start) break;
         const k = Math.min(1, (L - s.start) / s.len);
-        const ax = s.a[0] * w, ay = s.a[1] * h;
-        const bx = ax + (s.b[0] * w - ax) * k, by = ay + (s.b[1] * h - ay) * k;
-        stroke(ctx, ax, ay, bx, by, width, light); tip = [bx, by];
+        const ax = s.a[0] * w, ay = s.a[1] * h, bx = ax + (s.b[0] * w - ax) * k, by = ay + (s.b[1] * h - ay) * k;
+        path.moveTo(ax, ay); path.lineTo(bx, by); tip = [bx, by];
       }
-      return tip;
+      strokePath(ctx, path, width, light); return tip;
     };
-    if (reduced) { paint(total); res(); return { done, stop() {}, clear() { ctx.clearRect(0, 0, w, h); } }; }
+    const api = { done, stop() { stopped = true; cancelAnimationFrame(raf); }, clear() { stopped = true; cancelAnimationFrame(raf); ctx.clearRect(0, 0, w, h); } };
+    if (reduced) { paint(total); res(); return api; }
     const frame = ts => {
       if (stopped) return;
       if (t0 == null) t0 = ts;
@@ -95,50 +94,48 @@
       const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
       ctx.clearRect(0, 0, w, h);
       const tip = paint(e * total);
-      if (tip && p < 1) for (let i = 0; i < 3; i++) sparks.push(spark(tip[0], tip[1]));
-      if (p >= 1 && Math.random() < glints) { // idle twinkles along the finished stitch
-        const s = segs[(Math.random() * segs.length) | 0], k = Math.random();
-        if (s) sparks.push({ ...spark(s.a[0] * w + (s.b[0] - s.a[0]) * w * k, s.a[1] * h + (s.b[1] - s.a[1]) * h * k, 0.4), decay: 0.02 });
+      if (tip && p < 1) for (let i = 0; i < 2; i++) addSpark(sparks, spark(tip[0], tip[1]));
+      if (p >= 1) {
+        if (!doneAt) { doneAt = ts; res(); }
+        const lingering = ts - doneAt < linger;
+        if (lingering && Math.random() < glints) {
+          const s = segs[(Math.random() * segs.length) | 0], k = Math.random();
+          if (s) addSpark(sparks, { ...spark(s.a[0] * w + (s.b[0] - s.a[0]) * w * k, s.a[1] * h + (s.b[1] - s.a[1]) * h * k, 0.4), decay: 0.025 });
+        }
+        if (!lingering && !sparks.length) { stopped = true; return; } // final frame stays on the canvas; nothing else runs
       }
       drawSparks(ctx, sparks, light);
-      if (p >= 1 && !resolved) { resolved = true; res(); }
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
-    return { done, stop() { stopped = true; cancelAnimationFrame(raf); }, clear() { stopped = true; cancelAnimationFrame(raf); ctx.clearRect(0, 0, w, h); } };
+    return api;
   };
 
-  /* A gold thread that trails the pointer across a host element; drifts on its own when idle. */
+  /* A gold thread that trails the pointer across a host element (desktop mice only).
+     The loop runs only while there is a trail to draw, so a still page costs nothing. */
   FT.trail = (canvas, host) => {
-    if (reduced) return;
+    if (reduced || lite || !fine) { canvas.remove(); return; }
     let { ctx, w, h } = fit(canvas);
     new ResizeObserver(() => ({ ctx, w, h } = fit(canvas))).observe(host);
-    const pts = []; const sparks = []; let last = 0, visible = true;
-    new IntersectionObserver(([e]) => (visible = e.isIntersecting)).observe(host);
-    host.addEventListener('pointermove', e => {
-      const r = host.getBoundingClientRect();
-      pts.push({ x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() }); last = performance.now();
-    });
+    const pts = [], sparks = []; let running = false;
     const loop = now => {
-      requestAnimationFrame(loop);
-      if (!visible) return;
-      if (now - last > 1800) { // idle: a slow figure-eight so touch screens see it too
-        const t = now / 1400;
-        pts.push({ x: w * (0.5 + 0.28 * Math.sin(t)), y: h * (0.34 + 0.12 * Math.sin(t * 2)), t: now });
-      }
-      while (pts.length && now - pts[0].t > 520) pts.shift();
+      while (pts.length && now - pts[0].t > 480) pts.shift();
       ctx.clearRect(0, 0, w, h);
       for (let i = 1; i < pts.length; i++) {
-        const a = pts[i - 1], b = pts[i], age = (now - b.t) / 520;
-        ctx.globalAlpha = Math.max(0, 1 - age);
-        stroke(ctx, a.x, a.y, b.x, b.y, 2.2 * (1 - age * 0.6), false);
+        const a = pts[i - 1], b = pts[i], age = (now - b.t) / 480;
+        const seg = new Path2D(); seg.moveTo(a.x, a.y); seg.lineTo(b.x, b.y);
+        ctx.globalAlpha = Math.max(0, 1 - age); strokePath(ctx, seg, 2.2 * (1 - age * 0.6), false);
       }
       ctx.globalAlpha = 1;
-      const head = pts[pts.length - 1];
-      if (head && Math.random() < 0.7) sparks.push(spark(head.x, head.y, 0.9));
       drawSparks(ctx, sparks, false);
+      if (pts.length || sparks.length) requestAnimationFrame(loop); else running = false;
     };
-    requestAnimationFrame(loop);
+    host.addEventListener('pointermove', e => {
+      const r = host.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      pts.push({ x, y, t: performance.now() });
+      if (Math.random() < 0.6) addSpark(sparks, spark(x, y, 0.9));
+      if (!running) { running = true; requestAnimationFrame(loop); }
+    }, { passive: true });
   };
 
   /* Brand path: the two ribbons of the F mark. */
@@ -219,14 +216,17 @@
   function nav() {
     const page = document.body.dataset.page;
     $$('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === page));
-    const n = $('.nav'); let lastY = scrollY;
-    addEventListener('scroll', () => {
-      const y = scrollY;
-      n.classList.toggle('scrolled', y > 8);
-      const open = document.documentElement.classList.contains('menu-open');
-      if (!open && document.body.dataset.page !== 'studio') n.classList.toggle('hide', y > lastY && y > 320);
+    const n = $('.nav'); let lastY = scrollY, queued = false, scrolled = null, hidden = null;
+    const studio = document.body.dataset.page === 'studio';
+    const upd = () => {
+      queued = false;
+      const y = scrollY, s = y > 8;
+      const hd = !studio && !document.documentElement.classList.contains('menu-open') && y > lastY && y > 320;
+      if (s !== scrolled) n.classList.toggle('scrolled', (scrolled = s));
+      if (hd !== hidden) n.classList.toggle('hide', (hidden = hd));
       lastY = y;
-    }, { passive: true });
+    };
+    addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(upd); } }, { passive: true });
     const btn = $('.menu-btn');
     btn?.addEventListener('click', () => {
       const open = document.documentElement.classList.toggle('menu-open');
@@ -237,19 +237,25 @@
 
   /* ═════════ Cursor + magnetic buttons ═════════ */
   function cursor() {
-    if (!fine || reduced) return;
+    if (!fine || reduced || lite) return;
     const c = $('#ft-cursor'); if (!c) return;
-    let x = -100, y = -100, cx = -100, cy = -100;
-    addEventListener('pointermove', e => { x = e.clientX; y = e.clientY; c.classList.add('on'); }, { passive: true });
+    let x = -100, y = -100, cx = -100, cy = -100, running = false;
+    const loop = () => {
+      cx += (x - cx) * 0.22; cy += (y - cy) * 0.22;
+      c.style.transform = `translate3d(${cx}px,${cy}px,0)`;
+      if (Math.abs(x - cx) + Math.abs(y - cy) > 0.3) requestAnimationFrame(loop); else running = false;
+    };
+    addEventListener('pointermove', e => {
+      x = e.clientX; y = e.clientY; c.classList.add('on');
+      if (!running) { running = true; requestAnimationFrame(loop); }
+    }, { passive: true });
     document.addEventListener('pointerleave', () => c.classList.remove('on'));
-    const loop = () => { cx += (x - cx) * 0.2; cy += (y - cy) * 0.2; c.style.transform = `translate3d(${cx}px,${cy}px,0)`; requestAnimationFrame(loop); };
-    loop();
     const hot = 'a,button,.vendor,input,textarea,select,label[for]';
     document.addEventListener('pointerover', e => { if (e.target.closest(hot)) c.classList.add('big'); });
     document.addEventListener('pointerout', e => { if (e.target.closest(hot)) c.classList.remove('big'); });
   }
   FT.magnetic = (root = document) => {
-    if (!fine || reduced) return;
+    if (!fine || reduced || lite) return;
     $$('.mag', root).forEach(b => {
       if (b.dataset.mag) return; b.dataset.mag = '1';
       b.addEventListener('pointermove', e => {
@@ -368,7 +374,27 @@
 
   /* ═════════ Marquee ═════════ */
   function marquees() {
-    $$('.marquee .track').forEach(t => { t.innerHTML += t.innerHTML; });
+    const io = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('off', !e.isIntersecting)));
+    $$('.marquee').forEach(m => io.observe(m));
+  }
+
+  /* ═════════ Videos ═════════
+     <video data-src> loads only when it gets near the viewport, plays only while visible,
+     and phones get the 480px encode (a third of the pixels to decode). */
+  FT.videoSrc = src => (lite && src === '/assets/media/kaftan.mp4' ? '/assets/media/kaftan-480.mp4' : src);
+  function videos() {
+    const vids = $$('video[data-src]'); if (!vids.length) return;
+    const near = new IntersectionObserver(es => es.forEach(e => {
+      if (!e.isIntersecting) return;
+      const v = e.target; near.unobserve(v);
+      v.src = FT.videoSrc(v.dataset.src); v.load();
+    }), { rootMargin: '300px 0px' });
+    const vis = new IntersectionObserver(es => es.forEach(e => {
+      const v = e.target;
+      if (e.isIntersecting && !reduced) v.play().catch(() => {}); else v.pause();
+    }), { threshold: 0.15 });
+    vids.forEach(v => { v.muted = true; near.observe(v); vis.observe(v); });
+    document.addEventListener('visibilitychange', () => vids.forEach(v => { if (document.hidden) v.pause(); }));
   }
 
   /* ═════════ Forms (tailor application, contact) ═════════ */
@@ -410,7 +436,7 @@
   /* ═════════ Boot ═════════ */
   document.addEventListener('DOMContentLoaded', async () => {
     const yr = $('[data-year]'); if (yr) yr.textContent = new Date().getFullYear();
-    nav(); cursor(); FT.magnetic(); accordions(); marquees();
+    nav(); cursor(); FT.magnetic(); accordions(); marquees(); videos();
     await Promise.all([loader(), wipeIn()]);
     reveals();
     readyResolve();

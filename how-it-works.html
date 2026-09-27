@@ -17,8 +17,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="/assets/media/poster.jpg">
 <link rel="stylesheet" href="/assets/css/site.css">
-<script>(function(h){h.classList.add('js');try{if(sessionStorage.getItem('ft.seen'))h.classList.add('seen');if(sessionStorage.getItem('ft.wipe'))h.classList.add('wiping')}catch(e){}})(document.documentElement)</script>
+<script>(function(h){h.classList.add('js');
+/* lite: touch screens, low-core or low-memory devices, data saver. Heavier effects switch off. */
+var n=navigator,c=n.connection||{};if(matchMedia('(pointer:coarse)').matches||(n.hardwareConcurrency||8)<=4||(n.deviceMemory||8)<=4||c.saveData)h.classList.add('lite');
+try{if(sessionStorage.getItem('ft.seen'))h.classList.add('seen');if(sessionStorage.getItem('ft.wipe'))h.classList.add('wiping')}catch(e){}})(document.documentElement)</script>
 <script src="/assets/js/config.js"></script>
 <script src="/assets/js/api.js" defer></script>
 <script src="/assets/js/site.js" defer></script>
@@ -74,7 +78,7 @@
       <div class="phone-wrap">
         <div class="phone" id="phone">
           <img class="poster" src="/assets/media/poster.jpg" alt="" aria-hidden="true">
-          <video src="/assets/media/kaftan.mp4" poster="/assets/media/poster.jpg" muted loop playsinline autoplay preload="metadata" aria-label="Concept video: a midnight kaftan with gold embroidery"></video>
+          <video data-src="/assets/media/kaftan.mp4" poster="/assets/media/poster.jpg" muted loop playsinline preload="none" aria-label="Concept video: a midnight kaftan with gold embroidery"></video>
           <canvas id="phoneThread" aria-hidden="true"></canvas>
           <div class="ov" aria-hidden="true">
             <div data-ov="0" class="on"><b>Concept v1</b>A midnight silk kaftan with gold embroidery across the chest.</div>

@@ -36,10 +36,17 @@ Edit assets/js/config.js only.
 - formEndpoint empty: tailor applications and contact messages are kept in the visitor's browser only.
   Set it to any JSON POST endpoint (your API, Formspree, a Vercel function) to receive them. The payload includes "kind".
 
+## Performance
+
+Phones, tablets, low-core or low-memory devices and data-saver users get a lighter mode (the `lite` class is set in <head>):
+no pointer trail or custom cursor, no frosted-glass blur, a 480px video, lower-resolution canvases.
+On every device, animations stop when they finish, videos load only near the viewport and pause off screen,
+and scroll handlers run at most once per frame. At rest a page does almost no work.
+
 ## Editing
 
 - Styles: assets/css/site.css (one file, tokens at the top). Type is Jost throughout.
 - Shared motion (loader, page wipe, gold thread, cursor, magnetic buttons, FLIP lists): assets/js/site.js.
 - Nav, menu and footer are shared partials: edit _src/partials/, page bodies in _src/pages/,
   then run  python3 _src/build.py  to regenerate the six HTML files.
-- Media: assets/media/ (kaftan loop with the CapCut mark cropped out, poster, marks, favicons, OG image).
+- Media: assets/media/ (kaftan loop at 720px and 480px with the CapCut mark cropped out, poster, pre-blurred studio backdrop, marks, favicons, OG image).

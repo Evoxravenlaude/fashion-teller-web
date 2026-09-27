@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>How it works — Fashion Teller</title>
+<meta name="description" content="Four phases from a sentence to a finished garment: concept, vendor assigned, tailoring, doorstep delivery.">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="canonical" href="/how-it-works">
+<meta property="og:type" content="website">
+<meta property="og:title" content="How it works — Fashion Teller">
+<meta property="og:description" content="Four phases from a sentence to a finished garment: concept, vendor assigned, tailoring, doorstep delivery.">
+<meta property="og:image" content="/assets/media/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/assets/media/favicon.png">
+<link rel="apple-touch-icon" href="/assets/media/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/site.css">
+<script>(function(h){h.classList.add('js');try{if(sessionStorage.getItem('ft.seen'))h.classList.add('seen');if(sessionStorage.getItem('ft.wipe'))h.classList.add('wiping')}catch(e){}})(document.documentElement)</script>
+<script src="/assets/js/config.js"></script>
+<script src="/assets/js/api.js" defer></script>
+<script src="/assets/js/site.js" defer></script>
+<script src="/assets/js/how.js" defer></script>
+</head>
+<body data-page="how">
+<a class="skip" href="#main">Skip to content</a>
+<div id="ft-loader" aria-hidden="true">
+  <div class="ld-inner">
+    <div class="ld-art"><canvas></canvas><img src="/assets/media/mark.png" alt=""></div>
+    <div class="ld-row"><div class="ld-bar"><i></i></div><span class="ld-pct">00</span></div>
+  </div>
+</div>
+<div id="ft-wipe" aria-hidden="true"><span class="wm"><b>Fashion</b> <i>Teller</i></span></div>
+<div id="ft-cursor" aria-hidden="true"></div>
+
+<header class="nav">
+  <a class="brand" href="/" aria-label="Fashion Teller home">
+    <img src="/assets/media/mark.png" alt="" width="26" height="34">
+    <span class="wm"><b>Fashion</b> <i>Teller</i></span>
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="/how-it-works" data-nav="how">How it works</a>
+    <a href="/studio" data-nav="studio">Studio</a>
+    <a href="/tailors" data-nav="tailors">For tailors</a>
+    <a href="/about" data-nav="about">About</a>
+  </nav>
+  <div class="nav-end">
+    <a class="btn gold sm mag" href="/studio">Open studio</a>
+    <button class="menu-btn" aria-expanded="false" aria-controls="menu" aria-label="Menu"><i></i><i></i></button>
+  </div>
+</header>
+<div class="menu" id="menu">
+  <nav aria-label="Menu">
+    <a href="/" data-nav="home" style="--i:0">Home</a>
+    <a href="/how-it-works" data-nav="how" style="--i:1">How it works</a>
+    <a href="/studio" data-nav="studio" style="--i:2">Studio</a>
+    <a href="/tailors" data-nav="tailors" style="--i:3">For tailors</a>
+    <a href="/about" data-nav="about" style="--i:4">About</a>
+  </nav>
+  <div class="menu-foot"><span>Design smarter, wear better.</span><a class="btn gold" href="/studio">Open studio</a></div>
+</div>
+<main id="main">
+  <section class="page-hero">
+    <div class="wrap">
+      <h1 class="display split">From a sentence to a finished garment</h1>
+      <p class="lead rv" style="--d:.3s">Four phases, the same four you watch in the studio's production tracker. Scroll to follow one kaftan through them.</p>
+    </div>
+  </section>
+
+  <section class="sec" style="padding-top:0">
+    <div class="wrap how">
+      <div class="phone-wrap">
+        <div class="phone" id="phone">
+          <img class="poster" src="/assets/media/poster.jpg" alt="" aria-hidden="true">
+          <video src="/assets/media/kaftan.mp4" poster="/assets/media/poster.jpg" muted loop playsinline autoplay preload="metadata" aria-label="Concept video: a midnight kaftan with gold embroidery"></video>
+          <canvas id="phoneThread" aria-hidden="true"></canvas>
+          <div class="ov" aria-hidden="true">
+            <div data-ov="0" class="on"><b>Concept v1</b>A midnight silk kaftan with gold embroidery across the chest.</div>
+            <div data-ov="1"><b>Compare verified tailors</b>
+              <div class="mini on"><span>Savile Row Custom Houses</span><span>$340, 6 days</span></div>
+              <div class="mini"><span>Luxe Ankara Hubs</span><span>$295, 8 days</span></div>
+              <div class="mini"><span>Maison Ndiaye</span><span>$260, 10 days</span></div></div>
+            <div data-ov="2"><b>In the workshop</b>Silk sourced. Embroidery and tailoring in progress at Savile Row Custom Houses.</div>
+            <div data-ov="3"><b>Delivered</b>Quality checked and delivered to your door. Order FT-204118.</div>
+          </div>
+          <div class="trk trk-h" id="phoneTrk"></div>
+        </div>
+      </div>
+      <div class="how-steps">
+        <article class="hs" data-phase="0">
+          <span class="n">Phase 1 of 4</span>
+          <div class="hs-dots"><i class="on"></i><i></i><i></i><i></i></div>
+          <h2 class="h2">Say what you want, then refine it in your own words</h2>
+          <p class="body">No sketches and no fabric codes. Write a sentence and Fashion Teller turns it into a concept you can look at. Each instruction after that makes a new version, so you see the change before anyone cuts fabric.</p>
+          <p class="ex">"Add deeper gold trim." Concept v2.</p>
+        </article>
+        <article class="hs" data-phase="1">
+          <span class="n">Phase 2 of 4</span>
+          <div class="hs-dots"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+          <h2 class="h2">Compare verified tailors and choose one</h2>
+          <p class="body">Tailors and manufacturers who can make the design quote a price and a delivery time. Sort by best match, price, speed or rating. Your approval assigns the vendor and starts the order at the quoted total.</p>
+          <p class="ex">Approve design &amp; initiate production.</p>
+        </article>
+        <article class="hs" data-phase="2">
+          <span class="n">Phase 3 of 4</span>
+          <div class="hs-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+          <h2 class="h2">Fabric is sourced and the garment is tailored</h2>
+          <p class="body">The tailor works from the concept and every refinement you approved. The tracker moves as your order does, so you never have to chase anyone for an update.</p>
+          <p class="ex">Vendor assigned, then fabric sourcing &amp; tailoring.</p>
+        </article>
+        <article class="hs" data-phase="3">
+          <span class="n">Phase 4 of 4</span>
+          <div class="hs-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <h2 class="h2">Checked, then delivered to your door</h2>
+          <p class="body">A quality check before dispatch, then doorstep delivery. The same tracker you watched from the first sentence marks it done.</p>
+          <p class="ex">Doorstep quality delivery.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec mist">
+    <div class="wrap">
+      <div class="sec-head"><h2 class="h2 split">Questions people ask first</h2></div>
+      <div class="acc rv">
+        <div class="acc-item"><button class="acc-q" aria-expanded="false">Do I need to know how to sketch or name fabrics?<span class="pm"></span></button><div class="acc-a"><div><p>No. Describe the garment the way you would to a friend. You can mention fabric, colour or fit if you know them, and refine anything later in plain words.</p></div></div></div>
+        <div class="acc-item"><button class="acc-q" aria-expanded="false">How are tailors verified?<span class="pm"></span></button><div class="acc-a"><div><p>Every tailor and manufacturer on Fashion Teller is checked before they can quote. Customers see a verified mark, a rating from past orders, a price and a delivery time for each quote.</p></div></div></div>
+        <div class="acc-item"><button class="acc-q" aria-expanded="false">Who sets the price?<span class="pm"></span></button><div class="acc-a"><div><p>The tailor quotes it for your specific design. When you approve, the order is created at that quoted total, never at a number typed in on your side.</p></div></div></div>
+        <div class="acc-item"><button class="acc-q" aria-expanded="false">Can I change the design after I approve it?<span class="pm"></span></button><div class="acc-a"><div><p>Approval locks the version you chose so the tailor can start. Make every change you want before approving; each refinement is saved as its own version.</p></div></div></div>
+        <div class="acc-item"><button class="acc-q" aria-expanded="false">Where can Fashion Teller deliver?<span class="pm"></span></button><div class="acc-a"><div><p>Delivery depends on the tailor you choose. Each quote shows the delivery time to you, so you can pick a workshop that suits your timeline.</p></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec bigcta">
+    <h2 class="display split">See it for yourself</h2>
+    <a class="btn gold mag rv" href="/studio">Open studio</a>
+  </section>
+</main>
+<footer class="foot">
+  <div class="grid">
+    <div>
+      <img src="/assets/media/logo.png" alt="Fashion Teller. Design smarter, wear better." width="220" height="87" loading="lazy">
+    </div>
+    <div><h4>Product</h4><ul><li><a href="/how-it-works">How it works</a></li><li><a href="/studio">Studio</a></li></ul></div>
+    <div><h4>Makers</h4><ul><li><a href="/tailors">For tailors</a></li><li><a href="/tailors#apply">Apply as a tailor</a></li></ul></div>
+    <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="/about#contact">Contact</a></li></ul></div>
+  </div>
+  <div class="base"><span>© <span data-year></span> Fashion Teller</span><span>Prices shown in the studio are sample quotes in USD.</span></div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<main id="main">
+  <section class="sec dark" style="padding-bottom:0">
+    <div class="wrap">
+      <h1 class="display split" style="max-width:12ch">Your workshop, seen beyond your street</h1>
+      <div class="sec-head" style="margin:40px 0 0">
+        <p class="lead rv" style="--d:.3s">Quote on designs from customers anywhere. They arrive already agreed, with the concept and every refinement attached, so you spend your time making, not negotiating.</p>
+        <div class="rv" style="--d:.45s;display:flex;gap:12px;flex-wrap:wrap"><a class="btn gold mag" href="#apply">Apply as a tailor</a><a class="btn ghost light mag" href="#simulate">See where you'd rank</a></div>
+      </div>
+    </div>
+    <div class="marquee" aria-hidden="true"><div class="track" id="mq"></div></div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="trio" style="margin-top:0">
+        <div class="rv"><h3>Quote what you can make</h3><p>Each design comes with its concept video and the customer's approved refinements. You set the price and the lead time.</p></div>
+        <div class="rv" style="--d:.1s"><h3>Win on your terms</h3><p>Customers sort by best match, price, speed or rating. A great rating and an honest delivery time beat being the cheapest.</p></div>
+        <div class="rv" style="--d:.2s"><h3>Orders at your quote</h3><p>The customer's approval creates the order at the total you quoted. No back-and-forth over screenshots.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec mist" id="simulate">
+    <div class="wrap">
+      <div class="sec-head"><h2 class="h2 split">Where would your quote land?</h2><p class="body rv">Here are five real-style quotes for a midnight silk kaftan. Move the sliders and watch your workshop move through the list the customer sees.</p></div>
+      <div class="sim">
+        <div class="sim-ctl rv">
+          <div class="rank" aria-live="polite"><strong id="rankN">#1</strong><span id="rankOf">of 6 in best match</span></div>
+          <div class="field"><label for="simName">Workshop name</label><input id="simName" maxlength="40" placeholder="Your workshop"></div>
+          <div class="slider"><div class="top"><label for="simPrice">Your price</label><output id="simPriceOut" for="simPrice">$280</output></div><input class="range" id="simPrice" type="range" min="120" max="600" step="5" value="280"></div>
+          <div class="slider"><div class="top"><label for="simDays">Delivery time</label><output id="simDaysOut" for="simDays">7 days</output></div><input class="range" id="simDays" type="range" min="3" max="21" step="1" value="7"></div>
+          <div class="slider"><div class="top"><label for="simRate">Your rating</label><output id="simRateOut" for="simRate">4.7 ★</output></div><input class="range" id="simRate" type="range" min="3.5" max="5" step="0.1" value="4.7"></div>
+          <p class="body" id="simTip" style="font-size:15px"></p>
+        </div>
+        <div class="demo-box rv" style="--d:.15s;background:#fff">
+          <div class="row"><h3>What the customer sees</h3><div class="seg" id="simSeg" role="group" aria-label="Sort">
+            <button data-v="match" aria-pressed="true">Best match</button><button data-v="price" aria-pressed="false">Price</button><button data-v="fast" aria-pressed="false">Fastest</button><button data-v="rating" aria-pressed="false">Rating</button></div></div>
+          <div class="vlist" id="simList"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="apply">
+    <div class="wrap split2" style="align-items:start">
+      <div class="copy">
+        <h2 class="h2 split">Apply as a tailor</h2>
+        <p class="body rv">Tell us about your workshop. We verify every tailor and manufacturer before they can quote, and we will reply by email.</p>
+      </div>
+      <div class="rv">
+        <form class="form" id="applyForm" novalidate>
+          <div class="field"><label for="a-name">Workshop name</label><input id="a-name" name="workshop" autocomplete="organization"><span class="msg"></span></div>
+          <div class="field"><label for="a-contact">Your name</label><input id="a-contact" name="name" autocomplete="name"><span class="msg"></span></div>
+          <div class="field"><label for="a-email">Email</label><input id="a-email" name="email" type="email" autocomplete="email"><span class="msg"></span></div>
+          <div class="field"><label for="a-phone">Phone or WhatsApp</label><input id="a-phone" name="phone" type="tel" autocomplete="tel"><span class="msg"></span></div>
+          <div class="field"><label for="a-city">City</label><input id="a-city" name="city" autocomplete="address-level2"><span class="msg"></span></div>
+          <div class="field"><label for="a-country">Country</label><select id="a-country" name="country"><option value="">Choose a country</option><option>Nigeria</option><option>Gabon</option><option>Ghana</option><option>Senegal</option><option>Côte d'Ivoire</option><option>Cameroon</option><option>Kenya</option><option>South Africa</option><option>Brazil</option><option>Mexico</option><option>Colombia</option><option>United Kingdom</option><option>United States</option><option>Other</option></select><span class="msg"></span></div>
+          <div class="field full"><span class="lbl" id="specLbl">What you make</span><div class="chips" data-multi="specialties" role="group" aria-labelledby="specLbl">
+            <button class="chip" type="button" data-v="Kaftans">Kaftans</button><button class="chip" type="button" data-v="Agbada">Agbada</button><button class="chip" type="button" data-v="Dresses">Dresses</button><button class="chip" type="button" data-v="Suits">Suits</button><button class="chip" type="button" data-v="Embroidery">Embroidery</button><button class="chip" type="button" data-v="Bridal">Bridal</button><button class="chip" type="button" data-v="Production runs">Production runs</button>
+          </div><input type="hidden" name="specialties"><span class="msg"></span></div>
+          <div class="field full"><label for="a-about">Anything else we should know</label><textarea id="a-about" name="about" placeholder="Team size, typical lead times, a link to your work"></textarea></div>
+          <div class="foot-row"><p>By applying you agree we can contact you about verification.</p><button class="btn ink mag" type="submit">Send application</button></div>
+        </form>
+        <div class="done-card" id="applyDone" role="status">
+          <svg viewBox="0 0 52 52" fill="none"><circle cx="26" cy="26" r="24" stroke="#D4AF37" stroke-width="2"/><path d="M15 27l7 7 15-16" stroke="#22252A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3 class="h3" id="applyDoneH">Application sent</h3>
+          <p class="body">We will email you about the next step in verification.</p>
+          <button class="btn ghost" id="applyAgain" type="button">Send another</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>

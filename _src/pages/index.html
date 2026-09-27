@@ -1,0 +1,92 @@
+<main id="main">
+  <section class="hero">
+    <div class="hero-copy">
+      <h1 class="display split hero-h">Describe it.<br>See it.<br>Have it made.</h1>
+      <p class="lead rv" style="--d:.35s">Tell Fashion Teller what you want to wear in plain language. It shows you the design, refines it with you, and matches you with a verified tailor who makes it and delivers it to your door.</p>
+      <div class="hero-try rv" style="--d:.5s">
+        <form class="ask" id="ask" novalidate>
+          <label class="sr" for="askInput">Describe the garment you want</label>
+          <input id="askInput" name="prompt" autocomplete="off" placeholder="A midnight silk kaftan with gold embroidery…">
+          <button class="btn gold mag" type="submit">Design it</button>
+        </form>
+        <div class="chips" aria-label="Try an idea">
+          <button class="chip" type="button" data-fill="An ivory agbada with gold thread on the chest">Ivory agbada</button>
+          <button class="chip" type="button" data-fill="A fitted emerald Ankara dress, knee length, puff sleeves">Ankara dress</button>
+          <button class="chip" type="button" data-fill="A charcoal linen suit, relaxed fit, mandarin collar">Linen suit</button>
+        </div>
+      </div>
+    </div>
+    <div class="hero-stage" id="heroStage">
+      <img class="poster" src="/assets/media/poster.jpg" alt="" aria-hidden="true">
+      <video src="/assets/media/kaftan.mp4" poster="/assets/media/poster.jpg" muted loop playsinline autoplay preload="auto" aria-label="Concept video: a midnight kaftan with gold embroidery"></video>
+      <canvas id="heroTrail" aria-hidden="true"></canvas>
+      <div class="demo rv" style="--d:.8s" aria-live="polite">
+        <div class="top"><span>Concept <b id="demoV">v1</b></span><span id="demoState">Refining</span></div>
+        <div class="line" id="demoLine"></div>
+        <div class="dfoot"><span>Kaftan, midnight silk</span><i id="demoQ">5 verified tailors quoted</i></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 class="h2 split">One order, four phases</h2>
+        <div class="rv"><p class="body">The same tracker you see in the studio follows your garment from the first sentence to your door.</p><p style="margin:18px 0 0"><a class="textlink" href="/how-it-works">See how it works <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></p></div>
+      </div>
+      <div class="band" data-inview>
+        <span class="fill"></span>
+        <div class="ph" style="--i:0"><small>Phase 1</small><h3 class="h3">AI concept generated</h3><p>Your description becomes a design you can see and refine.</p></div>
+        <div class="ph" style="--i:1"><small>Phase 2</small><h3 class="h3">Vendor assigned</h3><p>You pick a verified tailor from real quotes.</p></div>
+        <div class="ph" style="--i:2"><small>Phase 3</small><h3 class="h3">Fabric sourcing &amp; tailoring</h3><p>The tailor works from the version you approved.</p></div>
+        <div class="ph" style="--i:3"><small>Phase 4</small><h3 class="h3">Doorstep quality delivery</h3><p>Checked, dispatched, and delivered to you.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec mist">
+    <div class="wrap split2">
+      <div class="copy">
+        <h2 class="h2 split">Compare tailors the way you compare flights</h2>
+        <p class="body rv">Every tailor who can make your design quotes a price and a delivery time. All of them are verified. Sort by what matters to you, then choose.</p>
+        <p class="rv"><a class="textlink" href="/studio">Try it in the studio <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></p>
+      </div>
+      <div class="demo-box rv">
+        <div class="row"><h3>Quotes for: midnight silk kaftan</h3><div class="seg" id="cmpSeg" role="group" aria-label="Sort tailors">
+          <button data-v="match" aria-pressed="true">Best match</button><button data-v="price" aria-pressed="false">Price</button><button data-v="fast" aria-pressed="false">Fastest</button><button data-v="rating" aria-pressed="false">Rating</button>
+        </div></div>
+        <div class="vlist" id="cmpList"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec dark">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 class="h2 split">Tailors reach customers beyond their street</h2>
+        <div class="rv"><p class="body">Quote on designs from anywhere. Your rating, price and delivery time sit next to everyone else's, and the design arrives already agreed.</p><p style="margin:24px 0 0"><a class="btn ghost light mag" href="/tailors">For tailors</a></p></div>
+      </div>
+    </div>
+    <div class="marquee" aria-hidden="true"><div class="track" id="mq"></div></div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><h2 class="h2 split">Made for the people who make clothes, and the people who wear them</h2></div>
+      <ul class="aud">
+        <li class="rv"><div class="row"><strong>Fashion entrepreneurs</strong><span>Test a design against real quotes before a production run.</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#B8942B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></li>
+        <li class="rv"><div class="row"><strong>Brand owners</strong><span>Go from idea to sampled garment without a studio on retainer.</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#B8942B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></li>
+        <li class="rv"><div class="row"><strong>Independent designers</strong><span>Iterate in plain language, then hand off to a tailor who has already priced it.</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#B8942B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></li>
+        <li class="rv"><div class="row"><strong>Tailors and fashion houses</strong><span>Receive resolved designs and customers from far beyond your area.</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#B8942B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></li>
+        <li class="rv"><div class="row"><strong>Anyone who wants custom clothing</strong><span>Describe the outfit, approve the concept, receive the garment.</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#B8942B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec mist bigcta" id="finale">
+    <canvas id="finaleThread" aria-hidden="true"></canvas>
+    <h2 class="display split">Start with one sentence</h2>
+    <p class="lead rv">The studio runs in your browser. Describe a garment, refine it, compare tailors and watch the order move.</p>
+    <a class="btn gold mag rv" href="/studio">Open studio</a>
+  </section>
+</main>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{title}}</title>
+<meta name="description" content="{{desc}}">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="canonical" href="{{path}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{title}}">
+<meta property="og:description" content="{{desc}}">
+<meta property="og:image" content="/assets/media/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/assets/media/favicon.png">
+<link rel="apple-touch-icon" href="/assets/media/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/site.css">
+<script>(function(h){h.classList.add('js');try{if(sessionStorage.getItem('ft.seen'))h.classList.add('seen');if(sessionStorage.getItem('ft.wipe'))h.classList.add('wiping')}catch(e){}})(document.documentElement)</script>
+<script src="/assets/js/config.js"></script>
+<script src="/assets/js/api.js" defer></script>
+<script src="/assets/js/site.js" defer></script>
+{{scripts}}
+</head>
+<body data-page="{{page}}">
+<a class="skip" href="#main">Skip to content</a>
+<div id="ft-loader" aria-hidden="true">
+  <div class="ld-inner">
+    <div class="ld-art"><canvas></canvas><img src="/assets/media/mark.png" alt=""></div>
+    <div class="ld-row"><div class="ld-bar"><i></i></div><span class="ld-pct">00</span></div>
+  </div>
+</div>
+<div id="ft-wipe" aria-hidden="true"><span class="wm"><b>Fashion</b> <i>Teller</i></span></div>
+<div id="ft-cursor" aria-hidden="true"></div>
+
+<header class="nav">
+  <a class="brand" href="/" aria-label="Fashion Teller home">
+    <img src="/assets/media/mark.png" alt="" width="26" height="34">
+    <span class="wm"><b>Fashion</b> <i>Teller</i></span>
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="/how-it-works" data-nav="how">How it works</a>
+    <a href="/studio" data-nav="studio">Studio</a>
+    <a href="/tailors" data-nav="tailors">For tailors</a>
+    <a href="/about" data-nav="about">About</a>
+  </nav>
+  <div class="nav-end">
+    <a class="btn gold sm mag" href="/studio">Open studio</a>
+    <button class="menu-btn" aria-expanded="false" aria-controls="menu" aria-label="Menu"><i></i><i></i></button>
+  </div>
+</header>
+<div class="menu" id="menu">
+  <nav aria-label="Menu">
+    <a href="/" data-nav="home" style="--i:0">Home</a>
+    <a href="/how-it-works" data-nav="how" style="--i:1">How it works</a>
+    <a href="/studio" data-nav="studio" style="--i:2">Studio</a>
+    <a href="/tailors" data-nav="tailors" style="--i:3">For tailors</a>
+    <a href="/about" data-nav="about" style="--i:4">About</a>
+  </nav>
+  <div class="menu-foot"><span>Design smarter, wear better.</span><a class="btn gold" href="/studio">Open studio</a></div>
+</div>

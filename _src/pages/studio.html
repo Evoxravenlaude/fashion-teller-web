@@ -1,0 +1,105 @@
+<main id="main" class="studio">
+  <section class="st-stage" id="stage" aria-label="Concept preview">
+    <div class="st-bg" aria-hidden="true"></div>
+    <div class="st-center">
+      <div class="st-frame" id="frame">
+        <video id="stVideo" muted loop playsinline preload="auto" poster="/assets/media/poster.jpg" aria-label="Concept video for this design"></video>
+        <canvas id="stThread" aria-hidden="true"></canvas>
+        <div class="st-empty">
+          <svg viewBox="0 0 200 300" fill="none" aria-hidden="true"><path d="M70 20c10 14 50 14 60 0l52 34-18 46-20-8v188H56V92l-20 8-18-46z" stroke="#fff" stroke-width="2" stroke-dasharray="5 7" stroke-linejoin="round"/></svg>
+          <p>Your concept appears here</p>
+          <span>Describe the garment and generate a concept.</span>
+        </div>
+        <div class="st-badge" id="stBadge">Concept <b id="stVer">v1</b></div>
+        <div class="st-gen" id="stGen" aria-live="polite"><span id="stGenText">Reading your description</span><i><b id="stGenBar"></b></i></div>
+      </div>
+      <span class="st-sample" id="stSample" hidden>Sample mode</span>
+    </div>
+    <div class="st-meta">
+      <p class="st-title" id="stTitle"></p>
+      <ol class="st-versions" id="stVersions" aria-label="Versions"></ol>
+    </div>
+  </section>
+
+  <section class="st-panel" aria-label="Design steps">
+    <ol class="stepper" id="stepper">
+      <li><button data-go="1">Describe</button></li>
+      <li><button data-go="2">Refine</button></li>
+      <li><button data-go="3">Choose tailor</button></li>
+      <li><button data-go="4">Track</button></li>
+    </ol>
+    <div class="panes">
+      <div class="pane" data-pane="1">
+        <h2>What do you want to wear?</h2>
+        <p class="hint">A sentence is enough. Add details below if you know them.</p>
+        <label class="sr" for="prompt">Describe the garment</label>
+        <textarea class="ta" id="prompt" rows="4" placeholder="A midnight silk kaftan with gold embroidery across the chest, sleeves to the wrist…"></textarea>
+        <div class="grp"><span>Garment</span><div class="chips" data-pick="garment">
+          <button class="chip" data-v="Kaftan">Kaftan</button><button class="chip" data-v="Agbada">Agbada</button><button class="chip" data-v="Boubou">Boubou</button><button class="chip" data-v="Dress">Dress</button><button class="chip" data-v="Suit">Suit</button><button class="chip" data-v="Shirt">Shirt</button>
+        </div></div>
+        <div class="grp"><span>Fabric</span><div class="chips" data-pick="fabric">
+          <button class="chip" data-v="Silk">Silk</button><button class="chip" data-v="Ankara">Ankara</button><button class="chip" data-v="Aso-oke">Aso-oke</button><button class="chip" data-v="Linen">Linen</button><button class="chip" data-v="Wool">Wool</button>
+        </div></div>
+        <div class="grp"><span>Accent colour</span><div class="chips" data-pick="accent">
+          <button class="sw" data-v="Gold" style="background:#D4AF37" aria-label="Gold"></button><button class="sw" data-v="Silver" style="background:#C0C4C8" aria-label="Silver"></button><button class="sw" data-v="Emerald" style="background:#1F6B4E" aria-label="Emerald"></button><button class="sw" data-v="Crimson" style="background:#8E1F2B" aria-label="Crimson"></button><button class="sw" data-v="Ivory" style="background:#F4EFE3" aria-label="Ivory"></button>
+        </div></div>
+        <p class="err" id="err1" role="alert"></p>
+        <div class="spacer"></div>
+        <button class="btn ink mag" id="genBtn">Generate concept</button>
+      </div>
+
+      <div class="pane" data-pane="2">
+        <h2>Refine it in your own words</h2>
+        <p class="hint">Each instruction makes a new version. Press Enter to apply.</p>
+        <label class="sr" for="refine">Refinement instruction</label>
+        <textarea class="ta" id="refine" rows="3" placeholder="Refine concept details in plain language (e.g., add deeper gold trim)…"></textarea>
+        <div class="chips" id="refChips">
+          <button class="chip" data-fill="Add deeper gold trim">Deeper gold trim</button><button class="chip" data-fill="Make the neckline a mandarin collar">Mandarin collar</button><button class="chip" data-fill="Shorten the sleeves to three-quarter">Three-quarter sleeves</button><button class="chip" data-fill="Bring the embroidery down to the hem">Embroidery to the hem</button>
+        </div>
+        <p class="err" id="err2" role="alert"></p>
+        <button class="btn ink mag" id="refBtn" disabled>Apply refinement</button>
+        <ol class="hist" id="hist" aria-label="Refinement history"></ol>
+        <div class="spacer"></div>
+        <button class="btn ghost mag" id="toTailors">Continue to tailors</button>
+      </div>
+
+      <div class="pane" data-pane="3">
+        <h2>Compare verified tailors</h2>
+        <div class="seg" id="sortSeg" role="group" aria-label="Sort tailors">
+          <button data-v="match" aria-pressed="true">Best match</button><button data-v="price" aria-pressed="false">Price</button><button data-v="fast" aria-pressed="false">Fastest</button><button data-v="rating" aria-pressed="false">Rating</button>
+        </div>
+        <div class="vlist" id="vlist" role="radiogroup" aria-label="Verified tailors"></div>
+      </div>
+
+      <div class="pane" data-pane="4">
+        <h2 id="trkTitle">Production is under way</h2>
+        <p class="hint" id="trkHint"></p>
+        <ol class="trk-v" id="trkV" aria-label="Production tracker"></ol>
+        <dl class="summary" id="summary"></dl>
+        <div class="spacer"></div>
+        <div class="row-btns"><button class="btn ghost" id="shareBtn">Share design</button><button class="btn ink" id="newBtn">Start a new design</button></div>
+      </div>
+    </div>
+
+    <div class="drawer" id="drawer" hidden>
+      <div class="price"><div style="min-width:0"><small>Total fabrication estimate</small><span id="priceNote">Choose a tailor</span></div><strong id="price">—</strong></div>
+      <p class="err" id="err3" role="alert"></p>
+      <button class="btn cta mag" id="ctaBtn" disabled>
+        <svg id="ctaIcon" viewBox="0 0 24 24" fill="none"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4H6zM3 6h18M16 10a4 4 0 0 1-8 0" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="ctaText">Approve design &amp; initiate production</span>
+      </button>
+    </div>
+  </section>
+</main>
+
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet" id="login" role="dialog" aria-modal="true" aria-labelledby="loginH">
+  <h3 id="loginH">Enter workspace</h3>
+  <p>Sign in to save designs and start production.</p>
+  <form id="loginForm" class="form" style="grid-template-columns:1fr" novalidate>
+    <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" placeholder="you@brand.com"></div>
+    <div class="field"><label for="pass">Password</label><input id="pass" name="password" type="password" autocomplete="current-password"></div>
+    <p class="err" id="loginErr" role="alert"></p>
+    <div class="row-btns"><button class="btn gold" type="submit" id="loginBtn">Enter workspace</button><button class="btn ghost" type="button" id="loginCancel">Not now</button></div>
+  </form>
+</div>

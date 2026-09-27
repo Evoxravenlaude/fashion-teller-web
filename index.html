@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fashion Teller — Describe it. See it. Have it made.</title>
+<meta name="description" content="Describe the clothing you want in plain language. See the design, refine it, and have a verified tailor make and deliver it.">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="canonical" href="/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Fashion Teller — Describe it. See it. Have it made.">
+<meta property="og:description" content="Describe the clothing you want in plain language. See the design, refine it, and have a verified tailor make and deliver it.">
+<meta property="og:image" content="/assets/media/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/assets/media/favicon.png">
+<link rel="apple-touch-icon" href="/assets/media/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/site.css">
+<script>(function(h){h.classList.add('js');try{if(sessionStorage.getItem('ft.seen'))h.classList.add('seen');if(sessionStorage.getItem('ft.wipe'))h.classList.add('wiping')}catch(e){}})(document.documentElement)</script>
+<script src="/assets/js/config.js"></script>
+<script src="/assets/js/api.js" defer></script>
+<script src="/assets/js/site.js" defer></script>
+<script src="/assets/js/home.js" defer></script>
+</head>
+<body data-page="home">
+<a class="skip" href="#main">Skip to content</a>
+<div id="ft-loader" aria-hidden="true">
+  <div class="ld-inner">
+    <div class="ld-art"><canvas></canvas><img src="/assets/media/mark.png" alt=""></div>
+    <div class="ld-row"><div class="ld-bar"><i></i></div><span class="ld-pct">00</span></div>
+  </div>
+</div>
+<div id="ft-wipe" aria-hidden="true"><span class="wm"><b>Fashion</b> <i>Teller</i></span></div>
+<div id="ft-cursor" aria-hidden="true"></div>
+
+<header class="nav">
+  <a class="brand" href="/" aria-label="Fashion Teller home">
+    <img src="/assets/media/mark.png" alt="" width="26" height="34">
+    <span class="wm"><b>Fashion</b> <i>Teller</i></span>
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="/how-it-works" data-nav="how">How it works</a>
+    <a href="/studio" data-nav="studio">Studio</a>
+    <a href="/tailors" data-nav="tailors">For tailors</a>
+    <a href="/about" data-nav="about">About</a>
+  </nav>
+  <div class="nav-end">
+    <a class="btn gold sm mag" href="/studio">Open studio</a>
+    <button class="menu-btn" aria-expanded="false" aria-controls="menu" aria-label="Menu"><i></i><i></i></button>
+  </div>
+</header>
+<div class="menu" id="menu">
+  <nav aria-label="Menu">
+    <a href="/" data-nav="home" style="--i:0">Home</a>
+    <a href="/how-it-works" data-nav="how" style="--i:1">How it works</a>
+    <a href="/studio" data-nav="studio" style="--i:2">Studio</a>
+    <a href="/tailors" data-nav="tailors" style="--i:3">For tailors</a>
+    <a href="/about" data-nav="about" style="--i:4">About</a>
+  </nav>
+  <div class="menu-foot"><span>Design smarter, wear better.</span><a class="btn gold" href="/studio">Open studio</a></div>
+</div>
+<main id="main">
+  <section class="hero">
+    <div class="hero-copy">
+      <h1 class="display split hero-h">Describe it.<br>See it.<br>Have it made.</h1>
+      <p class="lead rv" style="--d:.35s">Tell Fashion Teller what you want to wear in plain language. It shows you the design, refines it with you, and matches you with a verified tailor who makes it and delivers it to your door.</p>
+      <div class="hero-try rv" style="--d:.5s">
+        <form class="ask" id="ask" novalidate>
+          <label class="sr" for="askInput">Describe the garment you want</label>
+          <input id="askInput" name="prompt" autocomplete="off" placeholder="A midnight silk kaftan with gold embroidery…">
+          <button class="btn gold mag" type="submit">Design it</button>
+        </form>
+        <div class="chips" aria-label="Try an idea">
+          <button class="chip" type="button" data-fill="An ivory agbada with gold thread on the chest">Ivory agbada</button>
+          <button class="chip" type="button" data-fill="A fitted emerald Ankara dress, knee length, puff sleeves">Ankara dress</button>
+          <button class="chip" type="button" data-fill="A charcoal linen suit, relaxed fit, mandarin collar">Linen suit</button>
+        </div>
+      </div>
+    </div>
+    <div class="hero-stage" id="heroStage">
+      <img class="poster" src="/assets/media/poster.jpg" alt="" aria-hidden="true">
+      <video src="/assets/media/kaftan.mp4" poster="/assets/media/poster.jpg" muted loop playsinline autoplay preload="auto" aria-label="Concept video: a midnight kaftan with gold embroidery"></video>
+      <canvas id="heroTrail" aria-hidden="true"></canvas>
+      <div class="demo rv" style="--d:.8s" aria-live="polite">
+        <div class="top"><span>Concept <b id="demoV">v1</b></span><span id="demoState">Refining</span></div>
+        <div class="line" id="demoLine"></div>
+        <div class="dfoot"><span>Kaftan, midnight silk</span><i id="demoQ">5 verified tailors quoted</i></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 class="h2 split">One order, four phases</h2>
+        <div class="rv"><p class="body">The same tracker you see in the studio follows your garment from the first sentence to your door.</p><p style="margin:18px 0 0"><a class="textlink" href="/how-it-works">See how it works <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></p></div>
+      </div>
+      <div class="band" data-inview>
+        <span class="fill"></span>
+        <div class="ph" style="--i:0"><small>Phase 1</small><h3 class="h3">AI concept generated</h3><p>Your description becomes a design you can see and refine.</p></div>
+        <div class="ph" style="--i:1"><small>Phase 2</small><h3 class="h3">Vendor assigned</h3><p>You pick a verified tailor from real quotes.</p></div>
+        <div class="ph" style="--i:2"><small>Phase 3</small><h3 class="h3">Fabric sourcing &amp; tailoring</h3><p>The tailor works from the version you approved.</p></div>
+        <div class="ph" style="--i:3"><small>Phase 4</small><h3 class="h3">Doorstep quality delivery</h3><p>Checked, dispatched, and delivered to you.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec mist">
+    <div class="wrap split2">
+      <div class="copy">
+        <h2 class="h2 split">Compare tailors the way you compare flights</h2>
+        <p class="body rv">Every tailor who can make your design quotes a price and a delivery time. All of them are verified. Sort by what matters to you, then choose.</p>
+        <p class="rv"><a class="textlink" href="/studio">Try it in the studio <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a></p>
+      </div>
+      <div class="demo-box rv">
+        <div class="row"><h3>Quotes for: midnight silk kaftan</h3><div class="seg" id="cmpSeg" role="group" aria-label="Sort tailors">
+          <button data-v="match" aria-pressed="true">Best match</button><button data-v="price" aria-pressed="false">Price</button><button data-v="fast" aria-pressed="false">Fastest</button><button data-v="rating" aria-pressed="false">Rating</button>
+        </div></div>
+        <div class="vlist" id="cmpList"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec dark">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 class="h2 split">Tailors reach customers beyond their street</h2>
+        <div class="rv"><p class="body">Quote on designs from anywhere. Your rating, price and delivery time sit next to everyone else's, and the design arrives already agreed.</p><p style="margin:24px 0 0"><a class="btn ghost light mag" href="/tailors">For tailors</a></p></div>
+      </div>
+    </div>
+    <div class="marquee" aria-hidden="true"><div class="track" id="mq"></div></div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><h2 class="h2 split">Made for the people who make clothes, and the people who wear them</h2></div>
+      <ul class="aud">
+        <li class="rv"><div class="row"><strong>Fashion entrepreneurs</strong><span>Test a design against real quotes before a production run.</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#B8942B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></li>
+        <li class="rv"><div class="row"><strong>Brand owners</strong><span>Go from idea to sampled garment without a studio on retainer.</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#B8942B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></li>
+        <li class="rv"><div class="row"><strong>Independent designers</strong><span>Iterate in plain language, then hand off to a tailor who has already priced it.</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#B8942B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></li>
+        <li class="rv"><div class="row"><strong>Tailors and fashion houses</strong><span>Receive resolved designs and customers from far beyond your area.</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#B8942B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></li>
+        <li class="rv"><div class="row"><strong>Anyone who wants custom clothing</strong><span>Describe the outfit, approve the concept, receive the garment.</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#B8942B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec mist bigcta" id="finale">
+    <canvas id="finaleThread" aria-hidden="true"></canvas>
+    <h2 class="display split">Start with one sentence</h2>
+    <p class="lead rv">The studio runs in your browser. Describe a garment, refine it, compare tailors and watch the order move.</p>
+    <a class="btn gold mag rv" href="/studio">Open studio</a>
+  </section>
+</main>
+<footer class="foot">
+  <div class="grid">
+    <div>
+      <img src="/assets/media/logo.png" alt="Fashion Teller. Design smarter, wear better." width="220" height="87" loading="lazy">
+    </div>
+    <div><h4>Product</h4><ul><li><a href="/how-it-works">How it works</a></li><li><a href="/studio">Studio</a></li></ul></div>
+    <div><h4>Makers</h4><ul><li><a href="/tailors">For tailors</a></li><li><a href="/tailors#apply">Apply as a tailor</a></li></ul></div>
+    <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="/about#contact">Contact</a></li></ul></div>
+  </div>
+  <div class="base"><span>© <span data-year></span> Fashion Teller</span><span>Prices shown in the studio are sample quotes in USD.</span></div>
+</footer>
+</body>
+</html>

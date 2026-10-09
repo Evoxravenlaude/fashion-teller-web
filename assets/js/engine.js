@@ -70,7 +70,7 @@
       garment, fabric, color: G.color, accent: (hints.accent || 'gold').toLowerCase(),
       length: G.length, sleeves: G.sleeves, collar: G.collar, fit: G.fit,
       embroidery: G.emb, density: 2, buttons: garment === 'shirt' || garment === 'suit', pockets: false, puff: false, belt: false, pattern: fabric === 'ankara' ? 'ankara' : fabric === 'aso-oke' ? 'stripe' : 'plain',
-      notes: [],
+      notes: [], sketch: [], sketchClip: true,
     };
     // colours: the first colour word that is not describing the embroidery / trim is the base
     const accentCtx = /(embroider|thread|trim|piping|accent|detail|button|stitch|lining|border|beading|bead)/;
@@ -164,16 +164,24 @@
   };
 
   /* ───────── titles ───────── */
+  /* Nearest colour name for a hex value, so custom colours still read well in titles and for tailors. */
+  E.colorName = c => {
+    if (!c || c[0] !== '#') return c;
+    const n = parseInt(c.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; let best = c, bd = 1e9;
+    for (const [k, v] of Object.entries(COLORS)) { if (k === 'gray') continue; const m = parseInt(v.slice(1), 16), d = (r - (m >> 16)) ** 2 * 2 + (g - ((m >> 8) & 255)) ** 2 * 4 + (b - (m & 255)) ** 2 * 3; if (d < bd) { bd = d; best = k; } }
+    return best;
+  };
   E.title = spec => {
     const G = GARMENTS[spec.garment] || GARMENTS.kaftan, F = FABRICS[spec.fabric];
     const fabric = F ? F.label : spec.fabric;
-    let s = `${cap(spec.color)} ${fabric} ${G.label.toLowerCase()}`;
-    if (spec.embroidery !== 'none') s += ` with ${spec.accent} embroidery`;
+    const pat = spec.pattern && !['plain', 'ankara', 'stripe'].includes(spec.pattern) ? ' ' + spec.pattern : '';
+    let s = `${cap(E.colorName(spec.color))}${pat} ${fabric} ${G.label.toLowerCase()}`;
+    if (spec.embroidery !== 'none') s += ` with ${E.colorName(spec.accent)} embroidery`;
     return s;
   };
   E.summary = spec => [
     spec.fit === 'fitted' ? 'Fitted' : `${cap(spec.fit)} fit`, `${spec.sleeves === 'sleeveless' ? 'Sleeveless' : cap(spec.sleeves) + ' sleeves'}${spec.puff ? ' (puff)' : ''}`,
-    `${cap(spec.length)} length`, cap(COLLAR_LABEL[spec.collar] || spec.collar), cap(EMB_LABEL[spec.embroidery] || ''), spec.pockets ? 'Pockets' : null, spec.belt ? 'Belt' : null, spec.buttons && spec.garment !== 'suit' && spec.garment !== 'shirt' ? 'Buttons' : null,
+    `${cap(spec.length)} length`, cap(COLLAR_LABEL[spec.collar] || spec.collar), cap(EMB_LABEL[spec.embroidery] || ''), spec.pattern && spec.pattern !== 'plain' ? cap(spec.pattern) + ' pattern' : null, spec.sketch?.length ? `Hand sketch (${spec.sketch.length} strokes)` : null, spec.pockets ? 'Pockets' : null, spec.belt ? 'Belt' : null, spec.buttons && spec.garment !== 'suit' && spec.garment !== 'shirt' ? 'Buttons' : null,
   ].filter(Boolean);
 
   /* ───────── pricing in naira ───────── */
@@ -182,7 +190,7 @@
     const G = GARMENTS[spec.garment] || GARMENTS.kaftan, F = FABRICS[spec.fabric] || { x: 1 };
     const base = Math.round(G.base * F.x);
     const emb = Math.round(DENSITY_COST[spec.embroidery] * (0.7 + spec.density * 0.3));
-    const extras = (spec.pockets ? 2500 : 0) + (spec.belt ? 3000 : 0) + (spec.puff ? 2000 : 0) + (spec.length === 'full' ? 4000 : 0);
+    const extras = (spec.sketch?.length ? Math.min(15000, 3000 + spec.sketch.length * 400) : 0) + (spec.pockets ? 2500 : 0) + (spec.belt ? 3000 : 0) + (spec.puff ? 2000 : 0) + (spec.length === 'full' ? 4000 : 0);
     const labour = Math.round(base * 0.12);
     const factor = vendor.priceFactor || 1;
     const price = Math.round(((base + emb + extras + labour) * factor) / 500) * 500;
@@ -245,36 +253,39 @@
     }
     return out;
   }
-  function neckline(s, G, fill, line) {
+  /* Neckline: `hole` is cut out of the garment with a mask (so a photo or the stage shows through),
+     `deco` is drawn on top (collar band, lapels, outline). */
+  function neckline(s, G, fill, line, view) {
     const { neckW: nw, shoulderY: sy } = G, c = s.collar, g = s.garment;
-    const bg = 'url(#${id}-bgfill)';
+    const o = (d, extra = '') => `<path d="${d}" fill="none" stroke="${line}" stroke-width="2"${extra}/>`;
+    if (view === 'back') { const d = `M${CX - nw + 6} ${sy - 2} Q${CX} ${sy + 26} ${CX + nw - 6} ${sy - 2}`; return { hole: d + ' Z', deco: o(d) + (c === 'mandarin' ? `<path d="M${CX - nw} ${sy - 30} Q${CX} ${sy - 18} ${CX + nw} ${sy - 30} L${CX + nw - 4} ${sy + 4} Q${CX} ${sy + 18} ${CX - nw + 4} ${sy + 4} Z" fill="${shade(fill, -0.14)}" stroke="${line}" stroke-width="2"/>` : '') }; }
     if (g === 'suit') {
-      // notch / shawl lapels over an inner shirt + a V opening to the first button
-      const bY = 560, inner = `<path d="M${CX - 70} ${sy} L${CX} ${bY} L${CX + 70} ${sy} Z" fill="#F4F1EA" opacity=".92"/>`;
+      const bY = 560, inner = `<path d="M${CX - 70} ${sy} L${CX} ${bY} L${CX + 70} ${sy} Z" fill="#F4F1EA" opacity=".95"/>`;
       const lap = d => c === 'shawl'
         ? `<path d="M${CX + d * 70} ${sy} C${CX + d * 62} ${sy + 120} ${CX + d * 24} ${bY - 60} ${CX} ${bY} L${CX + d * 34} ${bY - 20} C${CX + d * 70} ${bY - 150} ${CX + d * 96} ${sy + 60} ${CX + d * 106} ${sy + 6} Z" fill="${shade(fill, -0.18)}"/>`
         : `<path d="M${CX + d * 70} ${sy} L${CX} ${bY} L${CX + d * 40} ${bY - 36} L${CX + d * 100} ${sy + 110} L${CX + d * 122} ${sy + 72} L${CX + d * 96} ${sy + 50} L${CX + d * 112} ${sy + 4} Z" fill="${shade(fill, -0.16)}"/>`;
-      return inner + lap(-1) + lap(1) + `<path d="M${CX - 8} ${sy - 6} L${CX + 8} ${sy - 6}" stroke="${line}" stroke-width="2"/>`;
+      return { hole: `M${CX - 40} ${sy - 4} Q${CX} ${sy + 30} ${CX + 40} ${sy - 4} Z`, deco: inner + lap(-1) + lap(1) };
     }
-    if (c === 'v') return `<path d="M${CX - nw} ${sy - 2} L${CX} ${sy + 150} L${CX + nw} ${sy - 2}" fill="${bg}" stroke="${line}" stroke-width="2"/>`;
-    if (c === 'sweetheart') return `<path d="M${CX - nw - 8} ${sy} C${CX - nw - 8} ${sy + 70} ${CX - 30} ${sy + 90} ${CX} ${sy + 60} C${CX + 30} ${sy + 90} ${CX + nw + 8} ${sy + 70} ${CX + nw + 8} ${sy} Z" fill="${bg}" stroke="${line}" stroke-width="2"/>`;
-    if (c === 'square') return `<path d="M${CX - nw} ${sy} V${sy + 90} H${CX + nw} V${sy}" fill="${bg}" stroke="${line}" stroke-width="2"/>`;
-    if (c === 'off-shoulder') return `<path d="M${CX - G.sw} ${sy + 60} Q${CX} ${sy + 110} ${CX + G.sw} ${sy + 60} L${CX + G.sw} ${sy - 10} L${CX - G.sw} ${sy - 10} Z" fill="${bg}"/><path d="M${CX - G.sw} ${sy + 60} Q${CX} ${sy + 110} ${CX + G.sw} ${sy + 60}" fill="none" stroke="${line}" stroke-width="2"/>`;
-    if (c === 'mandarin') return `<path d="M${CX - nw} ${sy} Q${CX} ${sy + 60} ${CX + nw} ${sy}" fill="${bg}"/><path d="M${CX - nw - 6} ${sy - 30} Q${CX} ${sy - 2} ${CX + nw + 6} ${sy - 30} L${CX + nw} ${sy + 4} Q${CX} ${sy + 40} ${CX - nw} ${sy + 4} Z" fill="${shade(fill, -0.14)}" stroke="${line}" stroke-width="2"/><path d="M${CX} ${sy - 16} V${sy + 36}" stroke="${line}" stroke-width="1.5"/>`;
-    if (c === 'classic') return `<path d="M${CX - nw} ${sy} Q${CX} ${sy + 48} ${CX + nw} ${sy}" fill="${bg}"/><path d="M${CX - nw - 4} ${sy - 26} L${CX - 14} ${sy + 72} L${CX} ${sy + 30} L${CX + 14} ${sy + 72} L${CX + nw + 4} ${sy - 26} Q${CX} ${sy + 6} ${CX - nw - 4} ${sy - 26} Z" fill="${shade(fill, -0.12)}" stroke="${line}" stroke-width="2"/>`;
-    return `<path d="M${CX - nw} ${sy - 2} Q${CX} ${sy + 76} ${CX + nw} ${sy - 2}" fill="${bg}" stroke="${line}" stroke-width="2"/>`; // round
+    if (c === 'v') { const d = `M${CX - nw} ${sy - 2} L${CX} ${sy + 150} L${CX + nw} ${sy - 2}`; return { hole: d + ' Z', deco: o(d) }; }
+    if (c === 'sweetheart') { const d = `M${CX - nw - 8} ${sy} C${CX - nw - 8} ${sy + 70} ${CX - 30} ${sy + 90} ${CX} ${sy + 60} C${CX + 30} ${sy + 90} ${CX + nw + 8} ${sy + 70} ${CX + nw + 8} ${sy}`; return { hole: d + ' Z', deco: o(d) }; }
+    if (c === 'square') { const d = `M${CX - nw} ${sy} V${sy + 90} H${CX + nw} V${sy}`; return { hole: d + ' Z', deco: o(d) }; }
+    if (c === 'off-shoulder') { const d = `M${CX - G.sw - 20} ${sy + 60} Q${CX} ${sy + 110} ${CX + G.sw + 20} ${sy + 60}`; return { hole: `${d} L${CX + G.sw + 200} ${sy + 60} L${CX + G.sw + 200} 0 L${CX - G.sw - 200} 0 L${CX - G.sw - 200} ${sy + 60} Z`, deco: o(d) }; }
+    if (c === 'mandarin') return { hole: `M${CX - nw} ${sy} Q${CX} ${sy + 60} ${CX + nw} ${sy} Z`, deco: `<path d="M${CX - nw - 6} ${sy - 30} Q${CX} ${sy - 2} ${CX + nw + 6} ${sy - 30} L${CX + nw} ${sy + 4} Q${CX} ${sy + 40} ${CX - nw} ${sy + 4} Z" fill="${shade(fill, -0.14)}" stroke="${line}" stroke-width="2"/><path d="M${CX} ${sy - 16} V${sy + 36}" stroke="${line}" stroke-width="1.5"/>` };
+    if (c === 'classic') return { hole: `M${CX - nw} ${sy} Q${CX} ${sy + 48} ${CX + nw} ${sy} Z`, deco: `<path d="M${CX - nw - 4} ${sy - 26} L${CX - 14} ${sy + 72} L${CX} ${sy + 30} L${CX + 14} ${sy + 72} L${CX + nw + 4} ${sy - 26} Q${CX} ${sy + 6} ${CX - nw - 4} ${sy - 26} Z" fill="${shade(fill, -0.12)}" stroke="${line}" stroke-width="2"/>` };
+    const d = `M${CX - nw} ${sy - 2} Q${CX} ${sy + 76} ${CX + nw} ${sy - 2}`; return { hole: d + ' Z', deco: o(d) }; // round
   }
-  function embroidery(s, G) {
+  function embroidery(s, G, view) {
     const a = hex(s.accent, ACCENTS), { sw, hemY, hemW, neckW: nw, shoulderY: sy, sl, cuffW } = G, d = s.density, paths = [];
     const stroke = (p, w = 3, o = 1) => `<path d="${p}" fill="none" stroke="${a}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" opacity="${o}"/>`;
     if (s.embroidery === 'none') return '';
-    const deepV = s.collar === 'v' ? 150 : 76;
+    const deepV = view === 'back' ? 26 : s.collar === 'v' ? 150 : 76;
+    if (view === 'back' && s.embroidery === 'neck') return '';
     // neckline motif: nested arcs following the neckline
     for (let i = 0; i < d + 1; i++) {
       const k = 8 + i * 10;
       paths.push(stroke(s.collar === 'v' ? `M${CX - nw - k} ${sy - 2} L${CX} ${sy + deepV + k} L${CX + nw + k} ${sy - 2}` : `M${CX - nw - k} ${sy - 2} Q${CX} ${sy + deepV + k * 1.2} ${CX + nw + k} ${sy - 2}`, i === 0 ? 3.5 : 2.2, 1 - i * 0.18));
     }
-    if (s.embroidery === 'chest' || s.embroidery === 'chest-hem' || s.embroidery === 'full') {
+    if (view !== 'back' && (s.embroidery === 'chest' || s.embroidery === 'chest-hem' || s.embroidery === 'full')) {
       // chest panel: a column of motifs below the neck
       const top = sy + deepV + 20 + d * 10, bottom = Math.min(top + 120 + d * 60, G.waistY + 20), half = 28 + d * 12;
       paths.push(stroke(`M${CX - half} ${top} H${CX + half} V${bottom} H${CX - half} Z`, 2.4, .9));
@@ -303,12 +314,19 @@
       case 'wool': return `<pattern id="${id}-fab" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="2.5" fill="${ink2}"/></pattern>`;
       case 'linen': case 'cotton': return `<pattern id="${id}-fab" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="1" fill="${ink2}"/><rect width="1" height="6" fill="${ink2}"/></pattern>`;
       case 'brocade': return `<pattern id="${id}-fab" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M30 6 Q44 30 30 54 Q16 30 30 6Z" fill="none" stroke="${acc}" stroke-width="1.6" opacity=".5"/><path d="M6 30 Q30 44 54 30 Q30 16 6 30Z" fill="none" stroke="${ink}" stroke-width="1.4"/></pattern>`;
+      case 'kente': return `<pattern id="${id}-fab" width="48" height="48" patternUnits="userSpaceOnUse"><rect width="24" height="10" fill="${acc}" opacity=".55"/><rect x="24" y="24" width="24" height="10" fill="${acc}" opacity=".55"/><rect y="12" width="24" height="4" fill="${ink}"/><rect x="24" y="36" width="24" height="4" fill="${ink}"/><rect x="24" width="4" height="24" fill="${ink2}"/><rect y="24" width="4" height="24" fill="${ink2}"/><rect x="34" y="4" width="10" height="10" fill="${ink}"/><rect x="8" y="30" width="10" height="10" fill="${ink}"/></pattern>`;
+      case 'adire': { const a2 = lite ? 'rgba(20,30,80,.3)' : 'rgba(255,255,255,.42)'; return `<pattern id="${id}-fab" width="64" height="64" patternUnits="userSpaceOnUse"><circle cx="32" cy="32" r="22" fill="none" stroke="${a2}" stroke-width="3" stroke-dasharray="2 5"/><circle cx="32" cy="32" r="13" fill="none" stroke="${a2}" stroke-width="3" stroke-dasharray="2 4"/><circle cx="32" cy="32" r="4" fill="${a2}"/><circle cx="0" cy="0" r="9" fill="none" stroke="${a2}" stroke-width="3" stroke-dasharray="2 4"/><circle cx="64" cy="64" r="9" fill="none" stroke="${a2}" stroke-width="3" stroke-dasharray="2 4"/></pattern>`; }
+      case 'check': return `<pattern id="${id}-fab" width="36" height="36" patternUnits="userSpaceOnUse"><rect width="36" height="12" fill="${ink2}"/><rect width="12" height="36" fill="${ink2}"/><rect width="12" height="12" fill="${ink}"/><rect y="24" width="36" height="1.5" fill="${acc}" opacity=".5"/></pattern>`;
+      case 'floral': return `<pattern id="${id}-fab" width="56" height="56" patternUnits="userSpaceOnUse"><g transform="translate(28 28)"><circle r="4" fill="${acc}" opacity=".8"/>${[0, 72, 144, 216, 288].map(a => `<ellipse rx="5" ry="10" transform="rotate(${a}) translate(0 -11)" fill="${ink}"/>`).join('')}</g><g transform="translate(0 0) scale(.6)">${[0, 90, 180, 270].map(a => `<ellipse rx="5" ry="9" transform="rotate(${a}) translate(0 -10)" fill="${ink2}"/>`).join('')}</g><g transform="translate(56 56) scale(.6)">${[0, 90, 180, 270].map(a => `<ellipse rx="5" ry="9" transform="rotate(${a}) translate(0 -10)" fill="${ink2}"/>`).join('')}</g></pattern>`;
       case 'velvet': case 'silk': case 'chiffon': default: return `<pattern id="${id}-fab" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="transparent"/></pattern>`;
     }
   }
 
+  /* opt: id (namespace for defs), view ('front'|'back'), bg (false = transparent, for try-on), viewBox (crop for tiles),
+     sketch (false hides the sketch layer), live (true adds an empty <g class="live"> for drawing into) */
   E.render = (spec, opt = {}) => {
     id = String(opt.id || 'ft').replace(/[^a-zA-Z0-9_-]/g, '');
+    const view = opt.view || 'front', bgOn = opt.bg !== false;
     const s = { ...spec }, G = geometry(s), fill = hex(s.color), lite = lum(fill) > 0.62;
     const line = lite ? 'rgba(0,0,0,.28)' : 'rgba(255,255,255,.22)';
     const sheen = s.fabric === 'silk' || s.fabric === 'velvet' || s.fabric === 'chiffon';
@@ -327,36 +345,59 @@
     const sleeveEls = sleeves.map(p => `<path d="${p}" fill="url(#${id}-slg)" stroke="${line}" stroke-width="2"/><path d="${p}" fill="url(#${id}-fab)" opacity=".9"/>`).join('');
     let details = '';
     if (s.garment === 'suit') {
-      details += `<path d="M${CX} 560 V${G.hemY - 6}" stroke="${line}" stroke-width="1.6"/>`;
-      details += [575, 640].map(y => `<circle cx="${CX + 2}" cy="${y}" r="7" fill="${shade(fill, -0.5)}" stroke="${line}"/>`).join('');
-      if (s.pockets !== false) details += `<path d="M${CX - 130} 600 h60 M${CX + 70} 600 h60" stroke="${line}" stroke-width="2"/>`;
+      details += `<path d="M${CX} ${view === 'back' ? G.shoulderY + 30 : 560} V${G.hemY - 6}" stroke="${line}" stroke-width="1.6"/>`;
+      if (view !== 'back') details += [575, 640].map(y => `<circle cx="${CX + 2}" cy="${y}" r="7" fill="${shade(fill, -0.5)}" stroke="${line}"/>`).join('');
+      if (s.pockets !== false && view !== 'back') details += `<path d="M${CX - 130} 600 h60 M${CX + 70} 600 h60" stroke="${line}" stroke-width="2"/>`;
       // trousers
       const tw = 100;
       details += `<path d="M${CX - 138} 700 L${CX - tw} 1090 H${CX - 12} L${CX} 760 L${CX + 12} 1090 H${CX + tw} L${CX + 138} 700 Z" fill="url(#${id}-bodyg)" stroke="${line}" stroke-width="2"/><path d="M${CX - 138} 700 L${CX - tw} 1090 H${CX - 12} L${CX} 760 L${CX + 12} 1090 H${CX + tw} L${CX + 138} 700 Z" fill="url(#${id}-fab)" opacity=".9"/><path d="M${CX - 70} 720 L${CX - 56} 1086 M${CX + 70} 720 L${CX + 56} 1086" stroke="${lite ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.1)'}" stroke-width="2"/>`;
     }
-    if (s.buttons && s.garment !== 'suit') {
+    if (view === 'back') { /* no front fastenings on the back */ }
+    else if (s.buttons && s.garment !== 'suit') {
       const y0 = G.shoulderY + (s.collar === 'v' ? 160 : 80), y1 = s.garment === 'shirt' ? G.hemY - 30 : G.waistY + 60;
       details += `<path d="M${CX} ${y0 - 10} V${y1 + 10}" stroke="${line}" stroke-width="1.6"/>`;
       for (let y = y0; y <= y1; y += (y1 - y0) / 5) details += `<circle cx="${CX}" cy="${y}" r="6" fill="${shade(fill, lite ? -0.3 : 0.5)}" stroke="${line}"/>`;
     }
-    if (s.pockets && s.garment !== 'suit') details += `<path d="M${CX - G.waistW + 24} ${G.waistY + 40} v70 h66 M${CX + G.waistW - 24} ${G.waistY + 40} v70 h-66" fill="none" stroke="${line}" stroke-width="2"/>`;
+    if (s.pockets && s.garment !== 'suit' && view !== 'back') details += `<path d="M${CX - G.waistW + 24} ${G.waistY + 40} v70 h66 M${CX + G.waistW - 24} ${G.waistY + 40} v70 h-66" fill="none" stroke="${line}" stroke-width="2"/>`;
     if (s.belt) details += `<rect x="${CX - G.waistW - 6}" y="${G.waistY - 14}" width="${G.waistW * 2 + 12}" height="28" rx="4" fill="${shade(hex(s.accent, ACCENTS), -0.2)}" opacity=".9"/><rect x="${CX - 16}" y="${G.waistY - 20}" width="32" height="40" rx="5" fill="none" stroke="${hex(s.accent, ACCENTS)}" stroke-width="4"/>`;
-    const title = E.title(s);
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${title.replace(/"/g, '&quot;')}" data-concept="${id}">
-      ${defs}
-      <rect width="${W}" height="${H}" fill="url(#${id}-bgfill)"/>
-      <ellipse cx="${CX}" cy="${G.hemY + 50}" rx="${G.hemW + 120}" ry="46" fill="url(#${id}-floor)"/>
+    const title = E.title(s), neck = neckline(s, G, fill, line, view);
+    const showSketch = opt.sketch !== false && view !== 'back' && s.sketch?.length;
+    const clipAll = `<clipPath id="${id}-allclip"><path d="${body}"/>${sleeves.map(p => `<path d="${p}"/>`).join('')}${s.garment === 'suit' ? `<path d="M${CX - 138} 700 L${CX - 100} 1090 H${CX + 100} L${CX + 138} 700 Z"/>` : ''}</clipPath>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${opt.viewBox || `0 0 ${W} ${H}`}" role="img" aria-label="${title.replace(/"/g, '&quot;')}" data-concept="${id}" data-view="${view}">
+      ${defs.replace('</defs>', `<mask id="${id}-neck" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#fff"/><path d="${neck.hole}" fill="#000"/></mask>${clipAll}</defs>`)}
+      ${bgOn ? `<rect width="${W}" height="${H}" fill="url(#${id}-bgfill)"/><ellipse cx="${CX}" cy="${G.hemY + 50}" rx="${G.hemW + 120}" ry="46" fill="url(#${id}-floor)"/>` : ''}
       <g class="garment">
+        <g mask="url(#${id}-neck)">
         ${sleeveEls}
         <path d="${body}" fill="url(#${id}-bodyg)" stroke="${line}" stroke-width="2"/>
         <path d="${body}" fill="url(#${id}-fab)" opacity=".92"/>
-        <g clip-path="url(#${id}-bodyclip)">${foldEls}${sheen ? `<path d="M${CX - G.sw + 30} ${G.shoulderY} L${CX - 40} ${G.hemY} L${CX + 10} ${G.hemY} L${CX - G.sw + 80} ${G.shoulderY} Z" fill="rgba(255,255,255,.07)"/>` : ''}</g>
-        ${neckline(s, G, fill, line)}
+        <g clip-path="url(#${id}-bodyclip)">${foldEls}${sheen ? `<path d="M${CX - G.sw + 30} ${G.shoulderY} L${CX - 40} ${G.hemY} L${CX + 10} ${G.hemY} L${CX - G.sw + 80} ${G.shoulderY} Z" fill="rgba(255,255,255,.07)"/>` : ''}${view === 'back' ? `<rect x="0" y="0" width="${W}" height="${H}" fill="rgba(0,0,0,.08)"/>` : ''}</g>
         ${details}
-        ${embroidery(s, G)}
+        </g>
+        ${neck.deco}
+        ${embroidery(s, G, view)}
+        ${showSketch ? `<g class="sketch"${s.sketchClip === false ? '' : ` clip-path="url(#${id}-allclip)"`}>${E.sketchPaths(s.sketch)}</g>` : ''}
+        ${opt.live ? `<g class="live"${s.sketchClip === false ? '' : ` clip-path="url(#${id}-allclip)"`}></g>` : ''}
       </g>
     </svg>`;
   };
+
+  /* ───────── sketch layer ─────────
+     Strokes are drawn by the user's finger in the 720×1150 frame: {c: colour, w: width, p: [x,y,x,y,…], m: mirror}.
+     Mirror draws the same stroke reflected across the centre line, so one hand decorates both sides. */
+  E.strokePath = p => {
+    if (p.length < 4) return p.length === 2 ? `M${p[0]} ${p[1]} l0.1 0` : '';
+    let d = `M${p[0]} ${p[1]}`;
+    for (let i = 2; i < p.length - 2; i += 2) { const mx = (p[i] + p[i + 2]) / 2, my = (p[i + 1] + p[i + 3]) / 2; d += ` Q${p[i]} ${p[i + 1]} ${mx} ${my}`; }
+    return d + ` L${p[p.length - 2]} ${p[p.length - 1]}`;
+  };
+  const mirrorPts = p => p.map((v, i) => (i % 2 ? v : W - v));
+  E.sketchPaths = strokes => (strokes || []).map(k => {
+    const one = pts => `<path d="${E.strokePath(pts)}" fill="none" stroke="${k.c}" stroke-width="${k.w}" stroke-linecap="round" stroke-linejoin="round"${k.c === 'erase' ? '' : ''}/>`;
+    return one(k.p) + (k.m ? one(mirrorPts(k.p)) : '');
+  }).join('');
+  E.simplify = (p, min = 3) => { const out = [p[0], p[1]]; for (let i = 2; i < p.length; i += 2) { const dx = p[i] - out[out.length - 2], dy = p[i + 1] - out[out.length - 1]; if (dx * dx + dy * dy >= min * min) out.push(Math.round(p[i]), Math.round(p[i + 1])); } if (out.length === 2 && p.length > 2) out.push(Math.round(p[p.length - 2]), Math.round(p[p.length - 1])); return out; };
+  E.FRAME = { W, H, CX };
 
   /* Normalised (0..1) paths for the gold-thread animation drawn over the frame while generating. */
   E.stitches = spec => {
@@ -375,6 +416,117 @@
     return p;
   };
 
+  /* ═════════ Builder catalogue: templates, palettes, options, daily challenges ═════════
+     The user designs; these are the parts they assemble, like an avatar builder. */
+  const BASE = { garment: 'kaftan', fabric: 'silk', color: 'midnight', accent: 'gold', length: 'ankle', sleeves: 'long', collar: 'round', fit: 'relaxed', embroidery: 'chest', density: 2, buttons: false, pockets: false, puff: false, belt: false, pattern: 'plain', notes: [], sketch: [], sketchClip: true };
+  E.blank = (garment = 'kaftan') => { const G = GARMENTS[garment] || GARMENTS.kaftan; return { ...clone(BASE), garment, fabric: G.fabric, color: G.color, length: G.length, sleeves: G.sleeves, collar: G.collar, fit: G.fit, embroidery: G.emb, buttons: garment === 'shirt' || garment === 'suit', pattern: G.fabric === 'ankara' ? 'ankara' : G.fabric === 'aso-oke' ? 'stripe' : 'plain' }; };
+
+  const T = (id, name, tag, garment, o) => ({ id, name, tag, garment, spec: { ...E.blank(garment), ...(o.fabric && !o.pattern ? { pattern: 'plain' } : {}), ...o, template: id } });
+  E.TEMPLATES = [
+    T('senator', 'Classic Senator', 'Everyday', 'kaftan', { fabric: 'cotton', color: '#1B2A4A', collar: 'mandarin', embroidery: 'neck', density: 1, length: 'ankle', fit: 'regular', buttons: true }),
+    T('royal-kaftan', 'Royal Kaftan', 'Owambe', 'kaftan', { fabric: 'silk', color: 'midnight', accent: 'gold', embroidery: 'chest', density: 3 }),
+    T('linen-kaftan', 'Breezy Linen', 'Weekend', 'kaftan', { fabric: 'linen', color: '#F6F6F2', accent: 'bronze', embroidery: 'neck', density: 1, sleeves: 'three-quarter', length: 'midi', collar: 'v' }),
+    T('grand-agbada', 'Grand Agbada', 'Owambe', 'agbada', { fabric: 'aso-oke', color: 'ivory', accent: 'gold', embroidery: 'chest-hem', density: 3, pattern: 'stripe' }),
+    T('wine-agbada', 'Wine Agbada', 'Wedding', 'agbada', { fabric: 'brocade', color: 'wine', accent: 'champagne', embroidery: 'full', density: 2, pattern: 'brocade' }),
+    T('flow-boubou', 'Flowing Boubou', 'Everyday', 'boubou', { fabric: 'ankara', color: 'royal blue', accent: 'gold', pattern: 'ankara', embroidery: 'neck' }),
+    T('adire-boubou', 'Adire Boubou', 'Heritage', 'boubou', { fabric: 'cotton', color: '#2F3E8F', accent: 'white', pattern: 'adire', embroidery: 'none', collar: 'round' }),
+    T('ankara-flare', 'Ankara Flare', 'Party', 'dress', { fabric: 'ankara', color: 'emerald', accent: 'gold', pattern: 'ankara', puff: true, sleeves: 'short', length: 'knee', fit: 'fitted' }),
+    T('evening-gown', 'Evening Gown', 'Gala', 'dress', { fabric: 'velvet', color: 'burgundy', accent: 'gold', collar: 'sweetheart', sleeves: 'sleeveless', length: 'full', embroidery: 'none' }),
+    T('lace-bride', 'Lace Bride', 'Bridal', 'dress', { fabric: 'lace', color: 'ivory', accent: 'pearl', pattern: 'lace', collar: 'off-shoulder', sleeves: 'long', length: 'full', embroidery: 'neck', density: 1 }),
+    T('kente-midi', 'Kente Midi', 'Heritage', 'dress', { fabric: 'cotton', color: '#D9A520', accent: 'emerald', pattern: 'kente', collar: 'square', sleeves: 'short', length: 'midi', belt: true }),
+    T('sharp-suit', 'Sharp Two-piece', 'Office', 'suit', { fabric: 'wool', color: 'charcoal', collar: 'notch' }),
+    T('shawl-tux', 'Shawl Tuxedo', 'Gala', 'suit', { fabric: 'velvet', color: 'black', collar: 'shawl', pockets: false }),
+    T('classic-shirt', 'Crisp Shirt', 'Office', 'shirt', { fabric: 'cotton', color: 'white', collar: 'classic' }),
+    T('ankara-shirt', 'Ankara Short-sleeve', 'Weekend', 'shirt', { fabric: 'ankara', color: 'orange', accent: 'navy', pattern: 'ankara', sleeves: 'short', collar: 'classic', pockets: true }),
+  ];
+  E.template = id => E.TEMPLATES.find(t => t.id === id);
+
+  /* Palettes: each fabric texture has its own, and each garment style adds one of its own on top. */
+  const P = (id, name, base, accents) => ({ id, name, base, accents });
+  const FABRIC_PALETTES = {
+    silk: [P('jewel', 'Jewel Silk', ['#101B3F', '#1F6B4E', '#5E1A2A', '#2546A8', '#5A2A4F', '#E9D7A7'], ['#D4AF37', '#C9CDD2', '#E9D7A7', '#EDEAE0']), P('sunset', 'Sunset Silk', ['#E8705E', '#D97A1F', '#F3C1A3', '#B3261E', '#D9A520', '#F2C6CF'], ['#D4AF37', '#5E1A2A', '#FFFFFF', '#16181C'])],
+    ankara: [P('lagos', 'Lagos Market', ['#D97A1F', '#2E7D4F', '#B3261E', '#2546A8', '#E8C547', '#5B2E91'], ['#E8C547', '#16181C', '#FFFFFF', '#1F6B4E']), P('calabar', 'Calabar Carnival', ['#C7308F', '#2AA8A8', '#E8C547', '#E8705E', '#9BC53D', '#1B2A4A'], ['#FFFFFF', '#D4AF37', '#16181C', '#E8C547'])],
+    'aso-oke': [P('owambe', 'Royal Owambe', ['#F1EAD6', '#5E1A2A', '#1F6F78', '#D4AF37', '#6B1F3A', '#2546A8'], ['#D4AF37', '#C9CDD2', '#5E1A2A', '#E9D7A7']), P('ileya', 'Ileya Earth', ['#EDE3C8', '#9AAB8A', '#B98B5A', '#4A2C1A', '#E9D7A7', '#6B7B3A'], ['#B0803C', '#4A2C1A', '#D4AF37', '#F1EAD6'])],
+    linen: [P('earth', 'Earth Linen', ['#F6F6F2', '#D6C39A', '#9AAB8A', '#C9A27A', '#7FB2E5', '#8A8F98'], ['#B0803C', '#1B2A4A', '#FFFFFF', '#6B4423'])],
+    cotton: [P('everyday', 'Everyday Cotton', ['#F6F6F2', '#1B2A4A', '#7FB2E5', '#B3261E', '#2E7D4F', '#16181C'], ['#D4AF37', '#FFFFFF', '#16181C', '#B3261E']), P('indigo', 'Indigo Dye', ['#2F3E8F', '#1B2A4A', '#A9C8E8', '#5B6FB5', '#F6F6F2', '#101B3F'], ['#FFFFFF', '#E8C547', '#A9C8E8', '#16181C'])],
+    wool: [P('tailoring', 'Tailoring Greys', ['#3A3E45', '#1B2A4A', '#16181C', '#6B4423', '#8A8F98', '#1E4D33'], ['#C9CDD2', '#D4AF37', '#5E1A2A', '#F6F6F2'])],
+    lace: [P('bridal', 'Bridal Lace', ['#F6F6F2', '#F1EAD6', '#F2C6CF', '#E9D7A7', '#C4B2E6', '#A9C8E8'], ['#EDEAE0', '#D4AF37', '#C9CDD2', '#E9D7A7'])],
+    velvet: [P('evening', 'Evening Velvet', ['#5E1A2A', '#1E4D33', '#101B3F', '#5B2E91', '#16181C', '#B0338A'], ['#D4AF37', '#C9CDD2', '#E9D7A7', '#16181C'])],
+    brocade: [P('damask', 'Damask Court', ['#6B1F3A', '#1F6F78', '#D4AF37', '#101B3F', '#F1EAD6', '#4A2C1A'], ['#E9D7A7', '#D4AF37', '#C9CDD2', '#16181C'])],
+    chiffon: [P('pastel', 'Soft Chiffon', ['#F2C6CF', '#A9C8E8', '#C4B2E6', '#9FD8C0', '#F3C1A3', '#F6F6F2'], ['#D4AF37', '#C9CDD2', '#FFFFFF', '#5A2A4F'])],
+  };
+  const GARMENT_PALETTES = {
+    kaftan: P('senator', 'Senator Classics', ['#1B2A4A', '#3A3E45', '#F6F6F2', '#6B4423', '#1E4D33', '#101B3F'], ['#D4AF37', '#C9CDD2', '#F6F6F2', '#16181C']),
+    agbada: P('grand', 'Grand Occasion', ['#F1EAD6', '#2546A8', '#5E1A2A', '#1F6B4E', '#D4AF37', '#16181C'], ['#D4AF37', '#C9CDD2', '#E9D7A7', '#16181C']),
+    boubou: P('dakar', 'Dakar Breeze', ['#2546A8', '#2AA8A8', '#E8C547', '#F6F6F2', '#C7308F', '#D97A1F'], ['#D4AF37', '#FFFFFF', '#16181C', '#C9CDD2']),
+    dress: P('party', 'Party Night', ['#1F6B4E', '#B0338A', '#16181C', '#E8705E', '#5B2E91', '#D4AF37'], ['#D4AF37', '#FFFFFF', '#16181C', '#C9CDD2']),
+    suit: P('boardroom', 'Boardroom', ['#3A3E45', '#1B2A4A', '#16181C', '#8A8F98', '#4A2C1A', '#5E1A2A'], ['#C9CDD2', '#D4AF37', '#F6F6F2', '#16181C']),
+    shirt: P('crisp', 'Crisp Shirts', ['#F6F6F2', '#A9C8E8', '#F2C6CF', '#1B2A4A', '#9AAB8A', '#16181C'], ['#16181C', '#FFFFFF', '#D4AF37', '#1B2A4A']),
+  };
+  E.palettes = (garment, fabric) => [...(FABRIC_PALETTES[fabric] || FABRIC_PALETTES.cotton), GARMENT_PALETTES[garment]].filter(Boolean);
+
+  /* Option groups for each builder tab. `only` limits an option to some garments. */
+  E.OPTIONS = {
+    collar: [['round', 'Round'], ['v', 'V-neck'], ['mandarin', 'Mandarin'], ['classic', 'Shirt collar'], ['square', 'Square'], ['sweetheart', 'Sweetheart'], ['off-shoulder', 'Off-shoulder'], ['notch', 'Notch lapel'], ['shawl', 'Shawl lapel']],
+    collarFor: { kaftan: ['round', 'v', 'mandarin', 'classic'], agbada: ['round', 'v', 'mandarin'], boubou: ['round', 'v', 'square', 'mandarin'], dress: ['round', 'v', 'square', 'sweetheart', 'off-shoulder', 'mandarin'], suit: ['notch', 'shawl'], shirt: ['classic', 'mandarin', 'round', 'v'] },
+    sleeves: [['sleeveless', 'Sleeveless'], ['short', 'Short'], ['three-quarter', '¾'], ['long', 'Long']],
+    length: [['hip', 'Hip'], ['knee', 'Knee'], ['midi', 'Midi'], ['ankle', 'Ankle'], ['full', 'Floor']],
+    fit: [['fitted', 'Fitted'], ['regular', 'Regular'], ['relaxed', 'Relaxed']],
+    embroidery: [['none', 'None'], ['neck', 'Neckline'], ['chest', 'Chest'], ['chest-hem', 'Chest + hem'], ['full', 'All over']],
+    fabric: Object.keys(FABRICS).map(k => [k, cap(FABRICS[k].label)]),
+    pattern: [['plain', 'Plain'], ['ankara', 'Ankara'], ['kente', 'Kente'], ['adire', 'Adire'], ['stripe', 'Aso-oke stripe'], ['lace', 'Lace'], ['brocade', 'Brocade'], ['check', 'Check'], ['floral', 'Floral']],
+    garment: Object.keys(GARMENTS).map(k => [k, GARMENTS[k].label]),
+  };
+  /* Switch garment while keeping the user's colours, fabric and pattern. */
+  E.switchGarment = (spec, garment) => {
+    const b = E.blank(garment), keep = { color: spec.color, accent: spec.accent, fabric: spec.fabric, pattern: spec.pattern, embroidery: spec.embroidery, density: spec.density, sketch: spec.sketch, sketchClip: spec.sketchClip, notes: spec.notes };
+    const out = { ...b, ...keep, template: null };
+    if (!E.OPTIONS.collarFor[garment].includes(out.collar)) out.collar = b.collar;
+    return out;
+  };
+  E.shuffle = (spec, rnd = Math.random) => {
+    const pick = a => a[Math.floor(rnd() * a.length)];
+    const pals = E.palettes(spec.garment, spec.fabric), pal = pick(pals);
+    return { ...spec, color: pick(pal.base), accent: pick(pal.accents), collar: pick(E.OPTIONS.collarFor[spec.garment]), sleeves: pick(E.OPTIONS.sleeves)[0], length: spec.garment === 'suit' || spec.garment === 'shirt' ? spec.length : pick(E.OPTIONS.length.slice(1))[0], embroidery: pick(E.OPTIONS.embroidery)[0], density: 1 + Math.floor(rnd() * 3), pattern: pick(E.OPTIONS.pattern)[0], palette: pal.id, template: null };
+  };
+  /* Which tile-crop to use when previewing a group, so the difference is visible at thumbnail size. */
+  E.CROP = { collar: '170 150 380 300', embroidery: '110 200 500 700', sleeves: '0 180 720 700', length: '0 150 720 1000', fabric: '230 400 260 260', pattern: '230 400 260 260', template: '0 140 720 980', garment: '0 140 720 980', fit: '0 180 720 900' };
+
+  /* Daily challenges: one per day for everyone, rotating. Completing it on a saved design earns bonus XP. */
+  const light = c => { const h = hex(c); return lum(h) > 0.75; };
+  E.CHALLENGES = [
+    { id: 'owambe-agbada', title: 'Owambe ready', text: 'Design an agbada with embroidery on the chest.', template: 'grand-agbada', check: s => s.garment === 'agbada' && ['chest', 'chest-hem', 'full'].includes(s.embroidery) },
+    { id: 'sketch-motif', title: 'Hand-drawn', text: 'Sketch your own motif on any design (3 strokes or more).', check: s => (s.sketch?.length || 0) >= 3 },
+    { id: 'puff-dress', title: 'Puff it up', text: 'Make a dress with puff sleeves.', template: 'ankara-flare', check: s => s.garment === 'dress' && s.puff },
+    { id: 'mandarin-kaftan', title: 'Stand tall', text: 'A kaftan with a mandarin collar.', template: 'senator', check: s => s.garment === 'kaftan' && s.collar === 'mandarin' },
+    { id: 'all-white', title: 'All white', text: 'Design something light: white, ivory or cream.', template: 'linen-kaftan', check: s => light(s.color) },
+    { id: 'kente-anything', title: 'Kente day', text: 'Use the Kente pattern on any garment.', template: 'kente-midi', check: s => s.pattern === 'kente' },
+    { id: 'shawl-suit', title: 'Black tie', text: 'A suit with a shawl lapel.', template: 'shawl-tux', check: s => s.garment === 'suit' && s.collar === 'shawl' },
+    { id: 'floor-gown', title: 'Red carpet', text: 'A floor-length dress.', template: 'evening-gown', check: s => s.garment === 'dress' && s.length === 'full' },
+    { id: 'custom-colour', title: 'Your own colour', text: 'Pick a custom colour with the colour picker.', check: s => s.customColor === true },
+    { id: 'adire-boubou', title: 'Adire Sunday', text: 'Put the Adire pattern on a boubou.', template: 'adire-boubou', check: s => s.garment === 'boubou' && s.pattern === 'adire' },
+    { id: 'pocket-shirt', title: 'Utility', text: 'A short-sleeve shirt with pockets.', template: 'ankara-shirt', check: s => s.garment === 'shirt' && s.sleeves === 'short' && s.pockets },
+    { id: 'belted', title: 'Cinched', text: 'Add a belt to any design.', check: s => s.belt },
+    { id: 'mirror-sketch', title: 'Symmetry', text: 'Draw a mirrored sketch stroke.', check: s => (s.sketch || []).some(k => k.m) },
+    { id: 'all-over', title: 'Go big', text: 'Embroidery all over, heaviest density.', check: s => s.embroidery === 'full' && s.density === 3 },
+  ];
+  E.dayIndex = (d = new Date()) => Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+  E.dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  E.challengeFor = (d = new Date()) => E.CHALLENGES[E.dayIndex(d) % E.CHALLENGES.length];
+
+  /* Readable change list between two specs, for the version history ("Collar → mandarin"). */
+  E.diff = (a, b) => {
+    if (!a) return [];
+    const out = [], L = { garment: 'Style', fabric: 'Fabric', color: 'Colour', accent: 'Accent', length: 'Length', sleeves: 'Sleeves', collar: 'Collar', fit: 'Fit', embroidery: 'Embroidery', density: 'Embroidery weight', pattern: 'Pattern' };
+    for (const k of Object.keys(L)) if (a[k] !== b[k]) out.push(`${L[k]} → ${k === 'color' || k === 'accent' ? E.colorName(b[k]) : k === 'embroidery' ? (EMB_LABEL[b[k]] || b[k]).replace('embroidery ', '').replace('no embroidery', 'none') : k === 'density' ? ['', 'light', 'medium', 'heavy'][b[k]] : String(b[k]).replace('-', ' ')}`);
+    for (const k of ['puff', 'pockets', 'buttons', 'belt']) if (!!a[k] !== !!b[k]) out.push(`${cap(k === 'puff' ? 'puff sleeves' : k)} ${b[k] ? 'added' : 'removed'}`);
+    const sa = a.sketch?.length || 0, sb = b.sketch?.length || 0;
+    if (sb > sa) out.push(`Sketch +${sb - sa} stroke${sb - sa === 1 ? '' : 's'}`); else if (sb < sa) out.push(sb ? `Sketch −${sa - sb}` : 'Sketch cleared');
+    else if (sb && JSON.stringify(a.sketch) !== JSON.stringify(b.sketch)) out.push('Sketch edited');
+    const na = (a.notes || []).length, nb = (b.notes || []).length; if (na !== nb || JSON.stringify(a.notes || []) !== JSON.stringify(b.notes || [])) out.push(nb > na ? 'Tailor note added' : 'Tailor notes changed');
+    if ((a.sketchClip !== false) !== (b.sketchClip !== false)) out.push('Sketch area changed');
+    return out;
+  };
   E.colorHex = c => hex(c);
   E.accentHex = c => hex(c, ACCENTS);
 })();

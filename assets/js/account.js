@@ -13,7 +13,7 @@
     App.date = (t, { time = false } = {}) => { if (!t) return ''; const d = new Date(t); return d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) + (time ? ', ' + d.toLocaleTimeString('en-NG', { hour: 'numeric', minute: '2-digit' }) : ''); };
     App.ago = t => { const s = (Date.now() - new Date(t).getTime()) / 1000; if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago'; if (s < 7 * 86400) return Math.floor(s / 86400) + ' d ago'; return App.date(t); };
     App.PHASES = [
-      ['concept_generated', 'AI concept generated', 'Your description became a design.'],
+      ['concept_generated', 'Design created', 'You designed it and approved the version to make.'],
       ['vendor_assigned', 'Vendor assigned', 'The tailor has your approved version, measurements and payment.'],
       ['tailoring', 'Fabric sourcing & tailoring', 'Fabric sourced; cutting, sewing and embroidery in progress.'],
       ['delivered', 'Doorstep quality delivery', 'Quality checked and delivered to your door.'],
@@ -88,8 +88,8 @@
       $('[data-no]', s).addEventListener('click', App.closeSheet);
     });
     App.tabs = (root, onChange, { hash = true, initial: init = null } = {}) => {
-      const btns = $$('[data-tab]', root);
-      const show = (id, fire = true) => { btns.forEach(b => { const on = b.dataset.tab === id; b.setAttribute('aria-selected', on); b.classList.toggle('on', on); }); $$('[data-panel]').forEach(p => (p.hidden = p.dataset.panel !== id)); if (fire) onChange?.(id); if (hash) { try { history.replaceState(null, '', '#' + id); } catch {} } };
+      const btns = $$('[data-tab]', root), ids = btns.map(b => b.dataset.tab);
+      const show = (id, fire = true) => { btns.forEach(b => { const on = b.dataset.tab === id; b.setAttribute('aria-selected', on); b.classList.toggle('on', on); }); $$('[data-panel]').filter(p => ids.includes(p.dataset.panel)).forEach(p => (p.hidden = p.dataset.panel !== id)); if (fire) onChange?.(id); if (hash) { try { history.replaceState(null, '', '#' + id); } catch {} } };
       btns.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
       const initial = init || (hash ? location.hash.slice(1) : ''); show(btns.some(b => b.dataset.tab === initial) ? initial : btns[0].dataset.tab, !init);
       return { show };
@@ -113,8 +113,15 @@
     menuBtn?.addEventListener('click', e => { e.stopPropagation(); const open = menu.hidden; menu.hidden = !open; menuBtn.setAttribute('aria-expanded', open); });
     document.addEventListener('click', e => { if (menu && !menu.hidden && !e.target.closest('.acct')) { menu.hidden = true; menuBtn.setAttribute('aria-expanded', 'false'); } });
     document.addEventListener('click', async e => { if (!e.target.closest('[data-signout]')) return; await A.logout(); FT.toast('Signed out'); document.dispatchEvent(new CustomEvent('ft:auth', { detail: { user: null } })); if (!['home', 'studio', 'signin'].includes(document.body.dataset.page)) FT.go('/'); else if (document.body.dataset.page === 'signin') location.reload(); else renderNav(); });
-    renderNav();
-    A.onChange(() => renderNav());
+    async function renderStreak() {
+      const el = $('#navStreak'), u = A.me(); if (!el) return;
+      if (!u || u.role !== 'customer') { el.hidden = true; return; }
+      try { const g = await A.game(); el.hidden = false; $('b', el).textContent = g.streak; el.classList.toggle('lit', g.doneToday); el.classList.toggle('risk', g.atRisk && !g.doneToday); el.title = g.doneToday ? `${g.streak}-day streak. Kept for today.` : g.atRisk ? `${g.streak}-day streak. Save a design today to keep it.` : 'Save a design today to start a streak'; } catch { el.hidden = true; }
+    }
+    App.renderStreak = renderStreak;
+    renderNav(); renderStreak();
+    A.onChange(() => { renderNav(); renderStreak(); });
+    document.addEventListener('ft:game', renderStreak); document.addEventListener('ft:auth', renderStreak);
     document.addEventListener('ft:auth', renderNav);
     if (!A.local) A.refreshMe().then(renderNav);
 

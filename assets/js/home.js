@@ -2,15 +2,6 @@
   document.addEventListener('DOMContentLoaded', async () => {
     const { $, $$, reduced } = FT;
 
-    /* hero prompt -> studio */
-    const form = $('#ask'), input = $('#askInput');
-    $$('[data-fill]').forEach(c => c.addEventListener('click', () => { input.value = c.dataset.fill; input.focus(); }));
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      const v = input.value.trim();
-      if (!v) { input.focus(); form.classList.remove('shake'); void form.offsetWidth; form.classList.add('shake'); return; }
-      FT.go('/studio?prompt=' + encodeURIComponent(v));
-    });
 
     /* gold thread follows the pointer over the concept video */
     FT.trail($('#heroTrail'), $('#heroStage'));
@@ -31,16 +22,16 @@
     await FT.ready;
 
     /* refine demo on the hero */
-    const lines = ['add deeper gold trim', 'make the neckline a mandarin collar', 'shorten the sleeves to three-quarter', 'bring the embroidery down to the hem'];
+    const lines = ['Collar → mandarin', 'Palette → Royal Owambe', 'Sketch: gold motif on the cuffs', 'Embroidery → chest and hem'];
     const el = $('#demoLine'), ver = $('#demoV'), st = $('#demoState'); let i = 0, v = 1;
     if (reduced) { el.textContent = lines[0]; }
     else {
       const type = (s, k = 0) => {
         if (k <= s.length) { el.textContent = s.slice(0, k); return setTimeout(() => type(s, k + 1), 30 + Math.random() * 45); }
-        st.textContent = 'Applying';
-        setTimeout(() => { v = v >= 5 ? 1 : v + 1; ver.textContent = 'v' + v; st.textContent = 'Applied'; setTimeout(erase, 1600); }, 900);
+        st.textContent = 'Saving';
+        setTimeout(() => { v = v >= 5 ? 1 : v + 1; ver.textContent = 'v' + v; st.textContent = 'Saved +10 XP'; setTimeout(erase, 1600); }, 900);
       };
-      const erase = () => { const s = el.textContent; if (s.length) { el.textContent = s.slice(0, -1); setTimeout(erase, 14); } else { st.textContent = 'Refining'; i = (i + 1) % lines.length; setTimeout(() => type(lines[i]), 450); } };
+      const erase = () => { const s = el.textContent; if (s.length) { el.textContent = s.slice(0, -1); setTimeout(erase, 14); } else { st.textContent = 'Designing'; i = (i + 1) % lines.length; setTimeout(() => type(lines[i]), 450); } };
       setTimeout(() => type(lines[0]), 1200);
     }
 

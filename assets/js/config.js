@@ -12,6 +12,8 @@
  * payments     paystackPublicKey empty -> the built-in test checkout (card or bank transfer) completes payments
  *              in the browser. Set a Paystack public key (pk_test_… or pk_live_…) to take real payments with
  *              Paystack inline; the backend verifies the reference (see README).
+ * ai           Optional AI services on the backend: render3d (photoreal 3D of a design) and tryOn (fits the design to
+ *              the user's photo). Without a backend the studio uses its live 3D turntable and a manual try-on fit.
  * demoAccounts true   -> the sign-in page offers one-tap demo accounts (customer, tailor, admin). Set false in production.
  * sample       Pace of the built-in simulation while apiBaseUrl is empty: how quickly verified tailors
  *              quote on a new request, and how fast a sample tailor moves an order through production.
@@ -32,6 +34,7 @@ window.FT_CONFIG = {
 
   currency: { code: 'NGN', symbol: '₦', locale: 'en-NG' },
   payments: { paystackPublicKey: '', depositPercent: 50, platformFeePercent: 0 },
+  ai: { render3d: true, tryOn: true },
   demoAccounts: true,
   sample: { quoteDelayMs: [1800, 9000], orderPhaseMs: 30000 },
 

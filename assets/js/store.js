@@ -22,8 +22,8 @@
 
   /* ───────── persistence ───────── */
   let db = null;
-  const empty = () => ({ v: 1, users: [], designs: [], measurements: [], vendors: [], applications: [], requests: [], quotes: [], orders: [], payments: [], messages: [], audit: [], seededAt: null });
-  function load() { try { db = JSON.parse(localStorage.getItem(KEY)) || empty(); } catch { db = empty(); } if (!db.seededAt) seed(); return db; }
+  const empty = () => ({ v: 1, users: [], designs: [], measurements: [], vendors: [], applications: [], requests: [], quotes: [], orders: [], payments: [], messages: [], audit: [], games: {}, seededAt: null });
+  function load() { try { db = JSON.parse(localStorage.getItem(KEY)) || empty(); } catch { db = empty(); } if (!db.seededAt) seed(); if (!db.games) db.games = {}; return db; }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { console.warn('Fashion Teller: storage is full or blocked', e); } emit(); }
   const listeners = new Set();
   const emit = () => listeners.forEach(fn => { try { fn(); } catch {} });
@@ -96,6 +96,7 @@
     mk('u_c2', 'v_luxe', 'An emerald Ankara dress, knee length, puff sleeves', {}, 21, 'delivered');
     mk('u_c3', 'v_demo', 'An ivory agbada with gold embroidery on the chest', {}, 6, 'tailoring');
     mk('u_c2', 'v_kano', 'A midnight silk kaftan with gold embroidery across the chest, sleeves to the wrist', {}, 1, 'vendor_assigned');
+    { const k = n => E.dayKey(new Date(Date.now() - n * 86400000)); db.games.u_cust = { xp: 640, streak: 4, best: 9, lastDay: k(1), days: [k(1), k(2), k(3), k(4), k(6), k(7)], badges: { first_design: iso(d(20)), streak_3: iso(d(2)), sketcher: iso(d(5)), all_styles: iso(d(3)) }, challenges: { [k(1)]: 'x', [k(3)]: 'x' }, palettes: ['jewel', 'lagos', 'owambe'], garments: ['kaftan', 'agbada', 'dress', 'boubou', 'suit', 'shirt'], todayVersions: 0, todayKey: k(1) }; }
     db.seededAt = iso();
     try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {}
   }
@@ -158,6 +159,56 @@
     if (changed) save();
   }
 
+  /* ═════════ Streaks, XP, levels, badges, daily challenge ═════════
+     A day counts towards the streak when the user saves at least one design or version that day. */
+  const BADGES = [
+    ['first_design', 'First design', 'Saved your first design'],
+    ['sketcher', 'Sketch artist', 'Added your own hand sketch'],
+    ['palette_explorer', 'Colour theory', 'Used 5 different palettes'],
+    ['all_styles', 'Wardrobe', 'Designed all six styles'],
+    ['iterator', 'Perfectionist', '10 versions of one design'],
+    ['streak_3', 'On a roll', '3-day streak'],
+    ['streak_7', 'Week of style', '7-day streak'],
+    ['streak_30', 'Couture habit', '30-day streak'],
+    ['challenger', 'Challenger', 'Completed 3 daily challenges'],
+    ['made_real', 'Made for real', 'Ordered a design from a tailor'],
+  ];
+  const LEVELS = [[0, 'Apprentice'], [150, 'Pattern cutter'], [400, 'Stylist'], [800, 'Tailor'], [1400, 'Master tailor'], [2200, 'Designer'], [3500, 'Couturier']];
+  const levelOf = xp => { let i = 0; while (i + 1 < LEVELS.length && xp >= LEVELS[i + 1][0]) i++; return { level: i + 1, title: LEVELS[i][1], from: LEVELS[i][0], to: LEVELS[i + 1]?.[0] ?? null }; };
+  const gameOf = u => (db.games[u.id] ||= { xp: 0, streak: 0, best: 0, lastDay: null, days: [], badges: {}, challenges: {}, palettes: [], garments: [], todayVersions: 0, todayKey: null });
+  const yKey = () => E.dayKey(new Date(Date.now() - 86400000));
+  function play(u, kind, spec, design) {
+    const g = gameOf(u), today = E.dayKey(), before = levelOf(g.xp).level, r = { xp: 0, lines: [], badges: [], streak: g.streak, streakUp: false, challenge: null, levelUp: null };
+    const add = (n, why) => { g.xp += n; r.xp += n; r.lines.push(`+${n} ${why}`); };
+    const badge = id => { if (g.badges[id]) return; g.badges[id] = iso(); const b = BADGES.find(x => x[0] === id); r.badges.push(b[1]); add(25, b[1]); };
+    if (g.todayKey !== today) { g.todayKey = today; g.todayVersions = 0; }
+    if (kind === 'create' || kind === 'version') {
+      if (g.lastDay !== today) { g.streak = g.lastDay === yKey() ? g.streak + 1 : 1; g.lastDay = today; g.best = Math.max(g.best, g.streak); g.days = [today, ...g.days.filter(x => x !== today)].slice(0, 60); r.streakUp = true; add(15, `${g.streak}-day streak`); }
+      r.streak = g.streak;
+      if (kind === 'create') add(20, 'new design'); else if (g.todayVersions < 15) { add(10, 'new version'); g.todayVersions++; }
+      if (kind === 'create') badge('first_design');
+      if (spec?.sketch?.length) badge('sketcher');
+      if (spec?.palette && !g.palettes.includes(spec.palette)) g.palettes.push(spec.palette);
+      if (g.palettes.length >= 5) badge('palette_explorer');
+      if (spec && !g.garments.includes(spec.garment)) g.garments.push(spec.garment);
+      if (g.garments.length >= 6) badge('all_styles');
+      if (design?.versions.length >= 10) badge('iterator');
+      if (g.streak >= 3) badge('streak_3'); if (g.streak >= 7) badge('streak_7'); if (g.streak >= 30) badge('streak_30');
+      const ch = E.challengeFor();
+      if (spec && !g.challenges[today] && ch.check(spec)) { g.challenges[today] = ch.id; r.challenge = ch.title; add(50, `challenge: ${ch.title}`); }
+      if (Object.keys(g.challenges).length >= 3) badge('challenger');
+    }
+    if (kind === 'order') { const first = !g.badges.made_real; badge('made_real'); add(first ? 100 : 40, 'order placed'); }
+    const after = levelOf(g.xp); if (after.level > before) r.levelUp = after.title;
+    return r;
+  }
+  function gameOut(u) {
+    const g = gameOf(u), today = E.dayKey(), y = yKey(), lv = levelOf(g.xp), ch = E.challengeFor();
+    const alive = g.lastDay === today || g.lastDay === y;
+    const week = Array.from({ length: 7 }, (_, i) => { const d = new Date(Date.now() - (6 - i) * 86400000), k = E.dayKey(d); return { key: k, label: d.toLocaleDateString('en-NG', { weekday: 'narrow' }), done: g.days.includes(k), today: k === today }; });
+    return { xp: g.xp, streak: alive ? g.streak : 0, best: g.best, doneToday: g.lastDay === today, atRisk: g.lastDay === y, ...lv, week, badges: BADGES.map(([id, name, desc]) => ({ id, name, desc, at: g.badges[id] || null })), challenge: { id: ch.id, title: ch.title, text: ch.text, template: ch.template || null, done: !!g.challenges[today] }, challengesDone: Object.keys(g.challenges).length, garments: g.garments.length, palettes: g.palettes.length };
+  }
+
   /* ═════════ public API ═════════ */
   const S = (window.FTStore = {
     onChange: fn => { listeners.add(fn); return () => listeners.delete(fn); },
@@ -208,13 +259,31 @@
     },
 
     /* ───── designs + versions ───── */
-    async createDesign({ prompt, hints = {} }) {
+    /** Create a design from the builder ({spec}) or, optionally, from a description ({prompt} — the AI assist). */
+    async createDesign({ prompt = '', hints = {}, spec = null, title = '' }) {
       const u = need();
-      if (!prompt?.trim()) throw new StoreError('Describe the garment first.');
-      const spec = E.parse(prompt, hints);
-      const d = { id: uid('d_'), userId: u.id, title: E.title(spec), prompt: prompt.trim(), hints, versions: [{ n: 1, instruction: null, spec, changes: [], noted: null, createdAt: iso() }], current: 1, status: 'draft', createdAt: iso(), updatedAt: iso() };
-      db.designs.unshift(d); save(); return designOut(d);
+      if (!spec && !prompt?.trim()) throw new StoreError('Start from a template or describe the garment first.');
+      spec = spec ? clone(spec) : E.parse(prompt, hints);
+      const tpl = spec.template && E.template(spec.template);
+      const d = { id: uid('d_'), userId: u.id, title: (title || '').trim() || E.title(spec), prompt: prompt.trim() || (tpl ? `Started from the ${tpl.name} template` : 'Designed from scratch'), hints, source: prompt ? 'ai' : 'builder', versions: [{ n: 1, instruction: tpl ? `Started from ${tpl.name}` : prompt ? 'Generated from your description' : 'First save', spec, changes: [], noted: null, createdAt: iso() }], current: 1, status: 'draft', createdAt: iso(), updatedAt: iso() };
+      db.designs.unshift(d);
+      const reward = play(u, 'create', spec, d);
+      save(); return { ...designOut(d), reward };
     },
+    /** Save the builder's current spec as a new version of a design. */
+    async saveVersion(id, spec, label = '', fromN = null) {
+      const u = need(), d = db.designs.find(x => x.id === id && (x.userId === u.id || u.role === 'admin'));
+      if (!d) throw new StoreError('That design no longer exists.', 404);
+      if (d.status === 'ordered') throw new StoreError('This design is in production. Duplicate it to keep designing.');
+      const cur = (fromN && version(d, fromN)) || version(d), changes = E.diff(cur.spec, spec);
+      if (!changes.length && !label) throw new StoreError('Nothing changed since the last version.');
+      const n = Math.max(...d.versions.map(v => v.n)) + 1;
+      d.versions.push({ n, instruction: label.trim() || changes.slice(0, 2).join(', ') + (changes.length > 2 ? ` +${changes.length - 2} more` : ''), spec: clone(spec), changes, noted: null, from: cur.n, createdAt: iso() });
+      d.current = n; d.title = d.renamed ? d.title : E.title(spec); d.updatedAt = iso();
+      const reward = play(u, 'version', spec, d);
+      save(); return { ...designOut(d), reward };
+    },
+    async game() { const u = need(); return gameOut(u); },
     async listDesigns() { const u = need(); return db.designs.filter(d => d.userId === u.id || u.role === 'admin').map(designOut); },
     async getDesign(id) {
       const u = me(), d = db.designs.find(x => x.id === id);
@@ -244,7 +313,7 @@
       d.versions.push({ n: nn, instruction: `Restored version ${n}`, spec: clone(v.spec), changes: [`Restored v${n}`], noted: null, from: n, restored: n, createdAt: iso() });
       d.current = nn; d.title = E.title(v.spec); d.updatedAt = iso(); save(); return designOut(d);
     },
-    async renameDesign(id, title) { const u = need(), d = db.designs.find(x => x.id === id && x.userId === u.id); if (!d) throw new StoreError('Design not found.', 404); d.title = (title || '').trim() || d.title; d.updatedAt = iso(); save(); return designOut(d); },
+    async renameDesign(id, title) { const u = need(), d = db.designs.find(x => x.id === id && x.userId === u.id); if (!d) throw new StoreError('Design not found.', 404); d.title = (title || '').trim() || d.title; d.renamed = true; d.updatedAt = iso(); save(); return designOut(d); },
     async duplicateDesign(id) {
       const u = need(), d = db.designs.find(x => x.id === id && (x.userId === u.id || u.role === 'admin')); if (!d) throw new StoreError('Design not found.', 404);
       const cur = version(d);
@@ -375,7 +444,8 @@
       } else if (o.status === 'balance_due') {
         o.status = 'delivered'; o.events.push({ at: iso(), phase: 'delivered', title: 'Balance paid', body: `${fmt(amount)} received. Payment released to ${v.name}.`, by: 'system' });
       }
-      audit('pay', p.id); save(); return { payment: clone(p), order: S._orderOut(o) };
+      const reward = kind !== 'balance' ? play(u, 'order', null, d) : null;
+      audit('pay', p.id); save(); return { payment: clone(p), order: S._orderOut(o), reward };
     },
     async listOrders() {
       const u = need();

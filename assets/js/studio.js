@@ -1,56 +1,77 @@
 /**
- * Studio — the product. Six steps: Describe → Refine → Measure → Tailors → Pay → Track.
- * Designs, versions, measurements, quotes, orders and payments all live in the account (FTApi);
- * only the position in the flow is kept in sessionStorage so a reload resumes where you were.
+ * Studio — the product. The customer designs the garment themselves, like building an avatar:
+ *   1 Design   templates, style, colour palettes per style + fabric, parts, embroidery, details and a finger-sketch layer
+ *   2 See it   3D turnaround and try-on on the user's own photo (AI-enhanced when the AI service is connected)
+ *   3 Measure → 4 Tailors → 5 Pay → 6 Track
+ * Every save is a version and counts towards the daily streak. AI is optional ("Describe it").
+ * The working design (draft) survives reloads; designs, versions, orders and payments live in the account.
  */
 (() => {
   document.addEventListener('DOMContentLoaded', () => {
     const { $, $$, reduced } = FT, A = window.FTApi, App = window.FTApp, Acc = window.FTAccount, E = window.FTEngine, C = window.FT_CONFIG || {};
-    const KEY = 'ft.studio';
-    const fresh = () => ({ step: 1, prompt: '', garment: 'Kaftan', fabric: 'Silk', accent: 'Gold', designId: null, view: null, sort: 'match', quoteId: null, picked: false, orderId: null, plan: 'full', method: 'card', measurementId: null, notes: '', deadline: '', requested: false });
+    const KEY = 'ft.studio', DRAFT = 'ft.draft';
+    const fresh = () => ({ step: 1, tab: 'templates', tplFilter: 'all', designId: null, baseN: null, sort: 'match', quoteId: null, picked: false, orderId: null, plan: 'full', method: 'card', measurementId: null, notes: '', deadline: '', requested: false, brush: { c: '#D4AF37', w: 8, m: true } });
     let S = (() => { try { return { ...fresh(), ...JSON.parse(sessionStorage.getItem(KEY)) }; } catch { return fresh(); } })();
     const save = () => { try { sessionStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
     let design = null, quotes = [], order = null, measurements = [], busy = null, poll = null, thread = null, quotesLoading = false, lastQuoteCount = -1;
+    let draft = null, dirty = false; const undo = [], redo = [];
+    const clone = o => JSON.parse(JSON.stringify(o));
+    const isDirty = () => { if (!design) return true; const b = design.versions.find(v => v.n === S.baseN); return !b || E.diff(b.spec, draft).length > 0; };
+    const persistDraft = () => { try { localStorage.setItem(DRAFT, JSON.stringify({ spec: draft, designId: design?.id || null, baseN: S.baseN, dirty })); } catch {} };
 
     const qs = new URLSearchParams(location.search);
-    const handed = qs.get('prompt'), openDesign = qs.get('design'), openOrder = qs.get('order'), wantPay = qs.get('pay') === '1';
-    if (handed) { S = { ...fresh(), prompt: handed }; save(); }
-    if (openDesign) { S = { ...fresh(), designId: openDesign, step: 2 }; save(); }
+    const handed = qs.get('prompt'), openDesign = qs.get('design'), openOrder = qs.get('order'), wantPay = qs.get('pay') === '1', openTpl = qs.get('template'), wantChallenge = qs.get('challenge') === '1';
+    if (openDesign) { S = { ...fresh(), designId: openDesign, step: 1 }; save(); }
     if (openOrder) { S = { ...fresh(), orderId: openOrder, step: 6 }; save(); }
-    if (handed || openDesign || openOrder) history.replaceState(null, '', location.pathname);
+    if (handed || openTpl) { S = { ...fresh() }; save(); }
+    if (handed || openDesign || openOrder || openTpl || wantChallenge) history.replaceState(null, '', location.pathname);
 
     const stage = $('#stage'), art = $('#stArt'), canvas = $('#stThread');
     const approved = () => !!order && order.status !== 'awaiting_payment' && order.status !== 'cancelled';
     const phase = () => (order ? A.phaseIndex(order.phase) : 0);
-    const curVersion = () => design && App.version(design, S.view ?? design.current);
     const curQuote = () => quotes.find(q => q.id === S.quoteId) || FT.sortVendors(quotes.map(qv), S.sort)[0] && quotes.find(q => q.id === FT.sortVendors(quotes.map(qv), S.sort)[0].id);
     const qv = q => ({ id: q.id, name: q.vendor.name, city: q.vendor.city, rating: q.vendor.rating, verified: q.vendor.verified, price: q.price, deliveryDays: q.deliveryDays, note: q.note, vendor: q.vendor });
     $('#stSample').hidden = !A.local;
     const narrow = () => matchMedia('(max-width: 759px)').matches;
 
-    /* ───────── stage ───────── */
-    let artKey = '';
-    function renderStage() {
-      stage.classList.toggle('has', !!design);
-      const v = curVersion();
-      if (!design || !v) { art.innerHTML = ''; artKey = ''; $('#stTitle').textContent = ''; $('#stSub').textContent = ''; $('#stVersions').innerHTML = ''; $('#stRestore').hidden = true; return; }
-      const key = design.id + ':' + v.n;
-      if (key !== artKey) { artKey = key; art.innerHTML = E.render(v.spec, { id: 'st' }); art.classList.remove('in'); void art.offsetWidth; art.classList.add('in'); }
-      $('#stVer').textContent = 'v' + v.n;
-      $('#stTitle').textContent = v.n === 1 ? design.prompt : v.instruction;
-      $('#stSub').textContent = v.n === 1 ? E.title(v.spec) : v.changes.length ? v.changes.join(' · ') : 'Noted for the tailor';
-      const ol = $('#stVersions');
-      if (ol.children.length !== design.versions.length) { ol.innerHTML = design.versions.map(x => `<li><button type="button" data-v="${x.n}" title="${FT.esc(x.instruction || design.prompt)}">v${x.n}</button></li>`).join(''); ol.scrollLeft = ol.scrollWidth; }
-      $$('button', ol).forEach(b => b.setAttribute('aria-current', +b.dataset.v === v.n));
-      $('#stRestore').hidden = v.n === design.current || design.status === 'ordered';
+    /* ═════════ draft + history ═════════ */
+    function setDraft(spec, { history = true, dirty: d = true, animate = false } = {}) {
+      if (history && draft) { undo.push(clone(draft)); if (undo.length > 60) undo.shift(); redo.length = 0; }
+      draft = clone(spec); dirty = d; persistDraft(); scheduleStage(animate); renderBuilder(); renderBar();
     }
-    $('#stVersions').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.view = +b.dataset.v; save(); renderStage(); render(); });
-    $('#stRestore').addEventListener('click', async () => {
-      if (!design || busy) return; const n = S.view; busy = 'restore';
-      try { design = await A.restoreVersion(design.id, n); S.view = null; save(); FT.toast(`Version ${n} restored as v${design.current}`); } catch (e) { FT.toast(e.message); }
-      finally { busy = null; renderStage(); render(); }
-    });
+    const edit = fn => { if (!draft) return; const next = clone(draft); fn(next); setDraft(next); };
+    $('#undoBtn').addEventListener('click', () => { if (!undo.length) return; redo.push(clone(draft)); draft = undo.pop(); dirty = isDirty(); persistDraft(); scheduleStage(); renderBuilder(); renderBar(); });
+    $('#redoBtn').addEventListener('click', () => { if (!redo.length) return; undo.push(clone(draft)); draft = redo.pop(); dirty = isDirty(); persistDraft(); scheduleStage(); renderBuilder(); renderBar(); });
+    $('#shuffleBtn').addEventListener('click', () => { setDraft(E.shuffle(draft), { animate: true }); FT.toast('Surprise! Undo if you prefer the last one.'); });
+    addEventListener('keydown', e => { if (S.step !== 1 || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return; if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); (e.shiftKey ? $('#redoBtn') : $('#undoBtn')).click(); } });
 
+    /* ═════════ stage ═════════ */
+    let stageQueued = false, stageMode = 'edit';
+    function scheduleStage(animate) { if (animate) stitchIn(); if (stageQueued) return; stageQueued = true; requestAnimationFrame(() => { stageQueued = false; renderStage(); }); }
+    function renderStage() {
+      if (!draft) return;
+      stage.classList.add('has');
+      stage.classList.toggle('drawing', stageMode === 'edit' && S.step === 1 && S.tab === 'sketch');
+      if (stageMode === 'edit') art.innerHTML = E.render(draft, { id: 'st', live: true });
+      else if (stageMode === '3d') renderTurn();
+      else if (stageMode === 'try') renderTry();
+      const v = design && design.versions.find(x => x.n === S.baseN);
+      $('#stVerLbl').textContent = design ? (dirty ? 'Editing' : 'Version') : dirty || !draft?.template ? 'New design' : 'Template';
+      $('#stVer').textContent = design ? `v${S.baseN || design.current}${dirty ? ' •' : ''}` : '';
+      $('#stTitle').textContent = design ? design.title : E.title(draft);
+      $('#stSub').textContent = dirty ? (design ? (E.diff(v?.spec, draft).slice(0, 3).join(' · ') || 'Unsaved changes') : 'Not saved yet') : v ? (v.instruction || '') : '';
+      const ol = $('#stVersions');
+      if (!design) ol.innerHTML = '';
+      else {
+        if (ol.children.length !== design.versions.length) { ol.innerHTML = design.versions.map(x => `<li><button type="button" data-v="${x.n}" title="${FT.esc(x.instruction || '')}">v${x.n}</button></li>`).join(''); ol.scrollLeft = ol.scrollWidth; }
+        $$('button', ol).forEach(b => b.setAttribute('aria-current', +b.dataset.v === S.baseN));
+      }
+    }
+    $('#stVersions').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b || !design) return; const v = design.versions.find(x => x.n === +b.dataset.v); if (!v) return;
+      S.baseN = v.n; save(); setDraft(v.spec, { dirty: false }); FT.toast(`Editing from v${v.n}. Saving makes a new version.`);
+      if (S.step > 2 && !approved()) go(1);
+    });
     const genUI = (on, cls = 'gen') => stage.classList.toggle(cls, on);
     async function stitch(ms, steps, paths) {
       thread?.clear(); canvas.classList.remove('fade');
@@ -60,82 +81,324 @@
       tick(); await thread.done; await FT.wait(reduced ? 0 : 250);
     }
     const fadeThread = () => { canvas.classList.add('fade'); setTimeout(() => thread?.clear(), 900); };
+    function stitchIn() { if (reduced || !draft) return; thread?.clear(); canvas.classList.remove('fade'); thread = FT.thread(canvas, { paths: E.stitches(draft), duration: 700, width: 1.5, linger: 300 }); thread.done.then(() => setTimeout(fadeThread, 150)); }
 
-    /* ───────── stepper + panes ───────── */
+    /* ═════════ sketch: draw on the garment ═════════ */
+    let stroke = null, livePath = null, mirrorPath = null;
+    const toSvg = (svg, e) => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const m = svg.getScreenCTM(); if (!m) return null; const r = pt.matrixTransform(m.inverse()); return [Math.round(r.x), Math.round(r.y)]; };
+    art.addEventListener('pointerdown', e => {
+      if (!(stageMode === 'edit' && S.step === 1 && S.tab === 'sketch')) return;
+      const svg = $('svg', art), live = $('.live', art); if (!svg || !live) return;
+      e.preventDefault(); art.setPointerCapture(e.pointerId);
+      const p = toSvg(svg, e); if (!p) return;
+      const b = S.brush; stroke = { c: b.c, w: b.w, m: !!b.m, p: [...p] };
+      const NS = 'http://www.w3.org/2000/svg', mk = () => { const el = document.createElementNS(NS, 'path'); el.setAttribute('fill', 'none'); el.setAttribute('stroke', b.c); el.setAttribute('stroke-width', b.w); el.setAttribute('stroke-linecap', 'round'); el.setAttribute('stroke-linejoin', 'round'); live.appendChild(el); return el; };
+      livePath = mk(); mirrorPath = b.m ? mk() : null; $('#drawHint').classList.add('gone');
+    });
+    art.addEventListener('pointermove', e => {
+      if (!stroke) return; const svg = $('svg', art), p = toSvg(svg, e); if (!p) return;
+      stroke.p.push(p[0], p[1]); livePath.setAttribute('d', E.strokePath(stroke.p));
+      if (mirrorPath) mirrorPath.setAttribute('d', E.strokePath(stroke.p.map((v, i) => (i % 2 ? v : E.FRAME.W - v))));
+    });
+    const endStroke = () => { if (!stroke) return; const k = { ...stroke, p: E.simplify(stroke.p) }; stroke = null; edit(d => { d.sketch = [...(d.sketch || []), k]; }); };
+    art.addEventListener('pointerup', endStroke); art.addEventListener('pointercancel', endStroke);
+
+    /* ═════════ builder ═════════ */
+    const body = $('#bldBody');
+    const tile = (spec, label, on, crop, data) => `<button type="button" class="tile${on ? ' on' : ''}" aria-pressed="${!!on}" ${data}><span class="tile-art">${E.render(spec, { id: 'tl' + Math.random().toString(36).slice(2, 7), viewBox: crop, sketch: false })}</span><span class="tile-l">${FT.esc(label)}</span></button>`;
+    const sw = (hex, on, data, label) => `<button type="button" class="swatch${on ? ' on' : ''}" style="--c:${hex}" aria-label="${FT.esc(label || E.colorName(hex))}" aria-pressed="${!!on}" ${data}></button>`;
+    const toggle = (key, label, on) => `<button type="button" class="tgl" role="switch" aria-checked="${!!on}" data-toggle="${key}"><i></i>${label}</button>`;
+    const seg = (key, opts, cur) => `<div class="seg sm segpick" data-seg="${key}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${l}</button>`).join('')}</div>`;
+    const sameHex = (a, b) => String(E.colorHex(a)).toLowerCase() === String(E.colorHex(b)).toLowerCase();
+    const GARMENT_FILTERS = [['all', 'All'], ...E.OPTIONS.garment];
+    function renderBuilder() {
+      if (!draft) return;
+      $$('#bldTabs [data-bt]').forEach(b => { const on = b.dataset.bt === S.tab; b.setAttribute('aria-selected', on); b.classList.toggle('on', on); b.hidden = b.dataset.bt === 'length' && (draft.garment === 'suit' || draft.garment === 'shirt'); });
+      const d = draft, t = S.tab; let h = '';
+      if (t === 'templates') {
+        const list = E.TEMPLATES.filter(x => S.tplFilter === 'all' || x.garment === S.tplFilter);
+        h = `<div class="chips filt">${GARMENT_FILTERS.map(([v, l]) => `<button class="chip" type="button" data-tf="${v}" aria-pressed="${S.tplFilter === v}">${l}</button>`).join('')}</div>
+          <div class="tiles tpl">${list.map(x => tile(x.spec, x.name, d.template === x.id, E.CROP.template, `data-tpl="${x.id}"`).replace('</span></button>', `</span><span class="tile-tag">${FT.esc(x.tag)}</span></button>`)).join('')}</div>`;
+      } else if (t === 'style') {
+        h = `<p class="bld-hint">Switching style keeps your colours, fabric and sketch.</p><div class="tiles">${E.OPTIONS.garment.map(([v, l]) => tile(E.switchGarment(d, v), l, d.garment === v, E.CROP.garment, `data-garment="${v}"`)).join('')}</div>`;
+      } else if (t === 'colours') {
+        const pals = E.palettes(d.garment, d.fabric), cur = pals.find(p => p.id === d.palette) || pals[0];
+        h = `<p class="bld-hint">Palettes picked for ${FT.esc((l => l + (l.endsWith('s') ? 'es' : 's'))(E.vocab.GARMENTS[d.garment].label.toLowerCase()))} in ${FT.esc(E.vocab.FABRICS[d.fabric]?.label || d.fabric)}.</p>
+          <div class="chips">${pals.map(p => `<button class="chip pal" type="button" data-pal="${p.id}" aria-pressed="${p.id === cur.id}"><span class="dots">${p.base.slice(0, 4).map(c => `<i style="background:${c}"></i>`).join('')}</span>${FT.esc(p.name)}</button>`).join('')}</div>
+          <div class="grp"><span>Main colour</span><div class="swatches">${cur.base.map(c => sw(c, sameHex(d.color, c), `data-color="${c}"`)).join('')}<label class="swatch custom" title="Your own colour"><input type="color" data-custom="color" value="${E.colorHex(d.color)}" aria-label="Custom main colour"></label></div></div>
+          <div class="grp"><span>Accent (embroidery, trims, buttons)</span><div class="swatches">${cur.accents.map(c => sw(c, sameHex(d.accent, c), `data-accent="${c}"`)).join('')}<label class="swatch custom" title="Your own accent"><input type="color" data-custom="accent" value="${E.accentHex(d.accent)}" aria-label="Custom accent colour"></label></div></div>`;
+      } else if (t === 'fabric') {
+        h = `<div class="grp"><span>Texture</span><div class="tiles sq">${E.OPTIONS.fabric.map(([v, l]) => tile({ ...d, fabric: v }, l, d.fabric === v, E.CROP.fabric, `data-fabric="${v}"`)).join('')}</div></div>
+          <div class="grp"><span>Pattern</span><div class="tiles sq">${E.OPTIONS.pattern.map(([v, l]) => tile({ ...d, pattern: v }, l, (d.pattern || 'plain') === v, E.CROP.pattern, `data-pattern="${v}"`)).join('')}</div></div>`;
+      } else if (t === 'collar') {
+        const ok = E.OPTIONS.collarFor[d.garment];
+        h = `<div class="tiles">${E.OPTIONS.collar.filter(([v]) => ok.includes(v)).map(([v, l]) => tile({ ...d, collar: v }, l, d.collar === v, E.CROP.collar, `data-set="collar" data-v="${v}"`)).join('')}</div>`;
+      } else if (t === 'sleeves') {
+        h = `<div class="tiles">${E.OPTIONS.sleeves.map(([v, l]) => tile({ ...d, sleeves: v }, l, d.sleeves === v, E.CROP.sleeves, `data-set="sleeves" data-v="${v}"`)).join('')}</div><div class="tgls">${toggle('puff', 'Puff sleeves', d.puff)}</div>`;
+      } else if (t === 'length') {
+        h = `<div class="tiles">${E.OPTIONS.length.map(([v, l]) => tile({ ...d, length: v }, l, d.length === v, E.CROP.length, `data-set="length" data-v="${v}"`)).join('')}</div>`;
+      } else if (t === 'fit') {
+        h = `<div class="tiles">${E.OPTIONS.fit.map(([v, l]) => tile({ ...d, fit: v }, l, d.fit === v, E.CROP.fit, `data-set="fit" data-v="${v}"`)).join('')}</div>`;
+      } else if (t === 'embroidery') {
+        h = `<div class="tiles">${E.OPTIONS.embroidery.map(([v, l]) => tile({ ...d, embroidery: v }, l, d.embroidery === v, E.CROP.embroidery, `data-set="embroidery" data-v="${v}"`)).join('')}</div>
+          ${d.embroidery !== 'none' ? `<div class="grp"><span>Weight</span>${seg('density', [[1, 'Light'], [2, 'Medium'], [3, 'Heavy']], d.density)}</div><div class="grp"><span>Thread colour</span><div class="swatches">${(E.palettes(d.garment, d.fabric)[0].accents).map(c => sw(c, sameHex(d.accent, c), `data-accent="${c}"`)).join('')}</div></div>` : ''}`;
+      } else if (t === 'details') {
+        h = `<div class="tgls">${toggle('pockets', 'Pockets', d.pockets)}${toggle('buttons', 'Buttons', d.buttons)}${toggle('belt', 'Belt', d.belt)}</div>
+          <div class="grp"><label for="tnote"><span>Note for the tailor</span></label><div class="notein"><input id="tnote" maxlength="120" placeholder="e.g. hidden zip at the back, lining in cream"><button class="btn ghost sm" type="button" id="addNote">Add</button></div>${(d.notes || []).length ? `<ul class="notes">${d.notes.map((n, i) => `<li>${FT.esc(n)}<button type="button" data-rmnote="${i}" aria-label="Remove note">×</button></li>`).join('')}</ul>` : ''}</div>`;
+      } else if (t === 'sketch') {
+        const pal = E.palettes(d.garment, d.fabric)[0], cols = [...new Set([...pal.accents, '#FFFFFF', '#16181C', E.accentHex(d.accent)])];
+        h = `<p class="bld-hint">Draw straight onto the garment on the ${narrow() ? 'preview above' : 'stage'}: motifs, trims, panels, anything. Mirror draws both sides at once.</p>
+          <div class="grp"><span>Thread</span><div class="swatches">${cols.map(c => sw(c, S.brush.c.toLowerCase() === c.toLowerCase(), `data-brush="${c}"`)).join('')}<label class="swatch custom"><input type="color" data-custom="brush" value="${S.brush.c}" aria-label="Custom thread colour"></label></div></div>
+          <div class="grp"><span>Brush</span>${seg('brushw', [[4, 'Fine'], [8, 'Medium'], [16, 'Bold']], S.brush.w)}</div>
+          <div class="tgls">${toggle('brushm', 'Mirror', S.brush.m)}${toggle('sketchClip', 'Stay on the garment', d.sketchClip !== false)}</div>
+          <div class="row-btns compact"><button class="btn ghost sm" type="button" id="skUndo" ${d.sketch?.length ? '' : 'disabled'}>Undo stroke</button><button class="btn ghost sm" type="button" id="skClear" ${d.sketch?.length ? '' : 'disabled'}>Clear sketch</button></div>
+          <p class="muted small">${d.sketch?.length || 0} stroke${d.sketch?.length === 1 ? '' : 's'} · the tailor gets your sketch with the design.</p>`;
+      }
+      body.innerHTML = h;
+      stage.classList.toggle('drawing', stageMode === 'edit' && S.step === 1 && S.tab === 'sketch');
+      $('#drawHint').classList.toggle('gone', !!draft.sketch?.length);
+    }
+    $('#bldTabs').addEventListener('click', e => { const b = e.target.closest('[data-bt]'); if (!b) return; S.tab = b.dataset.bt; save(); setStageMode('edit'); renderBuilder(); b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: reduced ? 'auto' : 'smooth' }); });
+    body.addEventListener('click', e => {
+      const t = e.target.closest('button'); if (!t) return; const x = t.dataset;
+      if (x.tf) { S.tplFilter = x.tf; save(); renderBuilder(); return; }
+      if (x.tpl) { const tp = E.template(x.tpl); setDraft({ ...tp.spec, sketch: [] }, { animate: true }); FT.toast(`${tp.name} loaded. Make it yours.`); return; }
+      if (x.garment) return edit(d => Object.assign(d, E.switchGarment(d, x.garment)));
+      if (x.pal) { const p = E.palettes(draft.garment, draft.fabric).find(q => q.id === x.pal); return edit(d => { d.palette = p.id; d.color = p.base[0]; d.accent = p.accents[0]; }); }
+      if (x.color) return edit(d => { d.color = x.color; d.customColor = false; d.palette ||= E.palettes(d.garment, d.fabric)[0].id; });
+      if (x.accent) return edit(d => { d.accent = x.accent; });
+      if (x.fabric) return edit(d => { d.fabric = x.fabric; });
+      if (x.pattern) return edit(d => { d.pattern = x.pattern; });
+      if (x.set) return edit(d => { d[x.set] = x.v; });
+      if (x.toggle) {
+        if (x.toggle === 'brushm') { S.brush.m = !S.brush.m; save(); renderBuilder(); return; }
+        return edit(d => { d[x.toggle] = x.toggle === 'sketchClip' ? d.sketchClip === false : !d[x.toggle]; });
+      }
+      if (x.brush) { S.brush.c = x.brush; save(); renderBuilder(); return; }
+      if (t.closest('[data-seg]')) { const k = t.closest('[data-seg]').dataset.seg; if (k === 'brushw') { S.brush.w = +x.v; save(); renderBuilder(); return; } return edit(d => { d[k] = +x.v; }); }
+      if (t.id === 'skUndo') return edit(d => { d.sketch = (d.sketch || []).slice(0, -1); });
+      if (t.id === 'skClear') return edit(d => { d.sketch = []; });
+      if (t.id === 'addNote') { const i = $('#tnote'), v = i.value.trim(); if (v) edit(d => { d.notes = [...(d.notes || []), v]; }); return; }
+      if (x.rmnote != null) return edit(d => { d.notes.splice(+x.rmnote, 1); });
+    });
+    body.addEventListener('keydown', e => { if (e.target.id === 'tnote' && e.key === 'Enter') { e.preventDefault(); $('#addNote').click(); } });
+    let pickT = null;
+    body.addEventListener('input', e => {
+      const k = e.target.dataset.custom; if (!k) return; const v = e.target.value;
+      if (k === 'brush') { S.brush.c = v; save(); return; }
+      // colour pickers fire continuously: preview live, record one history step when it settles
+      if (!pickT) undo.push(clone(draft));
+      draft[k] = v; if (k === 'color') draft.customColor = true; dirty = true; scheduleStage();
+      clearTimeout(pickT); pickT = setTimeout(() => { pickT = null; redo.length = 0; persistDraft(); renderBuilder(); renderBar(); }, 350);
+    });
+
+    /* AI assist (optional): describe it, and the builder sets the parts for you to adjust. */
+    $('#aiBtn').addEventListener('click', () => {
+      const s = App.sheet(`<h3>Describe it <span class="badge gold">AI assist</span></h3><p class="muted">Optional. Write what you have in mind and the builder sets the parts. You can change everything after.</p><textarea class="ta" id="aiText" rows="3" placeholder="An ivory agbada with gold embroidery on the chest, mandarin collar"></textarea><div class="row-btns" style="margin-top:14px"><button class="btn ghost" type="button" data-c>Cancel</button><button class="btn ink" type="button" data-go>Build it</button></div>`);
+      const ta = $('#aiText', s); setTimeout(() => ta.focus(), 300);
+      $('[data-c]', s).addEventListener('click', App.closeSheet);
+      $('[data-go]', s).addEventListener('click', async () => {
+        const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+        App.closeSheet(); const spec = { ...E.parse(text, { garment: draft.garment }), sketch: draft.sketch || [], template: null };
+        genUI(true); await stitch(1400, ['Reading your description', 'Choosing the parts', 'Setting colours'], E.stitches(spec)); genUI(false); fadeThread();
+        setDraft(spec); FT.toast('Built from your description. Tweak anything.');
+      });
+    });
+
+    /* ═════════ save + rewards ═════════ */
+    function renderBar() {
+      $('#undoBtn').disabled = !undo.length; $('#redoBtn').disabled = !redo.length;
+      const sb = $('#saveBtn'); sb.disabled = busy === 'save' || (!dirty && !!design);
+      sb.innerHTML = busy === 'save' ? '<span class="spin"></span>Saving' : !design ? 'Save design' : dirty ? `Save v${Math.max(...design.versions.map(v => v.n)) + 1}` : 'Saved';
+    }
+    async function saveDesign({ quiet = false } = {}) {
+      if (busy) return false;
+      if (!A.signedIn()) { const u = await Acc.open({ mode: 'up', title: 'Save your design', message: 'Create a free account to save designs, keep every version and start your daily streak.' }); if (!u) return false; }
+      if (design && !dirty) return true;
+      if (design && design.status !== 'ordered') { const base = design.versions.find(v => v.n === S.baseN); if (base && !E.diff(base.spec, draft).length) { dirty = false; persistDraft(); renderBar(); renderStage(); return true; } }
+      busy = 'save'; renderBar(); $('#err1').textContent = '';
+      try {
+        let res;
+        const forkFromOrdered = design && (design.status === 'ordered');
+        if (!design || forkFromOrdered) {
+          res = await A.createDesign({ spec: draft, title: forkFromOrdered ? design.title + ' (new)' : '' });
+          if (forkFromOrdered) { FT.toast('Saved as a new design. The original is in production.'); order = null; quotes = []; Object.assign(S, { orderId: null, quoteId: null, requested: false }); }
+        } else res = await A.saveVersion(design.id, draft, '', S.baseN);
+        design = res; S.designId = design.id; S.baseN = design.current; dirty = false; save(); persistDraft();
+        const badge = $('#stBadge'); badge.classList.remove('bump'); void badge.offsetWidth; badge.classList.add('bump');
+        if (res.reward) showReward(res.reward); else if (!quiet) FT.toast(`Saved v${design.current}`);
+        refreshGame();
+        return true;
+      } catch (e) { $('#err1').textContent = e.message; if (!quiet) FT.toast(e.message); return false; }
+      finally { busy = null; renderBar(); renderStage(); render(); }
+    }
+    $('#saveBtn').addEventListener('click', () => saveDesign());
+    function showReward(r) {
+      const el = $('#reward'); if (!r || !r.xp) return;
+      el.innerHTML = `<b>+${r.xp} XP</b>${r.streakUp ? `<span class="flame">${FLAME}${r.streak}-day streak</span>` : ''}${r.challenge ? `<span>Challenge done: ${FT.esc(r.challenge)}</span>` : ''}${r.badges.length ? `<span class="rw-b">${r.badges.length === 1 ? 'Badge' : 'Badges'}: ${r.badges.map(FT.esc).join(', ')}</span>` : ''}${r.levelUp ? `<span class="lvl">Level up: ${FT.esc(r.levelUp)}</span>` : ''}`;
+      el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); clearTimeout(showReward.t); showReward.t = setTimeout(() => el.classList.remove('on'), 3200);
+      if (r.streakUp || r.challenge || r.badges.length || r.levelUp) burst();
+      document.dispatchEvent(new CustomEvent('ft:game'));
+    }
+    const FLAME = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-4-1-6 1-9.5z" fill="currentColor"/></svg>';
+
+    /* Daily challenge + streak card */
+    let game = null;
+    async function refreshGame() { if (A.signedIn()) { try { game = await A.game(); } catch { game = null; } } else game = null; renderDaily(); }
+    function renderDaily() {
+      const ch = game?.challenge || (() => { const c = E.challengeFor(); return { ...c, done: false }; })();
+      $('#daily').innerHTML = `<div class="dc"><span class="dc-k">Today’s challenge</span><b>${FT.esc(ch.title)}</b><span class="dc-t">${FT.esc(ch.text)}</span></div>
+        ${ch.done ? '<span class="dc-done">Done ✓</span>' : `<button class="btn gold sm" type="button" id="dcGo">+50 XP</button>`}
+        ${game ? `<a class="dc-streak${game.doneToday ? ' lit' : ''}" href="/designs" title="${game.doneToday ? 'Streak kept today' : game.atRisk ? 'Save a design today to keep your streak' : 'Save a design to start a streak'}">${FLAME}<b>${game.streak}</b></a>` : ''}`;
+      $('#dcGo')?.addEventListener('click', () => {
+        if (ch.template) { const tp = E.template(ch.template); setDraft({ ...tp.spec, sketch: [] }, { animate: true }); }
+        const tab = { 'sketch-motif': 'sketch', 'mirror-sketch': 'sketch', 'custom-colour': 'colours', belted: 'details', 'all-over': 'embroidery', 'puff-dress': 'sleeves', 'mandarin-kaftan': 'collar', 'shawl-suit': 'collar', 'floor-gown': 'length', 'kente-anything': 'fabric', 'adire-boubou': 'fabric', 'all-white': 'colours', 'pocket-shirt': 'details', 'owambe-agbada': 'embroidery' }[ch.id];
+        if (tab) { S.tab = tab; save(); renderBuilder(); }
+        FT.toast(`${ch.text} Save it to complete the challenge.`);
+      });
+    }
+    document.addEventListener('ft:auth', () => refreshGame());
+
+    /* ═════════ step 2: see it — 3D turnaround + try-on ═════════ */
+    function setStageMode(m) {
+      stageMode = m; stopSpin();
+      art.hidden = m !== 'edit'; $('#stTurn').hidden = m !== '3d'; $('#stTry').hidden = m !== 'try';
+      stage.classList.toggle('mode-3d', m === '3d'); stage.classList.toggle('mode-try', m === 'try');
+      renderStage();
+    }
+    let angle = 0, spinRaf = 0, faceView = null;
+    function renderTurn() {
+      const a = ((angle % 360) + 360) % 360, rad = a * Math.PI / 180, c = Math.cos(rad), view = c >= 0 ? 'front' : 'back';
+      const face = $('#turnFace');
+      if (faceView !== view || face.dataset.key !== JSON.stringify(draft).length + view) { face.innerHTML = E.render(draft, { id: 'tn', view, bg: false }); faceView = view; face.dataset.key = JSON.stringify(draft).length + view; }
+      const k = 0.16 + 0.84 * Math.abs(c), lean = Math.sin(rad) * 10;
+      face.style.transform = `perspective(1400px) rotateY(${lean}deg) scaleX(${k.toFixed(3)})`;
+      const L = $('#turnLight'); L.style.setProperty('--lx', (50 + Math.sin(rad) * 40).toFixed(1) + '%'); L.style.opacity = (0.25 + 0.5 * (1 - Math.abs(c))).toFixed(2); L.style.transform = `scaleX(${k.toFixed(3)})`;
+    }
+    const turn = $('#stTurn'); let drag = null;
+    turn.addEventListener('pointerdown', e => { stopSpin(); drag = { x: e.clientX, a: angle }; turn.setPointerCapture(e.pointerId); });
+    turn.addEventListener('pointermove', e => { if (!drag) return; angle = drag.a + (e.clientX - drag.x) * 0.6; renderTurn(); });
+    const endDrag = () => { drag = null; }; turn.addEventListener('pointerup', endDrag); turn.addEventListener('pointercancel', endDrag);
+    function animateTo(target) { stopSpin(); const from = angle, to = target + Math.round((from - target) / 360) * 360, t0 = performance.now(), dur = reduced ? 1 : 700; const f = now => { const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3); angle = from + (to - from) * e; renderTurn(); if (p < 1) spinRaf = requestAnimationFrame(f); }; spinRaf = requestAnimationFrame(f); }
+    function stopSpin() { cancelAnimationFrame(spinRaf); spinRaf = 0; $('#spinBtn') && ($('#spinBtn').textContent = 'Spin'); }
+    $$('[data-turn]').forEach(b => b.addEventListener('click', () => animateTo(+b.dataset.turn)));
+    $('#spinBtn').addEventListener('click', () => { if (spinRaf) return stopSpin(); $('#spinBtn').textContent = 'Stop'; let last = performance.now(); const f = now => { angle += (now - last) * 0.06; last = now; renderTurn(); spinRaf = requestAnimationFrame(f); }; spinRaf = requestAnimationFrame(f); });
+    function renderAi3d() {
+      const box = $('#ai3d');
+      box.innerHTML = A.ai.render3d ? `<button class="btn ghost sm" type="button" id="ai3dBtn"><i class="ai-i">AI</i> Photoreal 3D render</button><span class="muted small">Renders your design on a 3D model. Takes a moment.</span>` : `<span class="muted small">This turnaround is drawn live from your design. A photoreal AI render switches on here once the AI service is connected.</span>`;
+      $('#ai3dBtn')?.addEventListener('click', async () => {
+        if (!(await saveDesign({ quiet: true }))) return;
+        const b = $('#ai3dBtn'); b.disabled = true; b.innerHTML = '<span class="spin"></span>Rendering';
+        try { const r = await A.render3d(design.id); App.sheet(`<h3>3D render</h3>${r.video_url ? `<video src="${FT.esc(r.video_url)}" autoplay loop muted playsinline style="width:100%;border-radius:14px"></video>` : r.image_url ? `<img src="${FT.esc(r.image_url)}" alt="3D render" style="width:100%;border-radius:14px">` : '<p class="muted">The render is queued. It will appear in your design when it is ready.</p>'}`); }
+        catch (e) { FT.toast(e.message); } finally { renderAi3d(); }
+      });
+    }
+
+    /* try-on: the user's photo with the garment laid over it */
+    const T = { x: 50, y: 12, w: 78, rot: 0, op: 0, has: false };
+    let photoUrl = null;
+    function renderTry() {
+      $('#tryEmpty').hidden = T.has; $('#tryPhoto').hidden = !T.has; $('#tryControls').hidden = !T.has;
+      const g = $('#tryGarm'); g.hidden = !T.has; if (!T.has) return;
+      const key = JSON.stringify(draft).length; if (g.dataset.key !== String(key)) { g.innerHTML = E.render(draft, { id: 'try', bg: false }); g.dataset.key = key; }
+      g.style.left = T.x + '%'; g.style.top = T.y + '%'; g.style.width = T.w + '%'; g.style.transform = `translateX(-50%) rotate(${T.rot}deg)`; g.style.opacity = (1 - T.op / 100).toFixed(2);
+      $('#trySize').value = Math.round(T.w / 0.78); $('#trySizeOut').textContent = Math.round(T.w / 0.78) + '%'; $('#tryRot').value = T.rot; $('#tryRotOut').textContent = T.rot + '°'; $('#tryOp').value = T.op; $('#tryOpOut').textContent = T.op + '%';
+    }
+    const loadPhoto = file => {
+      if (!file || !file.type.startsWith('image/')) return;
+      if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = URL.createObjectURL(file);
+      const img = $('#tryPhoto'); img.onload = () => { T.has = true; Object.assign(T, { x: 50, y: 14, w: 74, rot: 0, op: 0 }); renderTry(); FT.toast('Drag the garment onto your shoulders'); }; img.src = photoUrl;
+    };
+    $('#tryFile').addEventListener('change', e => loadPhoto(e.target.files[0]));
+    $('#tryCam').addEventListener('change', e => loadPhoto(e.target.files[0]));
+    if (!matchMedia('(pointer: coarse)').matches) $('#tryCamLbl').hidden = true;
+    $('#trySize').addEventListener('input', e => { T.w = +e.target.value * 0.78; renderTry(); });
+    $('#tryRot').addEventListener('input', e => { T.rot = +e.target.value; renderTry(); });
+    $('#tryOp').addEventListener('input', e => { T.op = +e.target.value; renderTry(); });
+    $('#tryClear').addEventListener('click', () => { T.has = false; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = null; $('#tryPhoto').removeAttribute('src'); renderTry(); });
+    { // drag + pinch on the garment
+      const g = $('#tryGarm'), frame = $('#frame'), pts = new Map(); let start = null;
+      g.addEventListener('pointerdown', e => { g.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); start = { ...T, pts: new Map(pts) }; });
+      g.addEventListener('pointermove', e => {
+        if (!pts.has(e.pointerId) || !start) return; pts.set(e.pointerId, [e.clientX, e.clientY]); const r = frame.getBoundingClientRect();
+        if (pts.size === 1) { const [x0, y0] = start.pts.get(e.pointerId) || [e.clientX, e.clientY]; T.x = start.x + (e.clientX - x0) / r.width * 100; T.y = start.y + (e.clientY - y0) / r.height * 100; }
+        else if (pts.size === 2 && start.pts.size === 2) { const dist = m => { const [a, b] = [...m.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); }; T.w = Math.max(30, Math.min(140, start.w * dist(pts) / dist(start.pts))); }
+        renderTry();
+      });
+      const up = e => { pts.delete(e.pointerId); start = pts.size ? { ...T, pts: new Map(pts) } : null; };
+      g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
+    }
+    function renderTryFit() {
+      const b = $('#tryFit');
+      b.innerHTML = A.ai.tryOn ? '<i class="ai-i">AI</i> Fit to my body' : 'Centre on me';
+      $('#tryNote').textContent = A.ai.tryOn ? 'AI fit sends your photo to Fashion Teller to place the garment on your body. Manual placement keeps it on your device.' : 'Your photo stays on this device. AI body-fit switches on once the AI service is connected.';
+    }
+    $('#tryFit').addEventListener('click', async () => {
+      if (!T.has) return;
+      if (!A.ai.tryOn) { Object.assign(T, { x: 50, y: 13, w: 74, rot: 0 }); renderTry(); return; }
+      const b = $('#tryFit'); b.disabled = true; b.innerHTML = '<span class="spin"></span>Fitting';
+      try {
+        if (!(await saveDesign({ quiet: true }))) return;
+        const c = document.createElement('canvas'), img = $('#tryPhoto'), sc = Math.min(1, 1024 / Math.max(img.naturalWidth, img.naturalHeight)); c.width = img.naturalWidth * sc; c.height = img.naturalHeight * sc; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        const r = await A.tryOnFit(design.id, c.toDataURL('image/jpeg', 0.85));
+        if (r.image_url) App.sheet(`<h3>On you</h3><img src="${FT.esc(r.image_url)}" alt="Your try-on" style="width:100%;border-radius:14px">`);
+        else if (r.x != null) { Object.assign(T, { x: r.x, y: r.y, w: r.width ?? T.w, rot: r.rotation ?? 0 }); renderTry(); }
+      } catch (e) { FT.toast(e.message); Object.assign(T, { x: 50, y: 13, w: 74, rot: 0 }); renderTry(); }
+      finally { renderTryFit(); b.disabled = false; }
+    });
+    $('#trySave').addEventListener('click', async () => {
+      const frame = $('#frame').getBoundingClientRect(), img = $('#tryPhoto'), W = 720, H = Math.round(720 * frame.height / frame.width);
+      const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+      const s = Math.max(W / img.naturalWidth, H / img.naturalHeight); x.drawImage(img, (W - img.naturalWidth * s) / 2, (H - img.naturalHeight * s) / 2, img.naturalWidth * s, img.naturalHeight * s);
+      const svg = E.render(draft, { id: 'sv', bg: false }), url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+      const g = new Image(); await new Promise((ok, no) => { g.onload = ok; g.onerror = no; g.src = url; });
+      const gw = W * T.w / 100, gh = gw * 1150 / 720; x.save(); x.globalAlpha = 1 - T.op / 100; x.translate(W * T.x / 100, H * T.y / 100); x.rotate(T.rot * Math.PI / 180); x.drawImage(g, -gw / 2, 0, gw, gh); x.restore(); URL.revokeObjectURL(url);
+      x.font = '600 18px Jost, sans-serif'; x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText('FASHION TELLER', 18, H - 20);
+      c.toBlob(async blob => {
+        const file = new File([blob], 'fashion-teller-look.png', { type: 'image/png' });
+        if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], title: 'My Fashion Teller look' }); return; } catch {} }
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); FT.toast('Look saved to your device');
+      }, 'image/png');
+    });
+
+    App.tabs($('#pvTabs'), id => { setStageMode(id === 'pv3d' ? '3d' : id === 'pvtry' ? 'try' : 'edit'); if (id === 'pvvers') renderVersions(); }, { hash: false, initial: 'pv3d' });
+    function renderVersions() {
+      const g = $('#vgrid');
+      if (!design) { g.innerHTML = '<li class="muted small">Save your design to start keeping versions. Every save is a new version you can go back to.</li>'; return; }
+      g.innerHTML = [...design.versions].reverse().map(v => `<li><button type="button" class="vcard${v.n === S.baseN ? ' on' : ''}" data-vn="${v.n}"><span class="tile-art">${E.render(v.spec, { id: 'vg' + v.n, viewBox: E.CROP.template })}</span><span><b>v${v.n}</b> ${FT.esc(v.instruction || '')}<small>${App.ago(v.createdAt)}</small></span></button></li>`).join('');
+    }
+    $('#vgrid').addEventListener('click', e => { const b = e.target.closest('[data-vn]'); if (!b) return; const v = design.versions.find(x => x.n === +b.dataset.vn); S.baseN = v.n; save(); setDraft(v.spec, { dirty: false }); renderVersions(); FT.toast(`Showing v${v.n}`); });
+    $('#backToDesign').addEventListener('click', () => go(1));
+    $('#toPreview').addEventListener('click', () => go(2));
+    $('#toMeasure').addEventListener('click', async () => { if (await saveDesign({ quiet: true })) go(3, { force: true }); });
+
+    /* ═════════ stepper + panes ═════════ */
     const reachable = n => {
-      if (approved()) return n === 6 || n === 1;
-      if (n === 1) return true;
-      if (n === 2 || n === 3) return !!design;
-      if (n === 4) return !!design && S.requested;
+      if (approved()) return n === 6 || n === 1 || n === 2;
+      if (n <= 2) return true;
+      if (n === 3) return !!design && !dirty;
+      if (n === 4) return !!design && S.requested && !dirty;
       if (n === 5) return !!order && order.status === 'awaiting_payment';
       return false;
     };
     function go(n, { force } = {}) {
-      if (!force && !reachable(n)) return;
+      if (!force && !reachable(n)) { if (n === 3 && draft) $('#toMeasure').click(); return; }
       const back = n < S.step; S.step = n; save();
       $$('.pane').forEach(p => {
         const on = +p.dataset.pane === n;
         if (on && !p.classList.contains('on')) { p.classList.add('on', 'enter'); p.classList.toggle('back', back); p.addEventListener('animationend', () => p.classList.remove('enter', 'back'), { once: true }); p.scrollTop = 0; }
         if (!on) p.classList.remove('on');
       });
+      document.querySelector('.studio').classList.toggle('building', n <= 2);
+      if (n === 2) { const cur = $$('#pvTabs [data-tab]').find(b => b.classList.contains('on'))?.dataset.tab || 'pv3d'; setStageMode(cur === 'pv3d' ? '3d' : cur === 'pvtry' ? 'try' : 'edit'); renderAi3d(); renderTryFit(); if (cur === 'pvvers') renderVersions(); }
+      else setStageMode('edit');
       render();
       if (n === 3) loadMeasurements();
       if (n === 4) startQuotePoll(); else stopQuotePoll();
       if (n === 6) startOrderPoll();
-      if (narrow()) $('.st-panel').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+      if (narrow() && n !== 1 && n !== 2) $('.st-panel').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
     }
     $('#stepper').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(+b.dataset.go); });
-
-    /* ───────── step 1: describe ───────── */
-    const prompt = $('#prompt'); prompt.value = S.prompt;
-    $$('[data-pick]').forEach(g => {
-      const key = g.dataset.pick; const sync = () => $$('button', g).forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S[key]));
-      g.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S[key] = b.dataset.v; sync(); save(); }); sync();
-    });
-    prompt.addEventListener('input', () => { S.prompt = prompt.value; $('#err1').textContent = ''; save(); });
-    prompt.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) generate(); });
-    async function generate() {
-      const text = prompt.value.trim();
-      if (!text) { $('#err1').textContent = 'Describe the garment first. One sentence is enough.'; prompt.focus(); return; }
-      if (busy) return;
-      if (!A.signedIn()) { const u = await Acc.open({ message: 'Sign in so your concept and its versions are saved to your account.' }); if (!u) return; }
-      busy = 'gen'; S.prompt = text; render(); genUI(true);
-      if (narrow()) stage.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
-      const hints = { garment: S.garment, fabric: S.fabric, accent: S.accent };
-      const preview = E.parse(text, hints);
-      const req = A.createDesign({ prompt: text, hints }); req.catch(() => {});
-      try {
-        await stitch(2800, ['Reading your description', 'Drafting the silhouette', `Placing the ${preview.accent} ${preview.embroidery === 'none' ? 'details' : 'embroidery'}`, 'Finishing concept v1'], E.stitches(preview));
-        design = await req; order = null; quotes = []; S = { ...S, designId: design.id, view: null, quoteId: null, orderId: null, requested: false }; save();
-        genUI(false); artKey = ''; renderStage(); fadeThread();
-        FT.toast('Concept v1 is ready and saved');
-        setTimeout(() => go(2), 500);
-      } catch (e) { genUI(false); thread?.clear(); $('#err1').textContent = e.message || 'The concept was not generated. Try again.'; }
-      finally { busy = null; render(); }
-    }
-    $('#genBtn').addEventListener('click', generate);
-
-    /* ───────── step 2: refine ───────── */
-    const refine = $('#refine');
-    $('#refChips').addEventListener('click', e => { const b = e.target.closest('[data-fill]'); if (!b || locked()) return; refine.value = b.dataset.fill; refine.focus(); render(); });
-    refine.addEventListener('input', () => { $('#err2').textContent = ''; render(); });
-    refine.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); applyRefinement(); } });
-    const locked = () => !design || design.status === 'ordered' || approved();
-    async function applyRefinement() {
-      const text = refine.value.trim(); if (!text || busy || locked()) return;
-      busy = 'ref'; render(); genUI(true, 'ref');
-      const base = App.version(design, design.current).spec, preview = E.refine(base, text);
-      const req = A.refineDesign(design.id, text); req.catch(() => {});
-      try {
-        await stitch(1500, ['Reading the change', preview.changes.length ? preview.changes[0] : 'Noting it for the tailor', `Rendering concept v${design.versions.length + 1}`], E.stitches(preview.spec));
-        design = await req; S.view = null; refine.value = ''; save();
-        const badge = $('#stBadge'); badge.classList.remove('bump'); void badge.offsetWidth; badge.classList.add('bump');
-        const v = App.version(design); FT.toast(v.changes.length ? `v${v.n}: ${v.changes.join(', ')}` : `v${v.n} saved. "${text}" noted for the tailor`);
-      } catch (e) { $('#err2').textContent = e.message || 'The refinement was not saved. Try again.'; }
-      finally { genUI(false, 'ref'); fadeThread(); busy = null; render(); renderStage(); }
-    }
-    $('#refBtn').addEventListener('click', applyRefinement);
-    $('#toMeasure').addEventListener('click', () => go(3));
 
     /* ───────── step 3: measurements ───────── */
     async function loadMeasurements() { try { measurements = await A.listMeasurements(); if (!S.measurementId || !measurements.some(m => m.id === S.measurementId)) S.measurementId = measurements[0]?.id || null; } catch { measurements = []; } renderMeasurements(); }
@@ -206,7 +469,7 @@
       animate ? FT.flip(() => [...vlist.children], apply) : apply();
       $('#qHint').textContent = `${quotes.length} quote${quotes.length === 1 ? '' : 's'} so far · fabric included · prices in naira`;
     }
-    const seg = FT.seg($('#sortSeg'), by => { S.sort = by; save(); renderVendors(true); render(); }); seg.set(S.sort);
+    const sortSeg = FT.seg($('#sortSeg'), by => { S.sort = by; save(); renderVendors(true); render(); }); sortSeg.set(S.sort);
     vlist.addEventListener('click', e => {
       const p = e.target.closest('[data-profile]'); if (p) { e.stopPropagation(); App.vendorSheet(quotes.find(q => q.vendor.id === p.dataset.profile).vendor); return; }
       const b = e.target.closest('.vendor'); if (!b || approved() || busy) return; S.quoteId = b.dataset.id; S.picked = true; save(); render();
@@ -239,7 +502,7 @@
         if (S.method === 'paystack') result = await paystack(amount, kind);
         else if (S.method === 'card') result = await A.pay(order.id, { method: 'card', kind, card: { name: $('#cardName').value, number: cardNum.value, expiry: cardExp.value, cvv: $('#cardCvv').value } });
         else result = await A.pay(order.id, { method: 'transfer', kind });
-        order = result.order; save(); burst();
+        order = result.order; save(); burst(); if (result.reward) showReward(result.reward);
         FT.toast(kind === 'balance' ? 'Balance paid. Thank you.' : `Payment received. ${order.vendor?.name || 'Your tailor'} is starting.`);
         $('#cardCvv').value = '';
         setTimeout(() => go(6, { force: true }), 700);
@@ -280,7 +543,7 @@
       $('#trkHint').textContent = order ? (order.eta && p < 3 ? `Expected by ${App.date(order.eta)}. ` : '') + (A.local ? 'Updates appear here as the tailor posts them.' : 'The tracker checks for updates every 30 seconds.') : '';
       $('#trkV').innerHTML = App.PHASES.map(([, t, d], i) => `<li class="${i < p || (i === p && p === 3) ? 'done' : i === p ? 'now' : ''}"><span class="dot"><i></i></span><div><h3>${t}</h3><p>${d}</p></div></li>`).join('');
       if (!order) { $('#summary').innerHTML = ''; $('#feed').innerHTML = ''; $('#balance').hidden = true; return; }
-      $('#summary').innerHTML = `<dt>Order</dt><dd>${FT.esc(order.id)}</dd><dt>Tailor</dt><dd>${FT.esc(order.vendor?.name || '')}</dd><dt>Design</dt><dd>Concept v${order.versionN}</dd><dt>Delivery</dt><dd>${order.deliveryDays || '—'} days</dd><dt>Total</dt><dd>${FT.money(order.total)}</dd><dt>Paid</dt><dd>${FT.money(order.paid)}</dd>`;
+      $('#summary').innerHTML = `<dt>Order</dt><dd>${FT.esc(order.id)}</dd><dt>Tailor</dt><dd>${FT.esc(order.vendor?.name || '')}</dd><dt>Design</dt><dd>Version ${order.versionN}</dd><dt>Delivery</dt><dd>${order.deliveryDays || '—'} days</dd><dt>Total</dt><dd>${FT.money(order.total)}</dd><dt>Paid</dt><dd>${FT.money(order.paid)}</dd>`;
       $('#balance').hidden = !(order.status === 'balance_due' || (order.plan === 'deposit' && order.paid < order.total && order.status === 'active'));
       $('#balAmt').textContent = FT.money(order.total - order.paid) + (order.status === 'balance_due' ? ' · due now' : ' · after delivery');
       $('#balBtn').hidden = order.status !== 'balance_due';
@@ -293,32 +556,22 @@
     });
     function resetAll() {
       clearInterval(poll); stopQuotePoll(); thread?.clear();
-      S = fresh(); design = null; order = null; quotes = []; save();
-      prompt.value = ''; refine.value = ''; els.clear(); vlist.innerHTML = ''; artKey = '';
-      $$('[data-pick]').forEach(g => $$('button', g).forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S[g.dataset.pick])));
-      render(); renderStage(); go(1, { force: true }); prompt.focus();
+      S = fresh(); design = null; order = null; quotes = []; els.clear(); vlist.innerHTML = '';
+      setDraft(E.blank('kaftan'), { history: false, dirty: false }); undo.length = 0; redo.length = 0; S.tab = 'templates'; save();
+      render(); go(1, { force: true });
     }
     $('#newBtn').addEventListener('click', resetAll);
 
     /* ───────── render ───────── */
     function render() {
-      const v = design && App.version(design);
       $$('#stepper [data-go]').forEach(b => {
         const n = +b.dataset.go;
         b.classList.toggle('cur', n === S.step);
-        b.classList.toggle('done', (approved() && n < 6) || (!approved() && (n < S.step || (n === 1 && !!design && S.step !== 1))));
-        b.disabled = !reachable(n);
+        b.classList.toggle('done', (approved() && n < 6) || (!approved() && (n < S.step || (n === 1 && !!design && !dirty && S.step !== 1))));
+        b.disabled = !reachable(n) && !(n === 3 && draft);
         if (n === S.step) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
       });
-      // 1
-      prompt.disabled = busy === 'gen';
-      const gb = $('#genBtn'); gb.disabled = !!busy; gb.innerHTML = busy === 'gen' ? '<span class="spin"></span>Generating' : design ? 'Generate a new concept' : 'Generate concept';
-      // 2
-      refine.disabled = locked() || busy === 'ref'; refine.placeholder = locked() && design ? 'This design is in production. Duplicate it from My designs to keep refining.' : 'e.g. add deeper gold trim, mandarin collar, make it emerald…';
-      const rb = $('#refBtn'); rb.disabled = !refine.value.trim() || locked() || !!busy; rb.innerHTML = busy === 'ref' ? '<span class="spin"></span>Applying' : 'Apply refinement';
-      $('#spec').innerHTML = v ? `<span class="lbl">Concept v${v.n}</span><div class="chips">${E.summary(v.spec).map(t => `<span class="tag">${FT.esc(t)}</span>`).join('')}</div>${v.spec.notes?.length ? `<p class="small muted">Noted for the tailor: ${v.spec.notes.map(FT.esc).join('; ')}</p>` : ''}` : '';
-      const hist = $('#hist');
-      if (design) hist.innerHTML = [...design.versions].reverse().map(x => `<li class="${x.n === (S.view ?? design.current) ? 'cur' : ''}" data-v="${x.n}"><b>v${x.n}</b><span><span class="hi">${FT.esc(x.instruction || 'Generated from your description')}</span>${x.changes?.length ? `<span class="hc">${x.changes.map(FT.esc).join(' · ')}</span>` : x.n > 1 && x.noted ? '<span class="hc">Noted for the tailor</span>' : ''}</span></li>`).join(''); else hist.innerHTML = '';
+      renderBar();
       // 3
       const qb = $('#reqBtn'); qb.disabled = !!busy || !design; qb.innerHTML = busy === 'req' ? '<span class="spin"></span>Sending to tailors' : S.requested ? 'Request quotes again' : 'Request quotes from verified tailors';
       // 4 + drawer
@@ -350,12 +603,23 @@
     (async () => {
       if (S.orderId) { try { order = await A.getOrder(S.orderId); if (order.design) design = order.design; S.designId = order.designId; if (order.status === 'cancelled') { order = null; S.orderId = null; } } catch { order = null; S.orderId = null; } }
       if (S.designId && !design) { try { design = await A.getDesign(S.designId); } catch { design = null; S.designId = null; S.requested = false; } }
-      if (design && !S.prompt) S.prompt = design.prompt, prompt.value = S.prompt;
+      let stored = null; try { stored = JSON.parse(localStorage.getItem(DRAFT)); } catch {}
+      if (openTpl && E.template(openTpl)) { design = null; S.designId = null; draft = clone(E.template(openTpl).spec); dirty = true; }
+      else if (handed) { design = null; S.designId = null; draft = { ...E.parse(handed), template: null }; dirty = true; }
+      else if (design) {
+        if (order) S.baseN = order.versionN; if (!S.baseN || !design.versions.some(v => v.n === S.baseN)) S.baseN = design.current;
+        const useStored = stored && stored.designId === design.id && stored.dirty && !openDesign && !order;
+        draft = useStored ? stored.spec : clone(design.versions.find(v => v.n === S.baseN).spec); dirty = !!useStored;
+      } else if (stored && !stored.designId && stored.spec) { draft = stored.spec; dirty = stored.dirty !== false; }
+      else { draft = clone(E.template('royal-kaftan').spec); dirty = false; }
+      draft = { ...E.blank(draft.garment), ...draft };
       if (design && !order) { try { const r = await A.getRequest(design.id); if (r && r.status !== 'closed') S.requested = true; } catch {} }
-      if (order && order.status === 'awaiting_payment') S.step = 5; else if (order && order.status === 'balance_due' && wantPay) { S.plan = 'full'; S.step = 5; } else if (approved()) S.step = 6; else if (!design) S.step = 1; else if (S.step > 4 || (S.step === 4 && !S.requested)) S.step = S.requested ? 4 : 2;
-      save(); renderStage(); go(S.step, { force: true });
+      if (order && order.status === 'awaiting_payment') S.step = 5; else if (order && order.status === 'balance_due' && wantPay) { S.plan = 'full'; S.step = 5; } else if (approved()) S.step = S.step <= 2 ? S.step : 6; else if (!design || dirty) S.step = Math.min(S.step, 2); else if (S.step > 4 || (S.step === 4 && !S.requested)) S.step = S.requested ? 4 : 1;
+      if (wantChallenge) S.step = 1;
+      persistDraft(); save(); renderBuilder(); go(S.step, { force: true });
       if (S.step === 6) startOrderPoll();
-      FT.ready.then(() => { if (!design && !handed) prompt.focus({ preventScroll: true }); if (handed) FT.wait(400).then(generate); });
+      refreshGame();
+      if (wantChallenge) FT.ready.then(() => $('#dcGo')?.click());
     })();
     document.addEventListener('ft:auth', e => { if (!e.detail.user) { resetAll(); } });
   });

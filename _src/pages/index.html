@@ -1,19 +1,17 @@
 <main id="main">
   <section class="hero">
     <div class="hero-copy">
-      <h1 class="display split hero-h">Describe it.<br>See it.<br>Have it made.</h1>
-      <p class="lead rv" style="--d:.35s">Tell Fashion Teller what you want to wear in plain language. It shows you the design, refines it with you, and matches you with a verified tailor who makes it and delivers it to your door.</p>
+      <h1 class="display split hero-h">Design it.<br>See it on you.<br>Have it made.</h1>
+      <p class="lead rv" style="--d:.35s">Pick a template, swap the collar and sleeves, choose colours made for that fabric, and sketch your own details with your finger. See it in 3D and on your own photo, then a verified tailor makes it and delivers it to your door.</p>
       <div class="hero-try rv" style="--d:.5s">
-        <form class="ask" id="ask" novalidate>
-          <label class="sr" for="askInput">Describe the garment you want</label>
-          <input id="askInput" name="prompt" autocomplete="off" placeholder="A midnight silk kaftan with gold embroidery…">
-          <button class="btn gold mag" type="submit">Design it</button>
-        </form>
-        <div class="chips" aria-label="Try an idea">
-          <button class="chip" type="button" data-fill="An ivory agbada with gold thread on the chest">Ivory agbada</button>
-          <button class="chip" type="button" data-fill="A fitted emerald Ankara dress, knee length, puff sleeves">Ankara dress</button>
-          <button class="chip" type="button" data-fill="A charcoal linen suit, relaxed fit, mandarin collar">Linen suit</button>
+        <div class="row-btns hero-cta"><a class="btn gold mag" href="/studio">Start designing</a><a class="btn ghost mag" href="/studio?challenge=1">Today’s challenge</a></div>
+        <div class="chips" aria-label="Start from a template">
+          <a class="chip" href="/studio?template=grand-agbada">Grand agbada</a>
+          <a class="chip" href="/studio?template=ankara-flare">Ankara flare dress</a>
+          <a class="chip" href="/studio?template=senator">Senator kaftan</a>
+          <a class="chip" href="/studio?template=sharp-suit">Two-piece suit</a>
         </div>
+        <p class="muted" style="font-size:14px;margin:0">Design something every day to keep your streak.</p>
       </div>
     </div>
     <div class="hero-stage" id="heroStage">
@@ -21,9 +19,9 @@
       <video data-src="/assets/media/kaftan.mp4" poster="/assets/media/poster.jpg" muted loop playsinline preload="none" aria-label="Concept video: a midnight kaftan with gold embroidery"></video>
       <canvas id="heroTrail" aria-hidden="true"></canvas>
       <div class="demo rv" style="--d:.8s" aria-live="polite">
-        <div class="top"><span>Concept <b id="demoV">v1</b></span><span id="demoState">Refining</span></div>
+        <div class="top"><span>Version <b id="demoV">v1</b></span><span id="demoState">Designing</span></div>
         <div class="line" id="demoLine"></div>
-        <div class="dfoot"><span>Kaftan, midnight silk</span><i id="demoQ">5 verified tailors quoted</i></div>
+        <div class="dfoot"><span>Kaftan, midnight silk</span><i id="demoQ">4-day streak</i></div>
       </div>
     </div>
   </section>
@@ -36,7 +34,7 @@
       </div>
       <div class="band" data-inview>
         <span class="fill"></span>
-        <div class="ph" style="--i:0"><small>Phase 1</small><h3 class="h3">AI concept generated</h3><p>Your description becomes a design you can see and refine.</p></div>
+        <div class="ph" style="--i:0"><small>Phase 1</small><h3 class="h3">Design created</h3><p>You build it from templates, palettes and your own sketch, then approve a version.</p></div>
         <div class="ph" style="--i:1"><small>Phase 2</small><h3 class="h3">Vendor assigned</h3><p>You pick a verified tailor from real quotes.</p></div>
         <div class="ph" style="--i:2"><small>Phase 3</small><h3 class="h3">Fabric sourcing &amp; tailoring</h3><p>The tailor works from the version you approved.</p></div>
         <div class="ph" style="--i:3"><small>Phase 4</small><h3 class="h3">Doorstep quality delivery</h3><p>Checked, dispatched, and delivered to you.</p></div>
@@ -85,8 +83,8 @@
 
   <section class="sec mist bigcta" id="finale">
     <canvas id="finaleThread" aria-hidden="true"></canvas>
-    <h2 class="display split">Start with one sentence</h2>
-    <p class="lead rv">The studio runs in your browser. Describe a garment, refine it, compare tailors and watch the order move.</p>
-    <a class="btn gold mag rv" href="/studio">Open studio</a>
+    <h2 class="display split">Start with a template</h2>
+    <p class="lead rv">Start from a template. Make it yours. Save it today and start a streak.</p>
+    <a class="btn gold mag rv" href="/studio">Start designing</a>
   </section>
 </main>

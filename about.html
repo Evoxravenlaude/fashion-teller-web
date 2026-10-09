@@ -47,7 +47,7 @@
   <nav class="nav-links" aria-label="Primary">
     <a href="/how-it-works" data-nav="how">How it works</a>
     <a href="/studio" data-nav="studio">Studio</a>
-    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" hidden>My designs</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" hidden>My studio</a>
     <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" hidden>Orders</a>
     <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" hidden>Workshop</a>
     <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" hidden>Admin</a>
@@ -57,12 +57,13 @@
   <div class="nav-end">
     <a class="btn ghost sm" href="/signin" data-auth="out">Sign in</a>
     <a class="btn gold sm mag" href="/studio" data-auth="out">Open studio</a>
+    <a class="streak" href="/designs" data-auth="in" data-role="customer" id="navStreak" hidden aria-label="Your design streak"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-4-1-6 1-9.5z" fill="currentColor"/></svg><b>0</b></a>
     <div class="acct" data-auth="in" hidden>
       <button class="avatar" id="acctBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"><span class="ini"></span></button>
       <div class="acct-menu" id="acctMenu" role="menu" hidden>
         <div class="who"><b class="acct-name"></b><span class="acct-email"></span><i class="acct-role"></i></div>
         <a href="/studio" role="menuitem">Studio</a>
-        <a href="/designs" role="menuitem" data-role="customer">My designs</a>
+        <a href="/designs" role="menuitem" data-role="customer">My studio</a>
         <a href="/orders" role="menuitem" data-role="customer">Orders</a>
         <a href="/account#measurements" role="menuitem" data-role="customer">Measurements</a>
         <a href="/workshop" role="menuitem" data-role="tailor">Workshop</a>
@@ -78,7 +79,7 @@
   <nav aria-label="Menu">
     <a href="/" data-nav="home" style="--i:0">Home</a>
     <a href="/studio" data-nav="studio" style="--i:1">Studio</a>
-    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" style="--i:2" hidden>My designs</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" style="--i:2" hidden>My studio</a>
     <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" style="--i:3" hidden>Orders</a>
     <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" style="--i:2" hidden>Workshop</a>
     <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" style="--i:2" hidden>Admin</a>
@@ -98,7 +99,7 @@
 
   <section class="sec" style="padding-top:0">
     <div class="wrap">
-      <p class="statement" id="statement">Getting a garment made means explaining it to a tailor, hoping they picture the same thing, and chasing them for updates. Most people with a clear idea never get it made. Fashion Teller lets you see the design first, choose a verified tailor on price, quality and delivery, and follow production to your door.</p>
+      <p class="statement" id="statement">Getting a garment made means explaining it to a tailor, hoping they picture the same thing, and chasing them for updates. Most people with a clear idea never get it made. Fashion Teller lets you design it yourself and see it first, choose a verified tailor on price, quality and delivery, and follow production to your door.</p>
     </div>
   </section>
 
@@ -106,7 +107,7 @@
     <div class="wrap split2" style="align-items:start">
       <div class="copy"><h2 class="h2 split">What it does</h2></div>
       <div class="trio" style="grid-template-columns:1fr;margin-top:0;gap:36px">
-        <div class="rv"><h3>Turns plain language into a design</h3><p>Describe a garment and see an AI-generated concept. Refine it in your own words until it is right.</p></div>
+        <div class="rv"><h3>Puts the design in your hands</h3><p>Templates, palettes made for each style and fabric, swappable parts and a finger-sketch layer. See it in 3D and on your own photo. Come back every day for a new challenge.</p></div>
         <div class="rv"><h3>Connects you with verified makers</h3><p>Compare tailors and manufacturers side by side on price, rating and delivery time, then choose.</p></div>
         <div class="rv"><h3>Tracks production to delivery</h3><p>One tracker from concept to doorstep, so you always know where your order is.</p></div>
         <div class="rv"><h3>Widens the market for tailors</h3><p>Workshops quote on designs from customers far outside their local area.</p></div>
@@ -153,7 +154,7 @@
     <div>
       <img src="/assets/media/logo.png" alt="Fashion Teller. Design smarter, wear better." width="220" height="87" loading="lazy">
     </div>
-    <div><h4>Product</h4><ul><li><a href="/how-it-works">How it works</a></li><li><a href="/studio">Studio</a></li><li><a href="/designs">My designs</a></li><li><a href="/orders">Orders</a></li></ul></div>
+    <div><h4>Product</h4><ul><li><a href="/how-it-works">How it works</a></li><li><a href="/studio">Studio</a></li><li><a href="/designs">My studio</a></li><li><a href="/orders">Orders</a></li></ul></div>
     <div><h4>Makers</h4><ul><li><a href="/tailors">For tailors</a></li><li><a href="/tailors#apply">Apply as a tailor</a></li><li><a href="/workshop">Workshop</a></li></ul></div>
     <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="/about#contact">Contact</a></li><li><a href="/signin">Sign in</a></li></ul></div>
   </div>

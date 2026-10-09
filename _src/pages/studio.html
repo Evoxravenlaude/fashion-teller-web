@@ -1,73 +1,81 @@
 <main id="main" class="studio">
-  <section class="st-stage" id="stage" aria-label="Concept preview">
+  <section class="st-stage" id="stage" aria-label="Your design">
     <div class="st-bg" aria-hidden="true"></div>
     <div class="st-center">
       <div class="st-frame" id="frame">
         <div class="st-art" id="stArt" aria-live="polite"></div>
-        <canvas id="stThread" aria-hidden="true"></canvas>
-        <div class="st-empty">
-          <svg viewBox="0 0 200 300" fill="none" aria-hidden="true"><path d="M70 20c10 14 50 14 60 0l52 34-18 46-20-8v188H56V92l-20 8-18-46z" stroke="#fff" stroke-width="2" stroke-dasharray="5 7" stroke-linejoin="round"/></svg>
-          <p>Your concept appears here</p>
-          <span>Describe the garment and generate a concept.</span>
+        <div class="st-turn" id="stTurn" hidden><div class="turn-face" id="turnFace"></div><i class="turn-light" id="turnLight"></i></div>
+        <div class="st-try" id="stTry" hidden>
+          <img class="try-photo" id="tryPhoto" alt="Your photo">
+          <div class="try-garm" id="tryGarm"></div>
+          <div class="try-empty" id="tryEmpty"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><p>Add a photo of yourself</p><span>Stand straight, facing the camera. Your photo stays on this device.</span></div>
         </div>
-        <div class="st-badge" id="stBadge">Concept <b id="stVer">v1</b></div>
-        <div class="st-gen" id="stGen" aria-live="polite"><span id="stGenText">Reading your description</span><i><b id="stGenBar"></b></i></div>
+        <canvas id="stThread" aria-hidden="true"></canvas>
+        <div class="st-badge" id="stBadge"><span id="stVerLbl">New design</span> <b id="stVer"></b></div>
+        <div class="st-gen" id="stGen" aria-live="polite"><span id="stGenText"></span><i><b id="stGenBar"></b></i></div>
+        <div class="st-draw-hint" id="drawHint">Draw on the garment with your finger</div>
+        <div class="reward" id="reward" aria-live="polite"></div>
       </div>
       <span class="st-sample" id="stSample" hidden>Runs in your browser</span>
     </div>
     <div class="st-meta">
       <div class="st-titlebox"><p class="st-title" id="stTitle"></p><p class="st-sub" id="stSub"></p></div>
-      <div class="st-vers">
-        <ol class="st-versions" id="stVersions" aria-label="Versions"></ol>
-        <button class="st-restore" id="stRestore" type="button" hidden>Use this version</button>
-      </div>
+      <div class="st-vers"><ol class="st-versions" id="stVersions" aria-label="Saved versions"></ol></div>
     </div>
   </section>
 
   <section class="st-panel" aria-label="Design steps">
     <ol class="stepper six" id="stepper">
-      <li><button data-go="1"><b>1</b><span>Describe</span></button></li>
-      <li><button data-go="2"><b>2</b><span>Refine</span></button></li>
+      <li><button data-go="1"><b>1</b><span>Design</span></button></li>
+      <li><button data-go="2"><b>2</b><span>See it</span></button></li>
       <li><button data-go="3"><b>3</b><span>Measure</span></button></li>
       <li><button data-go="4"><b>4</b><span>Tailors</span></button></li>
       <li><button data-go="5"><b>5</b><span>Pay</span></button></li>
       <li><button data-go="6"><b>6</b><span>Track</span></button></li>
     </ol>
     <div class="panes">
-      <div class="pane" data-pane="1">
-        <h2>What do you want to wear?</h2>
-        <p class="hint">A sentence is enough. Add details below if you know them.</p>
-        <label class="sr" for="prompt">Describe the garment</label>
-        <textarea class="ta" id="prompt" rows="4" placeholder="A midnight silk kaftan with gold embroidery across the chest, sleeves to the wrist…"></textarea>
-        <div class="grp"><span>Garment</span><div class="chips" data-pick="garment">
-          <button class="chip" data-v="Kaftan">Kaftan</button><button class="chip" data-v="Agbada">Agbada</button><button class="chip" data-v="Boubou">Boubou</button><button class="chip" data-v="Dress">Dress</button><button class="chip" data-v="Suit">Suit</button><button class="chip" data-v="Shirt">Shirt</button>
-        </div></div>
-        <div class="grp"><span>Fabric</span><div class="chips" data-pick="fabric">
-          <button class="chip" data-v="Silk">Silk</button><button class="chip" data-v="Ankara">Ankara</button><button class="chip" data-v="Aso-oke">Aso-oke</button><button class="chip" data-v="Linen">Linen</button><button class="chip" data-v="Wool">Wool</button><button class="chip" data-v="Cotton">Cotton</button><button class="chip" data-v="Lace">Lace</button>
-        </div></div>
-        <div class="grp"><span>Accent colour</span><div class="chips" data-pick="accent">
-          <button class="sw" data-v="Gold" style="background:#D4AF37" aria-label="Gold"></button><button class="sw" data-v="Silver" style="background:#C0C4C8" aria-label="Silver"></button><button class="sw" data-v="Emerald" style="background:#1F6B4E" aria-label="Emerald"></button><button class="sw" data-v="Crimson" style="background:#8E1F2B" aria-label="Crimson"></button><button class="sw" data-v="Ivory" style="background:#F4EFE3" aria-label="Ivory"></button><button class="sw" data-v="Black" style="background:#16181C" aria-label="Black"></button>
-        </div></div>
+      <div class="pane builder" data-pane="1">
+        <div class="daily" id="daily"></div>
+        <div class="bld-tabs" id="bldTabs" role="tablist" aria-label="Design parts">
+          <button type="button" role="tab" data-bt="templates">Templates</button><button type="button" role="tab" data-bt="style">Style</button><button type="button" role="tab" data-bt="colours">Colours</button><button type="button" role="tab" data-bt="fabric">Fabric</button><button type="button" role="tab" data-bt="collar">Collar</button><button type="button" role="tab" data-bt="sleeves">Sleeves</button><button type="button" role="tab" data-bt="length">Length</button><button type="button" role="tab" data-bt="fit">Fit</button><button type="button" role="tab" data-bt="embroidery">Embroidery</button><button type="button" role="tab" data-bt="details">Details</button><button type="button" role="tab" data-bt="sketch">Sketch</button>
+        </div>
+        <div class="bld-body" id="bldBody"></div>
         <p class="err" id="err1" role="alert"></p>
-        <div class="spacer"></div>
-        <button class="btn ink mag" id="genBtn">Generate concept</button>
-        <p class="hint center"><a href="/designs" class="textlink" data-auth="in">Open a saved design</a><span data-auth="out">Sign in when you generate; your designs are saved to your account.</span></p>
+        <div class="bld-bar">
+          <button class="iconbtn plain" type="button" id="undoBtn" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="iconbtn plain" type="button" id="redoBtn" aria-label="Redo"><svg viewBox="0 0 24 24" fill="none"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="iconbtn plain" type="button" id="shuffleBtn" aria-label="Surprise me"><svg viewBox="0 0 24 24" fill="none"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="chip ai-chip" type="button" id="aiBtn"><i>AI</i> Describe it</button>
+          <button class="btn ink sm" type="button" id="saveBtn">Save</button>
+        </div>
+        <button class="btn gold mag" id="toPreview" type="button">See it in 3D &amp; on you</button>
       </div>
 
       <div class="pane" data-pane="2">
-        <h2>Refine it in your own words</h2>
-        <p class="hint">Each instruction becomes a new version. Press Enter to apply.</p>
-        <label class="sr" for="refine">Refinement instruction</label>
-        <textarea class="ta" id="refine" rows="3" placeholder="e.g. add deeper gold trim, mandarin collar, make it emerald…"></textarea>
-        <div class="chips" id="refChips">
-          <button class="chip" data-fill="Add deeper gold trim">Deeper gold trim</button><button class="chip" data-fill="Make the neckline a mandarin collar">Mandarin collar</button><button class="chip" data-fill="Shorten the sleeves to three-quarter">Three-quarter sleeves</button><button class="chip" data-fill="Bring the embroidery down to the hem">Embroidery to the hem</button><button class="chip" data-fill="Make it fitted">Fitted</button><button class="chip" data-fill="Add side pockets">Pockets</button>
+        <h2>See it before it is made</h2>
+        <div class="tabs" id="pvTabs" role="tablist"><button type="button" role="tab" data-tab="pv3d">3D view</button><button type="button" role="tab" data-tab="pvtry">Try it on</button><button type="button" role="tab" data-tab="pvvers">Versions</button></div>
+        <div class="pvbox" data-panel="pv3d">
+          <p class="hint" style="margin:0">Drag the garment to turn it around.</p>
+          <div class="row-btns compact"><button class="btn ghost sm" type="button" data-turn="0">Front</button><button class="btn ghost sm" type="button" data-turn="180">Back</button><button class="btn ghost sm" type="button" id="spinBtn">Spin</button></div>
+          <div class="ai-row" id="ai3d"></div>
         </div>
+        <div class="pvbox" data-panel="pvtry" hidden>
+          <label class="btn ink" for="tryFile">Upload a photo</label><input id="tryFile" type="file" accept="image/*" hidden>
+          <label class="btn ghost" for="tryCam" id="tryCamLbl">Take a selfie</label><input id="tryCam" type="file" accept="image/*" capture="user" hidden>
+          <div class="trycontrols" id="tryControls" hidden>
+            <div class="slider"><div class="top"><label for="trySize">Size</label><output id="trySizeOut">100%</output></div><input class="range" id="trySize" type="range" min="40" max="180" value="100"></div>
+            <div class="slider"><div class="top"><label for="tryRot">Tilt</label><output id="tryRotOut">0°</output></div><input class="range" id="tryRot" type="range" min="-25" max="25" value="0"></div>
+            <div class="slider"><div class="top"><label for="tryOp">See-through</label><output id="tryOpOut">0%</output></div><input class="range" id="tryOp" type="range" min="0" max="60" value="0"></div>
+            <p class="hint" style="margin:0">Drag the garment onto your shoulders. Pinch to resize on a phone.</p>
+            <div class="row-btns compact"><button class="btn ghost sm" type="button" id="tryFit"></button><button class="btn ink sm" type="button" id="trySave">Save the look</button><button class="btn ghost sm" type="button" id="tryClear">Remove photo</button></div>
+          </div>
+          <p class="muted small" id="tryNote"></p>
+        </div>
+        <div class="pvbox" data-panel="pvvers" hidden><ol class="vgrid" id="vgrid"></ol></div>
         <p class="err" id="err2" role="alert"></p>
-        <button class="btn ink mag" id="refBtn" disabled>Apply refinement</button>
-        <div class="spec" id="spec"></div>
-        <ol class="hist" id="hist" aria-label="Version history"></ol>
         <div class="spacer"></div>
-        <button class="btn ghost mag" id="toMeasure">Continue to measurements</button>
+        <button class="btn ghost" type="button" id="backToDesign">Keep designing</button>
+        <button class="btn ink mag" id="toMeasure" type="button">Get it made: add measurements</button>
       </div>
 
       <div class="pane" data-pane="3">

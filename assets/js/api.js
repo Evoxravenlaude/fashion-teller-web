@@ -104,7 +104,7 @@
     order: o => o && ({ id: String(o.id), userId: String(o.user_id), vendorId: String(o.vendor_id), designId: String(o.design_id), versionN: o.version, quoteId: o.quote_id ? String(o.quote_id) : null, measurementId: o.measurement_id ? String(o.measurement_id) : null, total: Number(o.total), paid: Number(o.paid || 0), balance: Number(o.total) - Number(o.paid || 0), plan: o.plan || 'full', phase: o.phase, status: o.status || 'active', createdAt: o.created_at, paidAt: o.paid_at, eta: o.eta, deliveredAt: o.delivered_at, deliveryDays: o.delivery_days, events: (o.events || []).map(e => ({ at: e.created_at || e.at, phase: e.phase, title: e.title, body: e.body || '', by: e.by || 'system' })), vendor: o.vendor ? W.vendor(o.vendor) : { id: String(o.vendor_id), name: o.vendor_name || '', hue: 40 }, design: o.design ? W.design(o.design) : null, customer: o.customer || null, measurement: o.measurement ? W.measurement(o.measurement) : null }),
     payment: p => p && ({ id: String(p.id), orderId: String(p.order_id), amount: Number(p.amount), kind: p.kind, method: p.method, reference: p.reference, status: p.status, last4: p.last4 || null, createdAt: p.created_at, customer: p.customer, vendor: p.vendor }),
   };
-  const specBody = s => ({ garment: s.garment, fabric: s.fabric, color: s.color, accent: s.accent, length: s.length, sleeves: s.sleeves, collar: s.collar, fit: s.fit, embroidery: s.embroidery, density: s.density, buttons: s.buttons, pockets: s.pockets, puff: s.puff, belt: s.belt, pattern: s.pattern, notes: s.notes });
+  const specBody = s => JSON.parse(JSON.stringify(s)); // the whole builder spec, including template, palette and sketch strokes
   const mBody = m => ({ label: m.label, unit: m.unit, values: m.values, fit: m.fit, notes: m.notes });
 
   /* ═════════ the API ═════════ */
@@ -124,7 +124,17 @@
     async changePassword(cur, next) { return LOCAL ? S.changePassword(cur, next) : post('/account/password/', { current_password: cur, new_password: next }).then(() => true); },
 
     /* designs + versions */
-    async createDesign({ prompt, hints }) { return LOCAL ? S.createDesign({ prompt, hints }) : W.design(await post('/design/', { prompt, hints, spec: specBody(window.FTEngine.parse(prompt, hints)) })); },
+    async createDesign({ prompt = '', hints = {}, spec = null, title = '' }) {
+      if (LOCAL) return S.createDesign({ prompt, hints, spec, title });
+      const d = await post('/design/', { prompt, hints, title, source: spec ? 'builder' : 'ai', spec: specBody(spec || window.FTEngine.parse(prompt, hints)) });
+      return { ...W.design(d), reward: d.reward || null };
+    },
+    async saveVersion(id, spec, label = '', fromN = null) { if (LOCAL) return S.saveVersion(id, spec, label, fromN); const d = await post(`/design/${id}/versions/`, { spec: specBody(spec), label, from_version: fromN }); return { ...W.design(d), reward: d.reward || null }; },
+    async game() { return LOCAL ? S.game() : get('/account/game/'); },
+    /** Optional AI services. Built-in mode has none: the studio uses its live 3D turntable and manual try-on fit instead. */
+    ai: { render3d: !LOCAL && C.ai?.render3d !== false, tryOn: !LOCAL && C.ai?.tryOn !== false },
+    async render3d(designId) { if (LOCAL) throw new ApiError('The AI 3D service is not connected.', 0); return post(`/design/${designId}/render-3d/`, {}); },
+    async tryOnFit(designId, imageDataUrl) { if (LOCAL) throw new ApiError('The AI try-on service is not connected.', 0); return post(`/design/${designId}/try-on/`, { image: imageDataUrl }); },
     async listDesigns() { return LOCAL ? S.listDesigns() : (await get('/design/')).map(W.design); },
     async getDesign(id) { return LOCAL ? S.getDesign(id) : W.design(await get(`/design/${id}/`)); },
     async refineDesign(id, instruction) {
@@ -163,7 +173,7 @@
       if (LOCAL) return S.pay(orderId, o);
       // Paystack inline on the client; the backend verifies the reference and records the payment.
       const d = await post(`/order/${orderId}/payments/`, { method: o.method, kind: o.kind, reference: o.reference || null });
-      return { payment: W.payment(d.payment || d), order: W.order(d.order || (await get(`/order/${orderId}/`))) };
+      return { payment: W.payment(d.payment || d), order: W.order(d.order || (await get(`/order/${orderId}/`))), reward: d.reward || null };
     },
     async initPayment(orderId, kind) { return LOCAL ? { reference: 'FT' + Date.now().toString(36).toUpperCase(), amount: null } : post(`/order/${orderId}/payments/init/`, { kind }); },
     async listOrders() { return LOCAL ? S.listOrders() : (await get('/order/')).map(W.order); },

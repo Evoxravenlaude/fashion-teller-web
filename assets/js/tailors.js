@@ -10,7 +10,7 @@
 
     /* rank simulator */
     const list = $('#simList'), els = new Map();
-    const me = { id: 'me', name: 'Your workshop', city: '', rating: 4.7, verified: true, price: 280, deliveryDays: 7 };
+    const me = { id: 'me', name: 'Your workshop', city: '', rating: 4.7, verified: true, price: 95000, deliveryDays: 7 };
     let sort = 'match', raf = 0;
     const all = () => [...base, me];
     const pct = r => r.style.setProperty('--p', ((r.value - r.min) / (r.max - r.min)) * 100 + '%');
@@ -36,7 +36,7 @@
       const r = $('#' + id), out = $('#' + id + 'Out'); pct(r);
       r.addEventListener('input', () => { me[key] = num(r.value); out.textContent = fmt(me[key]); pct(r); cancelAnimationFrame(raf); raf = requestAnimationFrame(() => draw(true)); });
     };
-    bind('simPrice', 'price', v => '$' + v);
+    bind('simPrice', 'price', v => FT.money(v));
     bind('simDays', 'deliveryDays', v => v + (v === 1 ? ' day' : ' days'));
     bind('simRate', 'rating', v => v.toFixed(1) + ' ★', v => Math.round(Number(v) * 10) / 10);
     $('#simName').addEventListener('input', e => { me.name = e.target.value.trim() || 'Your workshop'; draw(false); });
@@ -53,6 +53,12 @@
     /* application form */
     const form = $('#applyForm');
     const email = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || '');
+    const me0 = FTApi.me();
+    if (me0) {
+      $('#a-passField').hidden = true; $('#a-contact').value = me0.name; $('#a-email').value = me0.email; $('#a-email').readOnly = true; $('#a-phone').value = me0.phone || ''; $('#a-city').value = me0.city || ''; if (me0.country) $('#a-country').value = me0.country;
+      const p = $('#applySigned'); p.hidden = false; p.textContent = `Applying as ${me0.name} (${me0.email}).`;
+      if (me0.vendorId) { form.hidden = true; $('#applyDoneH').textContent = 'Your workshop is registered'; $('#applyDone').classList.add('on'); }
+    }
     FT.form(form, {
       kind: 'tailor-applications',
       rules: {
@@ -62,16 +68,15 @@
         city: v => (v?.trim() ? '' : 'Enter the city your workshop is in.'),
         country: v => (v ? '' : 'Choose a country.'),
         specialties: (v, d) => (d.specialties?.length ? '' : 'Choose at least one thing you make.'),
+        password: v => (FTApi.me() ? '' : v && v.length >= 8 ? '' : 'Create a password of at least 8 characters.'),
       },
+      submit: async d => { await FTApi.applyAsVendor(d); },
       done: d => {
         form.hidden = true;
-        $('#applyDoneH').textContent = `Application sent for ${d.workshop}`;
+        $('#applyDoneH').textContent = `${d.workshop} is registered`;
         $('#applyDone').classList.add('on');
+        document.dispatchEvent(new CustomEvent('ft:auth', { detail: { user: FTApi.me() } }));
       },
-    });
-    $('#applyAgain').addEventListener('click', () => {
-      form.reset(); $$('[data-multi] button', form).forEach(b => b.setAttribute('aria-pressed', 'false'));
-      $('#applyDone').classList.remove('on'); form.hidden = false; $('#a-name').focus();
     });
   });
 })();

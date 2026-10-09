@@ -1,11 +1,20 @@
 /**
  * Fashion Teller site configuration. The only file you edit to go live or to tune rendering.
  *
- * apiBaseUrl   empty  -> the studio runs on built-in sample data (no backend needed)
- *              set    -> e.g. "https://api.fashionteller.com"; the Django backend must allow
- *                        this site's origin in CORS (django-cors-headers, CORS_ALLOWED_ORIGINS)
- * formEndpoint empty  -> tailor applications and contact messages are kept in the visitor's browser
- *              set    -> any endpoint that accepts a JSON POST (your own API, Formspree, a Vercel function)
+ * apiBaseUrl   empty  -> the whole product runs in the browser: accounts, designs, versions, measurements,
+ *                        verified tailors, quotes, orders, payments, tracking and the admin dashboard are
+ *                        kept in this browser's storage (see assets/js/store.js). Nothing leaves the device.
+ *              set    -> e.g. "https://api.fashionteller.com"; every call goes to the Django backend
+ *                        (routes in README.md). The backend must allow this site's origin in CORS.
+ * formEndpoint empty  -> contact messages and tailor applications are kept in the browser (and shown in Admin)
+ *              set    -> any endpoint that accepts a JSON POST; they are also sent there
+ * currency     Prices are quoted and paid in Nigerian naira.
+ * payments     paystackPublicKey empty -> the built-in test checkout (card or bank transfer) completes payments
+ *              in the browser. Set a Paystack public key (pk_test_… or pk_live_…) to take real payments with
+ *              Paystack inline; the backend verifies the reference (see README).
+ * demoAccounts true   -> the sign-in page offers one-tap demo accounts (customer, tailor, admin). Set false in production.
+ * sample       Pace of the built-in simulation while apiBaseUrl is empty: how quickly verified tailors
+ *              quote on a new request, and how fast a sample tailor moves an order through production.
  *
  * render       Display and rendering settings per device type. The device is detected before the
  *              page draws (see assets/js/device.js): phone / tablet / laptop / desktop; weak hardware starts one
@@ -19,8 +28,12 @@
 window.FT_CONFIG = {
   apiBaseUrl: '',
   apiPrefix: '/api/v1',
-  designId: 'sample',
   formEndpoint: '',
+
+  currency: { code: 'NGN', symbol: '₦', locale: 'en-NG' },
+  payments: { paystackPublicKey: '', depositPercent: 50, platformFeePercent: 0 },
+  demoAccounts: true,
+  sample: { quoteDelayMs: [1800, 9000], orderPhaseMs: 30000 },
 
   render: {
     /* Breakpoints used to tell device types apart (CSS pixels, viewport width). Touch screens

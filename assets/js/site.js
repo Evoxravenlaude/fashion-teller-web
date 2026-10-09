@@ -15,7 +15,7 @@
     set: (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch {} },
   };
   Object.assign(FT, { $, $$, reduced, fine, wait, ss });
-  FT.money = n => '$' + Number(n).toFixed(2);
+  FT.money = n => (window.FTApi ? FTApi.money(n) : '₦' + Math.round(Number(n)).toLocaleString('en-NG'));
   FT.esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   /* ───────── ready: resolves once the loader (if any) has lifted ───────── */
@@ -275,7 +275,7 @@
       if (!running) { running = true; requestAnimationFrame(loop); }
     }, { passive: true });
     document.addEventListener('pointerleave', () => c.classList.remove('on'));
-    const hot = 'a,button,.vendor,input,textarea,select,label[for]';
+    const hot = 'a,button,.vendor,input,textarea,select,label[for],.card-link';
     document.addEventListener('pointerover', e => { if (e.target.closest(hot)) c.classList.add('big'); });
     document.addEventListener('pointerout', e => { if (e.target.closest(hot)) c.classList.remove('big'); });
   }
@@ -384,7 +384,7 @@
   };
   FT.vendorFill = (el, v, tags = []) => {
     $('.vn span', el).textContent = v.name;
-    $('.vp', el).textContent = '$' + Math.round(v.price);
+    $('.vp', el).textContent = FT.money(v.price);
     $('.vm', el).textContent = `${v.rating.toFixed(1)} ★${v.verified ? ' (Verified)' : ''}${v.city ? ', ' + v.city : ''}`;
     $('.vd', el).textContent = `${v.deliveryDays} days`;
     $('.vt', el).innerHTML = tags.map(t => `<span class="tag${t === 'You' ? ' ink' : ''}">${FT.esc(t)}</span>`).join('');
@@ -428,7 +428,7 @@
   }
 
   /* ═════════ Forms (tailor application, contact) ═════════ */
-  FT.form = (form, { kind, rules, done }) => {
+  FT.form = (form, { kind, rules, done, submit }) => {
     const set = (name, msg) => {
       const f = form.querySelector(`[name="${name}"]`)?.closest('.field'); if (!f) return;
       f.classList.toggle('bad', !!msg); const m = $('.msg', f); if (m) m.textContent = msg || '';
@@ -448,17 +448,14 @@
       btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Sending';
       const endpoint = (window.FT_CONFIG || {}).formEndpoint;
       try {
+        if (submit) await submit(data);
         if (endpoint) {
-          const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ kind, ...data }) });
-          if (!r.ok) throw new Error();
-        } else {
-          await wait(700);
-          const k = 'ft.' + kind; const prev = JSON.parse(localStorage.getItem(k) || '[]');
-          prev.push({ ...data, at: new Date().toISOString() }); localStorage.setItem(k, JSON.stringify(prev));
-        }
+          const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ kind, ...data, password: undefined }) });
+          if (!r.ok) throw new Error('That did not send. Check your connection and try again.');
+        } else if (!submit) await wait(700);
         done?.(data);
-      } catch {
-        FT.toast('That did not send. Check your connection and try again.');
+      } catch (e) {
+        FT.toast(e?.message || 'That did not send. Check your connection and try again.');
       } finally { btn.disabled = false; btn.innerHTML = label; }
     });
   };

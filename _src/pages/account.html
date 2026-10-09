@@ -1,0 +1,46 @@
+<main id="main" class="app">
+  <section class="app-head">
+    <div class="wrap">
+      <div class="sec-head" style="margin-bottom:0;align-items:end">
+        <div><h1 class="h2 split">Account</h1><p class="body rv" id="aSub"></p></div>
+        <div class="tabs rv" id="aTabs" role="tablist"><button type="button" role="tab" data-tab="profile">Profile</button><button type="button" role="tab" data-tab="measurements">Measurements</button><button type="button" role="tab" data-tab="security">Password</button></div>
+      </div>
+    </div>
+  </section>
+  <section class="sec tight">
+    <div class="wrap" id="aRoot">
+      <div data-panel="profile">
+        <div class="split2" style="align-items:start">
+          <div class="copy"><h2 class="h3">Your details</h2><p class="body">Tailors see your name and city on requests. Your email is used to sign in and for order updates.</p></div>
+          <form class="form" id="profileForm" novalidate>
+            <div class="field full"><label for="p-name">Full name</label><input id="p-name" name="name" autocomplete="name"></div>
+            <div class="field full"><label for="p-email">Email</label><input id="p-email" name="email" type="email" autocomplete="email"></div>
+            <div class="field"><label for="p-phone">Phone or WhatsApp</label><input id="p-phone" name="phone" type="tel" autocomplete="tel"></div>
+            <div class="field"><label for="p-city">City</label><input id="p-city" name="city" autocomplete="address-level2"></div>
+            <div class="field full"><label for="p-country">Country</label><select id="p-country" name="country"></select></div>
+            <p class="err full" role="alert"></p>
+            <div class="foot-row"><p id="p-role"></p><button class="btn ink mag" type="submit">Save changes</button></div>
+          </form>
+        </div>
+      </div>
+      <div data-panel="measurements" hidden>
+        <div class="split2" style="align-items:start">
+          <div class="copy"><h2 class="h3">Measurement profiles</h2><p class="body">Measure once, reuse on every order. Keep a profile for each person you order for. Use a soft tape, snug but not tight.</p><button class="btn ink mag" type="button" id="mAdd">Add a profile</button></div>
+          <div><div class="mlist big" id="mList"></div><div id="mForm" hidden style="margin-top:20px"></div></div>
+        </div>
+      </div>
+      <div data-panel="security" hidden>
+        <div class="split2" style="align-items:start">
+          <div class="copy"><h2 class="h3">Change password</h2><p class="body">At least 8 characters. You stay signed in on this device.</p></div>
+          <form class="form" id="passForm" novalidate style="grid-template-columns:1fr">
+            <div class="field"><label for="s-cur">Current password</label><input id="s-cur" name="current" type="password" autocomplete="current-password"></div>
+            <div class="field"><label for="s-new">New password</label><input id="s-new" name="next" type="password" autocomplete="new-password" minlength="8"></div>
+            <div class="field"><label for="s-new2">Repeat new password</label><input id="s-new2" name="next2" type="password" autocomplete="new-password"></div>
+            <p class="err" role="alert"></p>
+            <div class="foot-row"><p></p><button class="btn ink mag" type="submit">Update password</button></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>

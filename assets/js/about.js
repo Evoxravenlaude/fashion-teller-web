@@ -22,6 +22,7 @@
     const form = $('#contactForm');
     FT.form(form, {
       kind: 'contact-messages',
+      submit: d => FTApi.contact(d),
       rules: {
         name: v => (v?.trim() ? '' : 'Enter your name.'),
         email: v => (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v || '') ? '' : 'Enter an email we can reply to.'),

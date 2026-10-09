@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Studio — Fashion Teller</title>
-<meta name="description" content="Describe a garment, refine the concept in plain language, compare verified tailors and track production.">
+<meta name="description" content="Describe a garment, refine it version by version, add your measurements, compare verified tailors, pay in naira and track production.">
 <meta name="theme-color" content="#FFFFFF">
 <link rel="canonical" href="/studio">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Studio — Fashion Teller">
-<meta property="og:description" content="Describe a garment, refine the concept in plain language, compare verified tailors and track production.">
+<meta property="og:description" content="Describe a garment, refine it version by version, add your measurements, compare verified tailors, pay in naira and track production.">
 <meta property="og:image" content="/assets/media/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="/assets/media/favicon.png">
@@ -21,8 +21,11 @@
 <link rel="stylesheet" href="/assets/css/site.css">
 <script src="/assets/js/config.js"></script>
 <script src="/assets/js/device.js"></script>
+<script src="/assets/js/engine.js" defer></script>
+<script src="/assets/js/store.js" defer></script>
 <script src="/assets/js/api.js" defer></script>
 <script src="/assets/js/site.js" defer></script>
+<script src="/assets/js/account.js" defer></script>
 <script src="/assets/js/studio.js" defer></script>
 </head>
 <body data-page="studio">
@@ -44,30 +47,54 @@
   <nav class="nav-links" aria-label="Primary">
     <a href="/how-it-works" data-nav="how">How it works</a>
     <a href="/studio" data-nav="studio">Studio</a>
-    <a href="/tailors" data-nav="tailors">For tailors</a>
-    <a href="/about" data-nav="about">About</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" hidden>My designs</a>
+    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" hidden>Orders</a>
+    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" hidden>Workshop</a>
+    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" hidden>Admin</a>
+    <a href="/tailors" data-nav="tailors" data-auth="out">For tailors</a>
+    <a href="/about" data-nav="about" data-auth="out">About</a>
   </nav>
   <div class="nav-end">
-    <a class="btn gold sm mag" href="/studio">Open studio</a>
+    <a class="btn ghost sm" href="/signin" data-auth="out">Sign in</a>
+    <a class="btn gold sm mag" href="/studio" data-auth="out">Open studio</a>
+    <div class="acct" data-auth="in" hidden>
+      <button class="avatar" id="acctBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"><span class="ini"></span></button>
+      <div class="acct-menu" id="acctMenu" role="menu" hidden>
+        <div class="who"><b class="acct-name"></b><span class="acct-email"></span><i class="acct-role"></i></div>
+        <a href="/studio" role="menuitem">Studio</a>
+        <a href="/designs" role="menuitem" data-role="customer">My designs</a>
+        <a href="/orders" role="menuitem" data-role="customer">Orders</a>
+        <a href="/account#measurements" role="menuitem" data-role="customer">Measurements</a>
+        <a href="/workshop" role="menuitem" data-role="tailor">Workshop</a>
+        <a href="/admin" role="menuitem" data-role="admin">Admin dashboard</a>
+        <a href="/account" role="menuitem">Account</a>
+        <button type="button" role="menuitem" data-signout>Sign out</button>
+      </div>
+    </div>
     <button class="menu-btn" aria-expanded="false" aria-controls="menu" aria-label="Menu"><i></i><i></i></button>
   </div>
 </header>
 <div class="menu" id="menu">
   <nav aria-label="Menu">
     <a href="/" data-nav="home" style="--i:0">Home</a>
-    <a href="/how-it-works" data-nav="how" style="--i:1">How it works</a>
-    <a href="/studio" data-nav="studio" style="--i:2">Studio</a>
-    <a href="/tailors" data-nav="tailors" style="--i:3">For tailors</a>
-    <a href="/about" data-nav="about" style="--i:4">About</a>
+    <a href="/studio" data-nav="studio" style="--i:1">Studio</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" style="--i:2" hidden>My designs</a>
+    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" style="--i:3" hidden>Orders</a>
+    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" style="--i:2" hidden>Workshop</a>
+    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" style="--i:2" hidden>Admin</a>
+    <a href="/account" data-nav="account" data-auth="in" style="--i:4" hidden>Account</a>
+    <a href="/how-it-works" data-nav="how" style="--i:5">How it works</a>
+    <a href="/tailors" data-nav="tailors" style="--i:6">For tailors</a>
+    <a href="/about" data-nav="about" style="--i:7">About</a>
   </nav>
-  <div class="menu-foot"><span>Design smarter, wear better.</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><a class="btn gold" href="/studio">Open studio</a></div>
+  <div class="menu-foot"><span class="menu-who" data-auth="in" hidden></span><span data-auth="out">Design smarter, wear better.</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><a class="btn gold" href="/signin" data-auth="out">Sign in</a><button class="btn ghost" type="button" data-signout data-auth="in" hidden>Sign out</button></div>
 </div>
 <main id="main" class="studio">
   <section class="st-stage" id="stage" aria-label="Concept preview">
     <div class="st-bg" aria-hidden="true"></div>
     <div class="st-center">
       <div class="st-frame" id="frame">
-        <video id="stVideo" muted loop playsinline preload="auto" poster="/assets/media/poster.jpg" aria-label="Concept video for this design"></video>
+        <div class="st-art" id="stArt" aria-live="polite"></div>
         <canvas id="stThread" aria-hidden="true"></canvas>
         <div class="st-empty">
           <svg viewBox="0 0 200 300" fill="none" aria-hidden="true"><path d="M70 20c10 14 50 14 60 0l52 34-18 46-20-8v188H56V92l-20 8-18-46z" stroke="#fff" stroke-width="2" stroke-dasharray="5 7" stroke-linejoin="round"/></svg>
@@ -77,20 +104,25 @@
         <div class="st-badge" id="stBadge">Concept <b id="stVer">v1</b></div>
         <div class="st-gen" id="stGen" aria-live="polite"><span id="stGenText">Reading your description</span><i><b id="stGenBar"></b></i></div>
       </div>
-      <span class="st-sample" id="stSample" hidden>Sample mode</span>
+      <span class="st-sample" id="stSample" hidden>Runs in your browser</span>
     </div>
     <div class="st-meta">
-      <p class="st-title" id="stTitle"></p>
-      <ol class="st-versions" id="stVersions" aria-label="Versions"></ol>
+      <div class="st-titlebox"><p class="st-title" id="stTitle"></p><p class="st-sub" id="stSub"></p></div>
+      <div class="st-vers">
+        <ol class="st-versions" id="stVersions" aria-label="Versions"></ol>
+        <button class="st-restore" id="stRestore" type="button" hidden>Use this version</button>
+      </div>
     </div>
   </section>
 
   <section class="st-panel" aria-label="Design steps">
-    <ol class="stepper" id="stepper">
-      <li><button data-go="1">Describe</button></li>
-      <li><button data-go="2">Refine</button></li>
-      <li><button data-go="3">Choose tailor</button></li>
-      <li><button data-go="4">Track</button></li>
+    <ol class="stepper six" id="stepper">
+      <li><button data-go="1"><b>1</b><span>Describe</span></button></li>
+      <li><button data-go="2"><b>2</b><span>Refine</span></button></li>
+      <li><button data-go="3"><b>3</b><span>Measure</span></button></li>
+      <li><button data-go="4"><b>4</b><span>Tailors</span></button></li>
+      <li><button data-go="5"><b>5</b><span>Pay</span></button></li>
+      <li><button data-go="6"><b>6</b><span>Track</span></button></li>
     </ol>
     <div class="panes">
       <div class="pane" data-pane="1">
@@ -102,70 +134,110 @@
           <button class="chip" data-v="Kaftan">Kaftan</button><button class="chip" data-v="Agbada">Agbada</button><button class="chip" data-v="Boubou">Boubou</button><button class="chip" data-v="Dress">Dress</button><button class="chip" data-v="Suit">Suit</button><button class="chip" data-v="Shirt">Shirt</button>
         </div></div>
         <div class="grp"><span>Fabric</span><div class="chips" data-pick="fabric">
-          <button class="chip" data-v="Silk">Silk</button><button class="chip" data-v="Ankara">Ankara</button><button class="chip" data-v="Aso-oke">Aso-oke</button><button class="chip" data-v="Linen">Linen</button><button class="chip" data-v="Wool">Wool</button>
+          <button class="chip" data-v="Silk">Silk</button><button class="chip" data-v="Ankara">Ankara</button><button class="chip" data-v="Aso-oke">Aso-oke</button><button class="chip" data-v="Linen">Linen</button><button class="chip" data-v="Wool">Wool</button><button class="chip" data-v="Cotton">Cotton</button><button class="chip" data-v="Lace">Lace</button>
         </div></div>
         <div class="grp"><span>Accent colour</span><div class="chips" data-pick="accent">
-          <button class="sw" data-v="Gold" style="background:#D4AF37" aria-label="Gold"></button><button class="sw" data-v="Silver" style="background:#C0C4C8" aria-label="Silver"></button><button class="sw" data-v="Emerald" style="background:#1F6B4E" aria-label="Emerald"></button><button class="sw" data-v="Crimson" style="background:#8E1F2B" aria-label="Crimson"></button><button class="sw" data-v="Ivory" style="background:#F4EFE3" aria-label="Ivory"></button>
+          <button class="sw" data-v="Gold" style="background:#D4AF37" aria-label="Gold"></button><button class="sw" data-v="Silver" style="background:#C0C4C8" aria-label="Silver"></button><button class="sw" data-v="Emerald" style="background:#1F6B4E" aria-label="Emerald"></button><button class="sw" data-v="Crimson" style="background:#8E1F2B" aria-label="Crimson"></button><button class="sw" data-v="Ivory" style="background:#F4EFE3" aria-label="Ivory"></button><button class="sw" data-v="Black" style="background:#16181C" aria-label="Black"></button>
         </div></div>
         <p class="err" id="err1" role="alert"></p>
         <div class="spacer"></div>
         <button class="btn ink mag" id="genBtn">Generate concept</button>
+        <p class="hint center"><a href="/designs" class="textlink" data-auth="in">Open a saved design</a><span data-auth="out">Sign in when you generate; your designs are saved to your account.</span></p>
       </div>
 
       <div class="pane" data-pane="2">
         <h2>Refine it in your own words</h2>
-        <p class="hint">Each instruction makes a new version. Press Enter to apply.</p>
+        <p class="hint">Each instruction becomes a new version. Press Enter to apply.</p>
         <label class="sr" for="refine">Refinement instruction</label>
-        <textarea class="ta" id="refine" rows="3" placeholder="Refine concept details in plain language (e.g., add deeper gold trim)…"></textarea>
+        <textarea class="ta" id="refine" rows="3" placeholder="e.g. add deeper gold trim, mandarin collar, make it emerald…"></textarea>
         <div class="chips" id="refChips">
-          <button class="chip" data-fill="Add deeper gold trim">Deeper gold trim</button><button class="chip" data-fill="Make the neckline a mandarin collar">Mandarin collar</button><button class="chip" data-fill="Shorten the sleeves to three-quarter">Three-quarter sleeves</button><button class="chip" data-fill="Bring the embroidery down to the hem">Embroidery to the hem</button>
+          <button class="chip" data-fill="Add deeper gold trim">Deeper gold trim</button><button class="chip" data-fill="Make the neckline a mandarin collar">Mandarin collar</button><button class="chip" data-fill="Shorten the sleeves to three-quarter">Three-quarter sleeves</button><button class="chip" data-fill="Bring the embroidery down to the hem">Embroidery to the hem</button><button class="chip" data-fill="Make it fitted">Fitted</button><button class="chip" data-fill="Add side pockets">Pockets</button>
         </div>
         <p class="err" id="err2" role="alert"></p>
         <button class="btn ink mag" id="refBtn" disabled>Apply refinement</button>
-        <ol class="hist" id="hist" aria-label="Refinement history"></ol>
+        <div class="spec" id="spec"></div>
+        <ol class="hist" id="hist" aria-label="Version history"></ol>
         <div class="spacer"></div>
-        <button class="btn ghost mag" id="toTailors">Continue to tailors</button>
+        <button class="btn ghost mag" id="toMeasure">Continue to measurements</button>
       </div>
 
       <div class="pane" data-pane="3">
-        <h2>Compare verified tailors</h2>
-        <div class="seg" id="sortSeg" role="group" aria-label="Sort tailors">
-          <button data-v="match" aria-pressed="true">Best match</button><button data-v="price" aria-pressed="false">Price</button><button data-v="fast" aria-pressed="false">Fastest</button><button data-v="rating" aria-pressed="false">Rating</button>
-        </div>
-        <div class="vlist" id="vlist" role="radiogroup" aria-label="Verified tailors"></div>
+        <h2>Your measurements</h2>
+        <p class="hint">The tailor cuts to these. Saved to your account for next time.</p>
+        <div class="mlist" id="mlist" role="radiogroup" aria-label="Measurement profiles"></div>
+        <div id="mformWrap" hidden></div>
+        <button class="btn ghost" id="mNew" type="button">Add a measurement profile</button>
+        <div class="grp"><label for="reqNotes"><span>Anything the tailor should know</span></label><textarea class="ta" id="reqNotes" rows="2" placeholder="Occasion, date you need it by, fabric you already have…"></textarea></div>
+        <div class="field"><label for="reqDeadline">Needed by (optional)</label><input id="reqDeadline" type="date"></div>
+        <p class="err" id="err3" role="alert"></p>
+        <div class="spacer"></div>
+        <button class="btn ink mag" id="reqBtn">Request quotes from verified tailors</button>
       </div>
 
       <div class="pane" data-pane="4">
+        <h2>Compare verified tailors</h2>
+        <p class="hint" id="qHint">Quotes arrive as tailors respond.</p>
+        <div class="seg" id="sortSeg" role="group" aria-label="Sort tailors">
+          <button data-v="match" aria-pressed="true">Best match</button><button data-v="price" aria-pressed="false">Price</button><button data-v="fast" aria-pressed="false">Fastest</button><button data-v="rating" aria-pressed="false">Rating</button>
+        </div>
+        <div class="vlist" id="vlist" role="radiogroup" aria-label="Quotes from verified tailors"></div>
+        <p class="err" id="err4" role="alert"></p>
+      </div>
+
+      <div class="pane" data-pane="5">
+        <h2>Pay securely in naira</h2>
+        <p class="hint">Held by Fashion Teller and released to the tailor on delivery.</p>
+        <dl class="summary" id="paySummary"></dl>
+        <div class="grp"><span>Payment plan</span><div class="plan" id="plan" role="radiogroup">
+          <button type="button" class="planopt" data-v="full" aria-checked="true"><b>Pay in full</b><span id="planFull"></span></button>
+          <button type="button" class="planopt" data-v="deposit" aria-checked="false"><b>50% deposit</b><span id="planDep"></span></button>
+        </div></div>
+        <div class="grp"><span>Payment method</span><div class="tabs" id="payTabs" role="tablist">
+          <button type="button" role="tab" data-tab="card" aria-selected="true">Card</button><button type="button" role="tab" data-tab="transfer" aria-selected="false">Bank transfer</button><button type="button" role="tab" data-tab="paystack" aria-selected="false" id="payTabPaystack" hidden>Paystack</button>
+        </div></div>
+        <div class="paybox" data-panel="card">
+          <div class="form two">
+            <div class="field full"><label for="cardName">Name on card</label><input id="cardName" autocomplete="cc-name"></div>
+            <div class="field full"><label for="cardNum">Card number</label><input id="cardNum" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000" maxlength="19"></div>
+            <div class="field"><label for="cardExp">Expiry</label><input id="cardExp" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5"></div>
+            <div class="field"><label for="cardCvv">CVV</label><input id="cardCvv" inputmode="numeric" autocomplete="cc-csc" placeholder="123" maxlength="4" type="password"></div>
+          </div>
+          <p class="muted small" id="cardNote"></p>
+        </div>
+        <div class="paybox" data-panel="transfer" hidden>
+          <p class="body small">Transfer the exact amount to the account below. The order starts when the transfer lands (usually within a minute).</p>
+          <dl class="summary bank"><dt>Bank</dt><dd>Providus Bank</dd><dt>Account number</dt><dd><b id="bankAcct">9901 0023 45</b></dd><dt>Account name</dt><dd>Fashion Teller Escrow</dd><dt>Amount</dt><dd id="bankAmt"></dd></dl>
+        </div>
+        <div class="paybox" data-panel="paystack" hidden>
+          <p class="body small">You will be taken to Paystack to pay by card, bank, USSD or transfer, then brought back here.</p>
+        </div>
+        <p class="err" id="err5" role="alert"></p>
+        <div class="spacer"></div>
+        <button class="btn cta mag" id="payBtn"><span id="payText">Pay</span></button>
+      </div>
+
+      <div class="pane" data-pane="6">
         <h2 id="trkTitle">Production is under way</h2>
         <p class="hint" id="trkHint"></p>
         <ol class="trk-v" id="trkV" aria-label="Production tracker"></ol>
         <dl class="summary" id="summary"></dl>
+        <div class="balance" id="balance" hidden><div><b>Balance due on delivery</b><span id="balAmt"></span></div><button class="btn gold sm" id="balBtn" type="button">Pay balance</button></div>
+        <h3 class="h4">Updates from the tailor</h3>
+        <ol class="feed" id="feed"></ol>
         <div class="spacer"></div>
-        <div class="row-btns"><button class="btn ghost" id="shareBtn">Share design</button><button class="btn ink" id="newBtn">Start a new design</button></div>
+        <div class="row-btns"><a class="btn ghost" id="allOrders" href="/orders">All orders</a><button class="btn ghost" id="shareBtn">Share design</button><button class="btn ink" id="newBtn">Start a new design</button></div>
       </div>
     </div>
 
     <div class="drawer" id="drawer" hidden>
-      <div class="price"><div style="min-width:0"><small>Total fabrication estimate</small><span id="priceNote">Choose a tailor</span></div><strong id="price">—</strong></div>
-      <p class="err" id="err3" role="alert"></p>
+      <div class="price"><div style="min-width:0"><small id="priceLbl">Total fabrication quote</small><span id="priceNote">Choose a tailor</span></div><strong id="price">—</strong></div>
+      <p class="err" id="errD" role="alert"></p>
       <button class="btn cta mag" id="ctaBtn" disabled>
         <svg id="ctaIcon" viewBox="0 0 24 24" fill="none"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4H6zM3 6h18M16 10a4 4 0 0 1-8 0" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span id="ctaText">Approve design &amp; initiate production</span>
+        <span id="ctaText">Approve design &amp; continue to payment</span>
       </button>
     </div>
   </section>
 </main>
-
-<div class="sheet-bg" id="sheetBg"></div>
-<div class="sheet" id="login" role="dialog" aria-modal="true" aria-labelledby="loginH">
-  <h3 id="loginH">Enter workspace</h3>
-  <p>Sign in to save designs and start production.</p>
-  <form id="loginForm" class="form" style="grid-template-columns:1fr" novalidate>
-    <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" placeholder="you@brand.com"></div>
-    <div class="field"><label for="pass">Password</label><input id="pass" name="password" type="password" autocomplete="current-password"></div>
-    <p class="err" id="loginErr" role="alert"></p>
-    <div class="row-btns"><button class="btn gold" type="submit" id="loginBtn">Enter workspace</button><button class="btn ghost" type="button" id="loginCancel">Not now</button></div>
-  </form>
-</div>
 </body>
 </html>

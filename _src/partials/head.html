@@ -21,8 +21,11 @@
 <link rel="stylesheet" href="/assets/css/site.css">
 <script src="/assets/js/config.js"></script>
 <script src="/assets/js/device.js"></script>
+<script src="/assets/js/engine.js" defer></script>
+<script src="/assets/js/store.js" defer></script>
 <script src="/assets/js/api.js" defer></script>
 <script src="/assets/js/site.js" defer></script>
+<script src="/assets/js/account.js" defer></script>
 {{scripts}}
 </head>
 <body data-page="{{page}}">
@@ -44,21 +47,45 @@
   <nav class="nav-links" aria-label="Primary">
     <a href="/how-it-works" data-nav="how">How it works</a>
     <a href="/studio" data-nav="studio">Studio</a>
-    <a href="/tailors" data-nav="tailors">For tailors</a>
-    <a href="/about" data-nav="about">About</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" hidden>My designs</a>
+    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" hidden>Orders</a>
+    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" hidden>Workshop</a>
+    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" hidden>Admin</a>
+    <a href="/tailors" data-nav="tailors" data-auth="out">For tailors</a>
+    <a href="/about" data-nav="about" data-auth="out">About</a>
   </nav>
   <div class="nav-end">
-    <a class="btn gold sm mag" href="/studio">Open studio</a>
+    <a class="btn ghost sm" href="/signin" data-auth="out">Sign in</a>
+    <a class="btn gold sm mag" href="/studio" data-auth="out">Open studio</a>
+    <div class="acct" data-auth="in" hidden>
+      <button class="avatar" id="acctBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"><span class="ini"></span></button>
+      <div class="acct-menu" id="acctMenu" role="menu" hidden>
+        <div class="who"><b class="acct-name"></b><span class="acct-email"></span><i class="acct-role"></i></div>
+        <a href="/studio" role="menuitem">Studio</a>
+        <a href="/designs" role="menuitem" data-role="customer">My designs</a>
+        <a href="/orders" role="menuitem" data-role="customer">Orders</a>
+        <a href="/account#measurements" role="menuitem" data-role="customer">Measurements</a>
+        <a href="/workshop" role="menuitem" data-role="tailor">Workshop</a>
+        <a href="/admin" role="menuitem" data-role="admin">Admin dashboard</a>
+        <a href="/account" role="menuitem">Account</a>
+        <button type="button" role="menuitem" data-signout>Sign out</button>
+      </div>
+    </div>
     <button class="menu-btn" aria-expanded="false" aria-controls="menu" aria-label="Menu"><i></i><i></i></button>
   </div>
 </header>
 <div class="menu" id="menu">
   <nav aria-label="Menu">
     <a href="/" data-nav="home" style="--i:0">Home</a>
-    <a href="/how-it-works" data-nav="how" style="--i:1">How it works</a>
-    <a href="/studio" data-nav="studio" style="--i:2">Studio</a>
-    <a href="/tailors" data-nav="tailors" style="--i:3">For tailors</a>
-    <a href="/about" data-nav="about" style="--i:4">About</a>
+    <a href="/studio" data-nav="studio" style="--i:1">Studio</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" style="--i:2" hidden>My designs</a>
+    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" style="--i:3" hidden>Orders</a>
+    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" style="--i:2" hidden>Workshop</a>
+    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" style="--i:2" hidden>Admin</a>
+    <a href="/account" data-nav="account" data-auth="in" style="--i:4" hidden>Account</a>
+    <a href="/how-it-works" data-nav="how" style="--i:5">How it works</a>
+    <a href="/tailors" data-nav="tailors" style="--i:6">For tailors</a>
+    <a href="/about" data-nav="about" style="--i:7">About</a>
   </nav>
-  <div class="menu-foot"><span>Design smarter, wear better.</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><a class="btn gold" href="/studio">Open studio</a></div>
+  <div class="menu-foot"><span class="menu-who" data-auth="in" hidden></span><span data-auth="out">Design smarter, wear better.</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><a class="btn gold" href="/signin" data-auth="out">Sign in</a><button class="btn ghost" type="button" data-signout data-auth="in" hidden>Sign out</button></div>
 </div>

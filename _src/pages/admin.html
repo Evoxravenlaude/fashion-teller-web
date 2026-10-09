@@ -1,0 +1,21 @@
+<main id="main" class="app">
+  <section class="app-head">
+    <div class="wrap">
+      <div class="sec-head" style="margin-bottom:0;align-items:end">
+        <div><h1 class="h2 split">Admin</h1><p class="body rv" id="adSub">Fashion Teller operations</p></div>
+        <div class="tabs rv" id="adTabs" role="tablist"><button type="button" role="tab" data-tab="overview">Overview</button><button type="button" role="tab" data-tab="tailors">Tailors <i class="count" id="cTail"></i></button><button type="button" role="tab" data-tab="orders">Orders</button><button type="button" role="tab" data-tab="payments">Payments</button><button type="button" role="tab" data-tab="users">Users</button><button type="button" role="tab" data-tab="designs">Designs</button><button type="button" role="tab" data-tab="inbox">Inbox <i class="count" id="cInbox"></i></button></div>
+      </div>
+    </div>
+  </section>
+  <section class="sec tight">
+    <div class="wrap" id="adRoot">
+      <div data-panel="overview"><div class="loading"><span class="spin"></span></div></div>
+      <div data-panel="tailors" hidden></div>
+      <div data-panel="orders" hidden></div>
+      <div data-panel="payments" hidden></div>
+      <div data-panel="users" hidden></div>
+      <div data-panel="designs" hidden></div>
+      <div data-panel="inbox" hidden></div>
+    </div>
+  </section>
+</main>

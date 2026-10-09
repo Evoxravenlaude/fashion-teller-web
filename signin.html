@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sign in — Fashion Teller</title>
+<meta name="description" content="Sign in or create a Fashion Teller account to save designs, add measurements and start production.">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="canonical" href="/signin">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Sign in — Fashion Teller">
+<meta property="og:description" content="Sign in or create a Fashion Teller account to save designs, add measurements and start production.">
+<meta property="og:image" content="/assets/media/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/assets/media/favicon.png">
+<link rel="apple-touch-icon" href="/assets/media/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="/assets/media/poster.jpg">
+<link rel="stylesheet" href="/assets/css/site.css">
+<script src="/assets/js/config.js"></script>
+<script src="/assets/js/device.js"></script>
+<script src="/assets/js/engine.js" defer></script>
+<script src="/assets/js/store.js" defer></script>
+<script src="/assets/js/api.js" defer></script>
+<script src="/assets/js/site.js" defer></script>
+<script src="/assets/js/account.js" defer></script>
+<script src="/assets/js/signin.js" defer></script>
+</head>
+<body data-page="signin">
+<a class="skip" href="#main">Skip to content</a>
+<div id="ft-loader" aria-hidden="true">
+  <div class="ld-inner">
+    <div class="ld-art"><canvas></canvas><img src="/assets/media/mark.png" alt=""></div>
+    <div class="ld-row"><div class="ld-bar"><i></i></div><span class="ld-pct">00</span></div>
+  </div>
+</div>
+<div id="ft-wipe" aria-hidden="true"><span class="wm"><b>Fashion</b> <i>Teller</i></span></div>
+<div id="ft-cursor" aria-hidden="true"></div>
+
+<header class="nav">
+  <a class="brand" href="/" aria-label="Fashion Teller home">
+    <img src="/assets/media/mark.png" alt="" width="26" height="34">
+    <span class="wm"><b>Fashion</b> <i>Teller</i></span>
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="/how-it-works" data-nav="how">How it works</a>
+    <a href="/studio" data-nav="studio">Studio</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" hidden>My designs</a>
+    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" hidden>Orders</a>
+    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" hidden>Workshop</a>
+    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" hidden>Admin</a>
+    <a href="/tailors" data-nav="tailors" data-auth="out">For tailors</a>
+    <a href="/about" data-nav="about" data-auth="out">About</a>
+  </nav>
+  <div class="nav-end">
+    <a class="btn ghost sm" href="/signin" data-auth="out">Sign in</a>
+    <a class="btn gold sm mag" href="/studio" data-auth="out">Open studio</a>
+    <div class="acct" data-auth="in" hidden>
+      <button class="avatar" id="acctBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"><span class="ini"></span></button>
+      <div class="acct-menu" id="acctMenu" role="menu" hidden>
+        <div class="who"><b class="acct-name"></b><span class="acct-email"></span><i class="acct-role"></i></div>
+        <a href="/studio" role="menuitem">Studio</a>
+        <a href="/designs" role="menuitem" data-role="customer">My designs</a>
+        <a href="/orders" role="menuitem" data-role="customer">Orders</a>
+        <a href="/account#measurements" role="menuitem" data-role="customer">Measurements</a>
+        <a href="/workshop" role="menuitem" data-role="tailor">Workshop</a>
+        <a href="/admin" role="menuitem" data-role="admin">Admin dashboard</a>
+        <a href="/account" role="menuitem">Account</a>
+        <button type="button" role="menuitem" data-signout>Sign out</button>
+      </div>
+    </div>
+    <button class="menu-btn" aria-expanded="false" aria-controls="menu" aria-label="Menu"><i></i><i></i></button>
+  </div>
+</header>
+<div class="menu" id="menu">
+  <nav aria-label="Menu">
+    <a href="/" data-nav="home" style="--i:0">Home</a>
+    <a href="/studio" data-nav="studio" style="--i:1">Studio</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" style="--i:2" hidden>My designs</a>
+    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" style="--i:3" hidden>Orders</a>
+    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" style="--i:2" hidden>Workshop</a>
+    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" style="--i:2" hidden>Admin</a>
+    <a href="/account" data-nav="account" data-auth="in" style="--i:4" hidden>Account</a>
+    <a href="/how-it-works" data-nav="how" style="--i:5">How it works</a>
+    <a href="/tailors" data-nav="tailors" style="--i:6">For tailors</a>
+    <a href="/about" data-nav="about" style="--i:7">About</a>
+  </nav>
+  <div class="menu-foot"><span class="menu-who" data-auth="in" hidden></span><span data-auth="out">Design smarter, wear better.</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><a class="btn gold" href="/signin" data-auth="out">Sign in</a><button class="btn ghost" type="button" data-signout data-auth="in" hidden>Sign out</button></div>
+</div>
+<main id="main" class="authpage">
+  <section class="auth-split">
+    <div class="auth-copy">
+      <h1 class="display split" style="max-width:10ch">Your workspace</h1>
+      <p class="lead rv" style="--d:.3s">Designs and every version of them, your measurements, quotes from verified tailors, orders and payments, all in one account.</p>
+      <ul class="auth-points rv" style="--d:.45s">
+        <li><b>Customers</b><span>Generate, refine, compare quotes, pay in naira, track to your door.</span></li>
+        <li><b>Tailors</b><span>Quote on requests from anywhere, run your orders, get paid on delivery.</span></li>
+      </ul>
+    </div>
+    <div class="auth-card rv" style="--d:.2s" id="authCard"></div>
+  </section>
+</main>
+<footer class="foot">
+  <div class="grid">
+    <div>
+      <img src="/assets/media/logo.png" alt="Fashion Teller. Design smarter, wear better." width="220" height="87" loading="lazy">
+    </div>
+    <div><h4>Product</h4><ul><li><a href="/how-it-works">How it works</a></li><li><a href="/studio">Studio</a></li><li><a href="/designs">My designs</a></li><li><a href="/orders">Orders</a></li></ul></div>
+    <div><h4>Makers</h4><ul><li><a href="/tailors">For tailors</a></li><li><a href="/tailors#apply">Apply as a tailor</a></li><li><a href="/workshop">Workshop</a></li></ul></div>
+    <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="/about#contact">Contact</a></li><li><a href="/signin">Sign in</a></li></ul></div>
+  </div>
+  <div class="base"><span>© <span data-year></span> Fashion Teller</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><span>Quotes and payments are in Nigerian naira (₦). Payments are held by Fashion Teller until delivery.</span></div>
+</footer>
+</body>
+</html>

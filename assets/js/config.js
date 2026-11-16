@@ -1,22 +1,31 @@
 /**
  * Fashion Teller site configuration. The only file you edit to go live or to tune rendering.
  *
- * apiBaseUrl   empty  -> the whole product runs in the browser: accounts, designs, versions, measurements,
- *                        verified tailors, quotes, orders, payments, tracking and the admin dashboard are
- *                        kept in this browser's storage (see assets/js/store.js). Nothing leaves the device.
- *              set    -> e.g. "https://api.fashionteller.com"; every call goes to the Django backend
- *                        (routes in README.md). The backend must allow this site's origin in CORS.
- * formEndpoint empty  -> contact messages and tailor applications are kept in the browser (and shown in Admin)
+ * apiBaseUrl   empty  -> built-in mode: the whole product runs in this browser (assets/js/store.js). Accounts,
+ *                        designs, Discover, designers, commissions, messages, tailors, quotes, orders, payments,
+ *                        tracking and admin all work, kept in this browser's storage. Nothing leaves the device,
+ *                        so two people on two phones do not see each other. Good for demos and for building UI.
+ *              set    -> e.g. "https://api.fashionteller.com": every call goes to the Django backend in /backend
+ *                        (setup in README.md). The backend must list this site's origin in CORS_ORIGINS.
+ *                        On localhost you can also try a backend without editing this file: open any page
+ *                        with ?api=http://127.0.0.1:8000 (kept for the tab; ?api= clears it).
+ * formEndpoint empty  -> contact messages and tailor applications are kept with the rest of the data (shown in Admin)
  *              set    -> any endpoint that accepts a JSON POST; they are also sent there
  * currency     Prices are quoted and paid in Nigerian naira.
- * payments     paystackPublicKey empty -> the built-in test checkout (card or bank transfer) completes payments
- *              in the browser. Set a Paystack public key (pk_test_… or pk_live_…) to take real payments with
- *              Paystack inline; the backend verifies the reference (see README).
- * ai           Optional AI services on the backend: render3d (photoreal 3D of a design) and tryOn (fits the design to
- *              the user's photo). Without a backend the studio uses its live 3D turntable and a manual try-on fit.
- * demoAccounts true   -> the sign-in page offers one-tap demo accounts (customer, tailor, admin). Set false in production.
- * sample       Pace of the built-in simulation while apiBaseUrl is empty: how quickly verified tailors
- *              quote on a new request, and how fast a sample tailor moves an order through production.
+ * payments     paystackPublicKey empty -> the built-in test checkout (test card or bank transfer) completes payments
+ *              without moving money. Set a Paystack public key (pk_test_… or pk_live_…) to pay with Paystack;
+ *              the backend then verifies every payment with Paystack before recording it (PAYSTACK_SECRET_KEY).
+ *              depositPercent is the share paid up front on a tailoring order; the rest is due before delivery.
+ * ai           tryOn 'manual' -> the customer places the garment over their own photo by hand; the photo never
+ *                                leaves the device. This is what ships.
+ *                    'remote' -> "Fit to my body" sends the photo to the backend (POST /designs/{id}/try-on/). That
+ *                                endpoint is a marked hook: connect an AI try-on service there first (see README).
+ *              The 3D view needs no service: it is drawn live in the browser from the design itself.
+ * demoAccounts true   -> the sign-in page offers one-tap demo accounts (customer, designer, tailor, admin).
+ *                        Set false before launch.
+ * sample       Pace of the built-in sample tailors and designers while apiBaseUrl is empty: how quickly they quote
+ *              on a new request, and how fast an order moves through production. (The backend has its own
+ *              SAMPLE_MODE settings.)
  *
  * render       Display and rendering settings per device type. The device is detected before the
  *              page draws (see assets/js/device.js): phone / tablet / laptop / desktop; weak hardware starts one
@@ -33,8 +42,8 @@ window.FT_CONFIG = {
   formEndpoint: '',
 
   currency: { code: 'NGN', symbol: '₦', locale: 'en-NG' },
-  payments: { paystackPublicKey: '', depositPercent: 50, platformFeePercent: 0 },
-  ai: { render3d: true, tryOn: true },
+  payments: { paystackPublicKey: '', depositPercent: 50 },
+  ai: { tryOn: 'manual' },
   demoAccounts: true,
   sample: { quoteDelayMs: [1800, 9000], orderPhaseMs: 30000 },
 

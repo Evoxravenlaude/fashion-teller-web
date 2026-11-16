@@ -2,27 +2,36 @@
  * Fashion Teller API client.
  *
  * One surface, two backends:
- *   - apiBaseUrl empty: every call is served by the browser-side data layer in assets/js/store.js
- *     (accounts, designs, versions, measurements, tailors, quotes, orders, payments, admin).
- *   - apiBaseUrl set: every call is a JSON request to the Django backend (SimpleJWT bearer token,
- *     one refresh on 401, readable DRF errors). The routes are listed in README.md.
+ *   - apiBaseUrl empty: every call is served by the browser-side data layer in assets/js/store.js.
+ *   - apiBaseUrl set:   every call is a JSON request to the Django backend in /backend (JWT bearer token, one
+ *                       silent refresh on 401, readable errors). The backend speaks snake_case; this file converts
+ *                       both ways, so pages always see the same camelCase records as in built-in mode.
  *
- * Pages only ever talk to window.FTApi.
+ * Pages only ever talk to window.FTApi. The route table below is the whole contract with the backend.
  */
 (() => {
-  const C = window.FT_CONFIG || {};
-  const BASE = (C.apiBaseUrl || '').replace(/\/+$/, '');
+  const C = window.FT_CONFIG || {}, E = window.FTEngine;
+  const devBase = (() => { try { const q = new URLSearchParams(location.search).get('api'); if (q != null && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) { q ? sessionStorage.setItem('ft.api', q) : sessionStorage.removeItem('ft.api'); } return /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? sessionStorage.getItem('ft.api') : null; } catch { return null; } })();
+  const BASE = (devBase || C.apiBaseUrl || '').replace(/\/+$/, '');
   const PREFIX = C.apiPrefix || '/api/v1';
   const LOCAL = !BASE;
-  const TIMEOUT = 20000;
+  const TIMEOUT = 25000;
   const S = window.FTStore;
 
-  const store = {
+  const ls = {
     get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
     set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} },
   };
-  const tokens = { get: () => store.get('ft.tokens'), set: t => store.set('ft.tokens', t) };
-  const cachedUser = { get: () => store.get('ft.user'), set: u => store.set('ft.user', u) };
+  const tokens = { get: () => ls.get('ft.tokens'), set: t => ls.set('ft.tokens', t) };
+  const cachedUser = { get: () => ls.get('ft.user'), set: u => ls.set('ft.user', u) };
+  const listeners = new Set(), emit = () => listeners.forEach(fn => { try { fn(); } catch {} });
+  if (!LOCAL) addEventListener('storage', e => { if (e.key === 'ft.tokens' || e.key === 'ft.user') emit(); });
+
+  /* snake_case on the wire, camelCase in the app. The contents of these keys are data, not fields: left as they are. */
+  const OPAQUE = new Set(['spec', 'values', 'hints', 'card']);
+  const camel = k => k.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
+  const snake = k => k.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
+  const convert = (v, fn) => Array.isArray(v) ? v.map(x => convert(x, fn)) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [fn(k), OPAQUE.has(k) ? x : convert(x, fn)])) : v;
 
   class ApiError extends Error { constructor(message, status, body) { super(message); this.name = 'ApiError'; this.status = status; this.body = body; } }
   function readableError(body, status) {
@@ -31,22 +40,26 @@
       const text = Array.isArray(first) ? first[0] : first;
       if (typeof text === 'string' && text) return text;
     }
-    if (status === 401 || status === 403) return 'Sign in again to continue.';
+    if (status === 401) return 'Sign in to continue.';
+    if (status === 403) return 'You do not have access to that.';
     if (status === 404) return 'That was not found.';
+    if (status === 429) return 'Too many requests. Give it a minute.';
     if (status >= 500) return 'Fashion Teller is having trouble right now. Try again in a moment.';
     return 'That did not go through. Try again.';
   }
   async function send(path, { method = 'GET', body, auth = true } = {}, access) {
-    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), TIMEOUT);
+    const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), TIMEOUT);
     try {
-      return await fetch(BASE + PREFIX + path, { method, signal: ctrl.signal, headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(auth && access ? { Authorization: 'Bearer ' + access } : {}) }, body: body !== undefined ? JSON.stringify(body) : undefined });
+      return await fetch(BASE + PREFIX + path, { method, signal: ctrl.signal, headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(auth && access ? { Authorization: 'Bearer ' + access } : {}) }, body: body !== undefined ? JSON.stringify(convert(body, snake)) : undefined });
     } catch { throw new ApiError('No connection to Fashion Teller. Check your internet and try again.', 0, null); }
     finally { clearTimeout(timer); }
   }
-  async function refreshAccess(refresh) {
-    const res = await send('/account/token/refresh/', { method: 'POST', body: { refresh }, auth: false });
-    if (!res.ok) { tokens.set(null); cachedUser.set(null); return null; }
-    const d = await res.json(); tokens.set({ access: d.access, refresh: d.refresh ?? refresh }); return d.access;
+  let refreshing = null;
+  function refreshAccess(refresh) {
+    return refreshing || (refreshing = (async () => {
+      try { const res = await send('/auth/refresh/', { method: 'POST', body: { refresh }, auth: false }); if (!res.ok) { tokens.set(null); cachedUser.set(null); emit(); return null; } const d = await res.json(); tokens.set({ access: d.access, refresh: d.refresh ?? refresh }); return d.access; }
+      finally { setTimeout(() => (refreshing = null), 0); }
+    })());
   }
   async function request(path, opt = {}) {
     const tk = opt.auth === false ? null : tokens.get();
@@ -54,9 +67,12 @@
     if (res.status === 401 && tk?.refresh) { const a = await refreshAccess(tk.refresh); if (a) res = await send(path, opt, a); }
     const text = await res.text(); let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = null; }
     if (!res.ok) throw new ApiError(readableError(data, res.status), res.status, data);
-    return data;
+    return convert(data, camel);
   }
-  const get = p => request(p), post = (p, body) => request(p, { method: 'POST', body }), patch = (p, body) => request(p, { method: 'PATCH', body }), del = p => request(p, { method: 'DELETE' });
+  const qs = o => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(o || {})) if (v !== '' && v != null && v !== false) p.set(snake(k), v === true ? '1' : v); const s = p.toString(); return s ? '?' + s : ''; };
+  const get = (p, q) => request(p + qs(q)), post = (p, body = {}) => request(p, { method: 'POST', body }), patch = (p, body) => request(p, { method: 'PATCH', body }), put = (p, body) => request(p, { method: 'PUT', body }), del = p => request(p, { method: 'DELETE' });
+  const signIn = d => { tokens.set({ access: d.access, refresh: d.refresh }); cachedUser.set(d.user); emit(); return d.user; };
+  const id = v => encodeURIComponent(v);
 
   /* Money: naira everywhere. */
   const CUR = C.currency || { code: 'NGN', symbol: '₦', locale: 'en-NG' };
@@ -66,138 +82,130 @@
     if (compact && v >= 1e4) return CUR.symbol + Math.round(v / 1e3) + 'k';
     return CUR.symbol + v.toLocaleString(CUR.locale);
   };
-
   const PHASE_ORDER = ['concept_generated', 'vendor_assigned', 'tailoring', 'delivered'];
   const phaseIndex = p => Math.max(0, PHASE_ORDER.indexOf(p));
 
-  /* Sample vendors for the marketing pages (home compare demo, tailor rank simulator). */
+  /* Sample tailors for the marketing pages (home compare demo, tailor rank simulator). */
   const SAMPLE_VENDORS = (() => {
-    const spec = window.FTEngine.parse('A midnight silk kaftan with gold embroidery across the chest, sleeves to the wrist');
-    const base = [
+    const spec = E.template('royal-kaftan').spec;
+    return [
       { id: 'v_kano', name: 'Kano Embroidery Works', city: 'Kano', rating: 4.9, priceFactor: 1.22, speedFactor: 0.8, leadMin: 4 },
       { id: 'v_luxe', name: 'Luxe Ankara Hubs', city: 'Lagos', rating: 4.8, priceFactor: 1.05, speedFactor: 1.1, leadMin: 6 },
       { id: 'v_ndiaye', name: 'Maison Ndiaye', city: 'Dakar', rating: 4.7, priceFactor: 1.1, speedFactor: 1.4, leadMin: 9 },
       { id: 'v_abuja', name: 'Maitama Bespoke', city: 'Abuja', rating: 4.5, priceFactor: 0.95, speedFactor: 0.7, leadMin: 3 },
       { id: 'v_lbv', name: 'Casa Libreville Tailoring', city: 'Libreville', rating: 4.6, priceFactor: 0.88, speedFactor: 1.5, leadMin: 10 },
-    ];
-    return base.map(v => { const p = window.FTEngine.price(spec, v); return { id: v.id, name: v.name, city: v.city, rating: v.rating, verified: true, price: p.price, deliveryDays: p.deliveryDays }; });
+    ].map(v => { const p = E.price(spec, v); return { id: v.id, name: v.name, city: v.city, rating: v.rating, verified: true, price: p.price, deliveryDays: p.deliveryDays }; });
   })();
 
-  /* Shape adapters for the Django backend (snake_case wire -> camelCase app). */
-  const W = {
-    user: u => u && ({ id: String(u.id), email: u.email, name: u.name || u.full_name || '', role: u.role || 'customer', phone: u.phone || '', city: u.city || '', country: u.country || '', vendorId: u.vendor_id ? String(u.vendor_id) : null, status: u.status || 'active', createdAt: u.created_at }),
-    vendor: v => v && ({ id: String(v.id), name: v.name, city: v.city || '', country: v.country || '', specialties: v.specialties || [], bio: v.bio || '', rating: Number(v.rating || 0), reviews: v.review_count || 0, ordersDone: v.orders_done || 0, verified: !!v.is_verified, status: v.status || (v.is_verified ? 'verified' : 'pending'), since: v.since, sample: false, hue: v.hue || 40, leadMin: v.lead_min || 7, verifiedAt: v.verified_at, createdAt: v.created_at, userId: v.user_id ? String(v.user_id) : null }),
-    version: v => ({ n: v.n ?? v.version, instruction: v.instruction ?? null, spec: v.spec || null, changes: v.changes || [], noted: v.noted ?? null, from: v.from_version ?? null, createdAt: v.created_at }),
-    design: d => {
-      if (!d) return null;
-      let versions = (d.versions || []).map(W.version);
-      if (!versions.length) { // contract v1: refinements only — rebuild versions from the prompt
-        let spec = window.FTEngine.parse(d.prompt || '', d.hints || {}); versions = [{ n: 1, instruction: null, spec, changes: [], noted: null, createdAt: d.created_at }];
-        (d.refinements || []).forEach((r, i) => { const x = window.FTEngine.refine(spec, r.instruction); spec = x.spec; versions.push({ n: i + 2, instruction: r.instruction, spec, changes: x.changes, noted: x.noted, createdAt: r.created_at }); });
-      }
-      versions.forEach(v => { if (!v.spec) v.spec = window.FTEngine.parse(d.prompt || '', d.hints || {}); });
-      return { id: String(d.id), userId: d.user_id ? String(d.user_id) : null, title: d.title || window.FTEngine.title(versions[versions.length - 1].spec), prompt: d.prompt || '', hints: d.hints || {}, versions, current: d.current_version ?? d.version ?? versions[versions.length - 1].n, status: d.status || 'draft', videoUrl: d.video_url || null, createdAt: d.created_at, updatedAt: d.updated_at };
-    },
-    measurement: m => m && ({ id: String(m.id), label: m.label || 'Me', unit: m.unit || 'cm', values: m.values || {}, fit: m.fit || 'regular', notes: m.notes || '', createdAt: m.created_at, updatedAt: m.updated_at }),
-    quote: q => q && ({ id: String(q.id), requestId: String(q.request_id), designId: String(q.design_id), vendorId: String(q.vendor_id), price: Number(q.price), deliveryDays: q.delivery_days, note: q.note || '', includesFabric: q.includes_fabric !== false, status: q.status || 'offered', createdAt: q.created_at, validUntil: q.valid_until, vendor: q.vendor ? W.vendor(q.vendor) : { id: String(q.vendor_id), name: q.vendor_name, city: q.city || '', rating: Number(q.rating || 0), verified: !!q.is_verified, specialties: [], hue: 40 } }),
-    request: r => r && ({ id: String(r.id), designId: String(r.design_id), versionN: r.version, userId: String(r.user_id), measurementId: String(r.measurement_id), notes: r.notes || '', deadline: r.deadline, status: r.status, createdAt: r.created_at, design: r.design ? W.design(r.design) : null, customer: r.customer || null, measurement: r.measurement ? W.measurement(r.measurement) : null, myQuote: r.my_quote ? W.quote(r.my_quote) : null, suggested: r.suggested || null, quoteCount: r.quote_count || 0 }),
-    order: o => o && ({ id: String(o.id), userId: String(o.user_id), vendorId: String(o.vendor_id), designId: String(o.design_id), versionN: o.version, quoteId: o.quote_id ? String(o.quote_id) : null, measurementId: o.measurement_id ? String(o.measurement_id) : null, total: Number(o.total), paid: Number(o.paid || 0), balance: Number(o.total) - Number(o.paid || 0), plan: o.plan || 'full', phase: o.phase, status: o.status || 'active', createdAt: o.created_at, paidAt: o.paid_at, eta: o.eta, deliveredAt: o.delivered_at, deliveryDays: o.delivery_days, events: (o.events || []).map(e => ({ at: e.created_at || e.at, phase: e.phase, title: e.title, body: e.body || '', by: e.by || 'system' })), vendor: o.vendor ? W.vendor(o.vendor) : { id: String(o.vendor_id), name: o.vendor_name || '', hue: 40 }, design: o.design ? W.design(o.design) : null, customer: o.customer || null, measurement: o.measurement ? W.measurement(o.measurement) : null }),
-    payment: p => p && ({ id: String(p.id), orderId: String(p.order_id), amount: Number(p.amount), kind: p.kind, method: p.method, reference: p.reference, status: p.status, last4: p.last4 || null, createdAt: p.created_at, customer: p.customer, vendor: p.vendor }),
+  /* ═════════ the API: [built-in call, backend call] for every method ═════════ */
+  const R = {
+    /* designs + versions */
+    createDesign: o => { const spec = o.spec ? E.normalize(o.spec) : E.parse(o.prompt || '', o.hints || {}); return post('/designs/', { prompt: o.prompt || '', title: o.title || '', autoTitle: E.title(spec), spec }); },
+    saveVersion: (d, spec, label = '', fromN = null) => post(`/designs/${id(d)}/versions/`, { spec: E.normalize(spec), label, fromN, autoTitle: E.title(spec) }),
+    restoreVersion: (d, n) => post(`/designs/${id(d)}/restore/`, { n }),
+    listDesigns: () => get('/designs/'),
+    getDesign: d => get(`/designs/${id(d)}/`),
+    renameDesign: (d, title) => patch(`/designs/${id(d)}/`, { title }),
+    duplicateDesign: d => post(`/designs/${id(d)}/duplicate/`),
+    deleteDesign: d => del(`/designs/${id(d)}/`).then(() => true),
+    game: () => get('/me/game/'),
+    /* publishing + Discover */
+    publishDesign: (d, o = {}) => post(`/designs/${id(d)}/publish/`, { caption: o.caption || '', tags: o.tags || [], allowRemix: o.allowRemix !== false }),
+    unpublishDesign: d => post(`/designs/${id(d)}/unpublish/`),
+    discover: (o = {}) => get('/discover/', o),
+    like: (d, on = true) => post(`/designs/${id(d)}/like/`, { on }),
+    saveForLater: (d, on = true) => post(`/designs/${id(d)}/save/`, { on }),
+    remixDesign: d => post(`/designs/${id(d)}/remix/`),
+    reportContent: o => post('/reports/', o).then(() => true),
+    /* designers */
+    listDesigners: (o = {}) => get('/designers/', o),
+    getDesigner: d => get(`/designers/${id(String(d).replace(/^@/, ''))}/`),
+    myDesigner: () => get('/me/designer/'),
+    saveDesignerProfile: o => put('/me/designer/', o),
+    follow: (u, on = true) => post(`/designers/${id(u)}/follow/`, { on }),
+    /* commissions */
+    requestCommission: (designerId, o) => post('/commissions/', { designerId, ...o }),
+    listCommissions: () => get('/commissions/'),
+    getCommission: c => get(`/commissions/${id(c)}/`),
+    offerCommission: (c, o) => post(`/commissions/${id(c)}/offer/`, o),
+    declineCommission: (c, reason = '') => post(`/commissions/${id(c)}/decline/`, { reason }),
+    payCommission: (c, o) => post(`/commissions/${id(c)}/pay/`, o),
+    deliverCommission: (c, o) => post(`/commissions/${id(c)}/deliver/`, o),
+    requestChanges: (c, note) => post(`/commissions/${id(c)}/changes/`, { note }),
+    approveCommission: c => post(`/commissions/${id(c)}/approve/`),
+    cancelCommission: c => post(`/commissions/${id(c)}/cancel/`),
+    /* reviews */
+    addReview: o => post('/reviews/', o),
+    listReviews: (o = {}) => get('/reviews/', o),
+    /* messages + notifications */
+    listThreads: () => get('/threads/'),
+    openThread: o => post('/threads/', o),
+    getThread: t => get(`/threads/${id(t)}/`),
+    sendMessage: (t, o) => post(`/threads/${id(t)}/messages/`, o),
+    unread: () => (tokens.get() ? get('/me/unread/') : Promise.resolve({ notifications: 0, messages: 0 })),
+    listNotifications: () => get('/me/notifications/'),
+    markNotifications: (ids = 'all') => post('/me/notifications/read/', { ids }).then(() => true),
+    /* measurements */
+    listMeasurements: () => get('/me/measurements/'),
+    saveMeasurement: m => (m.id ? patch(`/me/measurements/${id(m.id)}/`, m) : post('/me/measurements/', m)),
+    deleteMeasurement: m => del(`/me/measurements/${id(m)}/`).then(() => true),
+    /* tailors */
+    listVendors: (o = {}) => get('/vendors/', o),
+    getVendor: v => get(`/vendors/${id(v)}/`),
+    myVendor: () => get('/vendors/me/'),
+    updateVendor: o => patch('/vendors/me/', o),
+    openRequests: () => get('/vendors/requests/'),
+    submitQuote: (r, o) => post(`/vendors/requests/${id(r)}/quote/`, o),
+    myQuotes: () => get('/vendors/quotes/'),
+    vendorOrders: () => get('/vendors/orders/'),
+    updateOrder: (o, u) => post(`/vendors/orders/${id(o)}/events/`, u),
+    /* production requests, quotes, orders */
+    requestQuotes: (d, o) => post(`/designs/${id(d)}/requests/`, o),
+    getRequest: d => get(`/designs/${id(d)}/requests/latest/`),
+    listQuotes: d => get(`/designs/${id(d)}/quotes/`),
+    createOrder: (quoteId, o = {}) => post('/orders/', { quoteId, plan: o.plan || 'full' }),
+    pay: (o, p = {}) => post(`/orders/${id(o)}/pay/`, p),
+    listOrders: () => get('/orders/'),
+    getOrder: o => get(`/orders/${id(o)}/`),
+    cancelOrder: o => post(`/orders/${id(o)}/cancel/`),
+    confirmDelivery: o => post(`/orders/${id(o)}/confirm/`),
+    reportProblem: (o, b) => post(`/orders/${id(o)}/problem/`, b),
+    contact: f => post('/contact/', f).then(() => true),
+    /* admin */
+    adminStats: () => get('/admin/stats/'), adminUsers: () => get('/admin/users/'), adminVendors: () => get('/admin/vendors/'), adminDesigns: () => get('/admin/designs/'), adminOrders: () => get('/admin/orders/'),
+    adminPayments: () => get('/admin/payments/'), adminCommissions: () => get('/admin/commissions/'), adminReports: () => get('/admin/reports/'), adminMessages: () => get('/admin/messages/'), adminApplications: () => get('/admin/applications/'), adminAudit: () => get('/admin/audit/'),
+    adminSetVendorStatus: (v, status) => post(`/admin/vendors/${id(v)}/status/`, { status }),
+    adminSetUserStatus: (u, status) => post(`/admin/users/${id(u)}/status/`, { status }),
+    adminSetOrderPhase: (o, phase, note) => post(`/admin/orders/${id(o)}/phase/`, { phase, note }),
+    adminResolveIssue: (o, b) => post(`/admin/orders/${id(o)}/issue/`, b),
+    adminRefund: p => post(`/admin/payments/${id(p)}/refund/`),
+    adminResolveReport: (r, action) => post(`/admin/reports/${id(r)}/resolve/`, { action }),
   };
-  const specBody = s => JSON.parse(JSON.stringify(s)); // the whole builder spec, including template, palette and sketch strokes
-  const mBody = m => ({ label: m.label, unit: m.unit, values: m.values, fit: m.fit, notes: m.notes });
 
-  /* ═════════ the API ═════════ */
   const A = (window.FTApi = {
-    local: LOCAL, sample: LOCAL, ApiError, PHASE_ORDER, phaseIndex, SAMPLE_VENDORS, money, DEMO: S?.DEMO,
-    onChange: fn => (LOCAL ? S.onChange(fn) : () => {}),
-    pollMs: LOCAL ? 2500 : 30000,
+    local: LOCAL, sample: LOCAL, base: BASE, ApiError, PHASE_ORDER, phaseIndex, SAMPLE_VENDORS, money, DEMO: S?.DEMO,
+    onChange: fn => { if (LOCAL) return S.onChange(fn); listeners.add(fn); return () => listeners.delete(fn); },
+    pollMs: LOCAL ? 2500 : 6000,
 
     /* accounts */
-    me: () => (LOCAL ? S.me() : cachedUser.get()),
+    me: () => (LOCAL ? S.me() : tokens.get() ? cachedUser.get() : null),
     signedIn: () => !!A.me(),
-    async register(form) { if (LOCAL) return S.register(form); const d = await post('/account/register/', { name: form.name, email: form.email, password: form.password, role: form.role || 'customer', phone: form.phone, city: form.city, country: form.country }); tokens.set({ access: d.access, refresh: d.refresh }); const u = W.user(d.user || (await get('/account/me/'))); cachedUser.set(u); return u; },
-    async login(email, password) { if (LOCAL) return S.login(email, password); const d = await post('/account/login/', { email, password }); tokens.set({ access: d.access, refresh: d.refresh }); const u = W.user(d.user || (await get('/account/me/'))); cachedUser.set(u); return u; },
-    async logout() { if (LOCAL) return S.logout(); tokens.set(null); cachedUser.set(null); },
-    async refreshMe() { if (LOCAL) return S.me(); if (!tokens.get()) return null; try { const u = W.user(await get('/account/me/')); cachedUser.set(u); return u; } catch { return cachedUser.get(); } },
-    async updateProfile(p) { if (LOCAL) return S.updateProfile(p); const u = W.user(await patch('/account/me/', p)); cachedUser.set(u); return u; },
-    async changePassword(cur, next) { return LOCAL ? S.changePassword(cur, next) : post('/account/password/', { current_password: cur, new_password: next }).then(() => true); },
+    async register(form) { return LOCAL ? S.register(form) : signIn(await request('/auth/register/', { method: 'POST', body: form, auth: false })); },
+    async login(email, password) { return LOCAL ? S.login(email, password) : signIn(await request('/auth/login/', { method: 'POST', body: { email, password }, auth: false })); },
+    async logout() { if (LOCAL) return S.logout(); tokens.set(null); cachedUser.set(null); emit(); },
+    async refreshMe() { if (LOCAL) return S.me(); if (!tokens.get()) return null; try { const u = await get('/me/'); cachedUser.set(u); emit(); return u; } catch (e) { if (e.status === 401) { tokens.set(null); cachedUser.set(null); emit(); return null; } return cachedUser.get(); } },
+    async updateProfile(p) { if (LOCAL) return S.updateProfile(p); const u = await patch('/me/', p); cachedUser.set(u); emit(); return u; },
+    async changePassword(current, next) { return LOCAL ? S.changePassword(current, next) : post('/me/password/', { current, next }).then(() => true); },
+    async applyAsVendor(form) { if (LOCAL) return S.applyAsVendor(form); const d = await post('/vendors/apply/', form); if (d.access) signIn(d); else await A.refreshMe(); return d.vendor; },
+    async saveDesignerProfile(o) { const p = LOCAL ? await S.saveDesignerProfile(o) : await R.saveDesignerProfile(o); if (!LOCAL) await A.refreshMe(); return p; },
 
-    /* designs + versions */
-    async createDesign({ prompt = '', hints = {}, spec = null, title = '' }) {
-      if (LOCAL) return S.createDesign({ prompt, hints, spec, title });
-      const d = await post('/design/', { prompt, hints, title, source: spec ? 'builder' : 'ai', spec: specBody(spec || window.FTEngine.parse(prompt, hints)) });
-      return { ...W.design(d), reward: d.reward || null };
-    },
-    async saveVersion(id, spec, label = '', fromN = null) { if (LOCAL) return S.saveVersion(id, spec, label, fromN); const d = await post(`/design/${id}/versions/`, { spec: specBody(spec), label, from_version: fromN }); return { ...W.design(d), reward: d.reward || null }; },
-    async game() { return LOCAL ? S.game() : get('/account/game/'); },
-    /** Optional AI services. Built-in mode has none: the studio uses its live 3D turntable and manual try-on fit instead. */
-    ai: { render3d: !LOCAL && C.ai?.render3d !== false, tryOn: !LOCAL && C.ai?.tryOn !== false },
-    async render3d(designId) { if (LOCAL) throw new ApiError('The AI 3D service is not connected.', 0); return post(`/design/${designId}/render-3d/`, {}); },
-    async tryOnFit(designId, imageDataUrl) { if (LOCAL) throw new ApiError('The AI try-on service is not connected.', 0); return post(`/design/${designId}/try-on/`, { image: imageDataUrl }); },
-    async listDesigns() { return LOCAL ? S.listDesigns() : (await get('/design/')).map(W.design); },
-    async getDesign(id) { return LOCAL ? S.getDesign(id) : W.design(await get(`/design/${id}/`)); },
-    async refineDesign(id, instruction) {
-      if (LOCAL) return S.refineDesign(id, instruction);
-      const d = await A.getDesign(id), cur = d.versions.find(v => v.n === d.current) || d.versions[d.versions.length - 1], r = window.FTEngine.refine(cur.spec, instruction);
-      return W.design(await post(`/design/${id}/refinements/`, { instruction, spec: specBody(r.spec), changes: r.changes, noted: r.noted }));
-    },
-    async restoreVersion(id, n) { return LOCAL ? S.restoreVersion(id, n) : W.design(await post(`/design/${id}/versions/${n}/restore/`, {})); },
-    async renameDesign(id, title) { return LOCAL ? S.renameDesign(id, title) : W.design(await patch(`/design/${id}/`, { title })); },
-    async duplicateDesign(id) { return LOCAL ? S.duplicateDesign(id) : W.design(await post(`/design/${id}/duplicate/`, {})); },
-    async deleteDesign(id) { return LOCAL ? S.deleteDesign(id) : del(`/design/${id}/`).then(() => true); },
+    /** Start a Paystack payment: the backend creates the reference it will later verify. */
+    async initPayment(target, kind) { if (LOCAL) return { reference: 'FT' + Date.now().toString(36).toUpperCase(), amount: null }; return target.commissionId ? post(`/commissions/${id(target.commissionId)}/pay/init/`) : post(`/orders/${id(target.orderId || target)}/pay/init/`, { kind }); },
 
-    /* measurements */
-    async listMeasurements() { return LOCAL ? S.listMeasurements() : (await get('/account/measurements/')).map(W.measurement); },
-    async saveMeasurement(m) { return LOCAL ? S.saveMeasurement(m) : W.measurement(await (m.id ? patch(`/account/measurements/${m.id}/`, mBody(m)) : post('/account/measurements/', mBody(m)))); },
-    async deleteMeasurement(id) { return LOCAL ? S.deleteMeasurement(id) : del(`/account/measurements/${id}/`).then(() => true); },
-
-    /* vendors */
-    async listVendors(o) { return LOCAL ? S.listVendors(o) : (await get('/vendor/')).map(W.vendor); },
-    async getVendor(id) { return LOCAL ? S.getVendor(id) : W.vendor(await get(`/vendor/${id}/`)); },
-    async myVendor() { return LOCAL ? S.myVendor() : W.vendor(await get('/vendor/me/')); },
-    async updateVendor(p) { return LOCAL ? S.updateVendor(p) : W.vendor(await patch('/vendor/me/', { name: p.name, city: p.city, country: p.country, bio: p.bio, specialties: p.specialties, lead_min: p.leadMin })); },
-    async applyAsVendor(form) { if (LOCAL) return S.applyAsVendor(form); const d = await post('/vendor/apply/', form); if (d.access) { tokens.set({ access: d.access, refresh: d.refresh }); cachedUser.set(W.user(d.user)); } return W.vendor(d.vendor || d); },
-
-    /* production requests + quotes */
-    async requestQuotes(designId, o) { return LOCAL ? S.requestQuotes(designId, o) : W.request(await post(`/design/${designId}/requests/`, { measurement_id: o.measurementId, notes: o.notes, deadline: o.deadline })); },
-    async getRequest(designId) { return LOCAL ? S.getRequest(designId) : W.request(await get(`/design/${designId}/requests/latest/`)); },
-    async listQuotes(designId) { return LOCAL ? S.listQuotes(designId) : (await get(`/design/${designId}/quotes/`)).map(W.quote); },
-    async openRequests() { return LOCAL ? S.openRequests() : (await get('/vendor/requests/')).map(W.request); },
-    async submitQuote(requestId, q) { return LOCAL ? S.submitQuote(requestId, q) : W.quote(await post(`/vendor/requests/${requestId}/quote/`, { price: q.price, delivery_days: q.deliveryDays, note: q.note, includes_fabric: q.includesFabric })); },
-    async myQuotes() { return LOCAL ? S.myQuotes() : (await get('/vendor/quotes/')).map(q => ({ ...W.quote(q), design: W.design(q.design), request: W.request(q.request) })); },
-
-    /* orders + payments */
-    async createOrder(quoteId, o) { return LOCAL ? S.createOrder(quoteId, o) : W.order(await post('/order/', { quote_id: quoteId, plan: o?.plan || 'full' })); },
-    async pay(orderId, o) {
-      if (LOCAL) return S.pay(orderId, o);
-      // Paystack inline on the client; the backend verifies the reference and records the payment.
-      const d = await post(`/order/${orderId}/payments/`, { method: o.method, kind: o.kind, reference: o.reference || null });
-      return { payment: W.payment(d.payment || d), order: W.order(d.order || (await get(`/order/${orderId}/`))), reward: d.reward || null };
-    },
-    async initPayment(orderId, kind) { return LOCAL ? { reference: 'FT' + Date.now().toString(36).toUpperCase(), amount: null } : post(`/order/${orderId}/payments/init/`, { kind }); },
-    async listOrders() { return LOCAL ? S.listOrders() : (await get('/order/')).map(W.order); },
-    async getOrder(id) { return LOCAL ? S.getOrder(id) : W.order(await get(`/order/${id}/`)); },
-    async cancelOrder(id) { return LOCAL ? S.cancelOrder(id) : W.order(await post(`/order/${id}/cancel/`, {})); },
-    async vendorOrders() { return LOCAL ? S.vendorOrders() : (await get('/vendor/orders/')).map(W.order); },
-    async updateOrder(id, u) { return LOCAL ? S.updateOrder(id, u) : W.order(await post(`/vendor/orders/${id}/events/`, { phase: u.phase, title: u.title, body: u.body })); },
-
-    /* contact */
-    async contact(form) { return LOCAL ? S.contact(form) : post('/contact/', form).then(() => true); },
-
-    /* admin */
-    async adminStats() { return LOCAL ? S.adminStats() : get('/admin/stats/'); },
-    async adminUsers() { return LOCAL ? S.adminUsers() : (await get('/admin/users/')).map(u => ({ ...W.user(u), designs: u.designs, orders: u.orders, spent: Number(u.spent || 0) })); },
-    async adminVendors() { return LOCAL ? S.adminVendors() : (await get('/admin/vendors/')).map(v => ({ ...W.vendor(v), user: W.user(v.user), application: v.application, quotes: v.quotes, orders: v.orders })); },
-    async adminSetVendorStatus(id, status) { return LOCAL ? S.adminSetVendorStatus(id, status) : W.vendor(await post(`/admin/vendors/${id}/status/`, { status })); },
-    async adminSetUserStatus(id, status) { return LOCAL ? S.adminSetUserStatus(id, status) : W.user(await post(`/admin/users/${id}/status/`, { status })); },
-    async adminDesigns() { return LOCAL ? S.adminDesigns() : (await get('/admin/designs/')).map(d => ({ ...W.design(d), owner: W.user(d.owner), quotes: d.quotes })); },
-    async adminOrders() { return LOCAL ? S.adminOrders() : (await get('/admin/orders/')).map(W.order); },
-    async adminSetOrderPhase(id, phase, note) { return LOCAL ? S.adminSetOrderPhase(id, phase, note) : W.order(await post(`/admin/orders/${id}/phase/`, { phase, note })); },
-    async adminPayments() { return LOCAL ? S.adminPayments() : (await get('/admin/payments/')).map(W.payment); },
-    async adminRefund(id) { return LOCAL ? S.adminRefund(id) : W.payment(await post(`/admin/payments/${id}/refund/`, {})); },
-    async adminMessages() { return LOCAL ? S.adminMessages() : get('/admin/messages/'); },
-    async adminApplications() { return LOCAL ? S.adminApplications() : get('/admin/applications/'); },
-    async adminAudit() { return LOCAL ? S.adminAudit() : get('/admin/audit/'); },
+    /** Optional AI services on the backend. Without them the studio uses its own 3D view and manual try-on. */
+    ai: { tryOn: !LOCAL && C.ai?.tryOn === 'remote' },
+    async tryOnFit(designId, imageDataUrl) { if (!A.ai.tryOn) throw new ApiError('The AI try-on service is not connected.', 0); return post(`/designs/${id(designId)}/try-on/`, { image: imageDataUrl }); },
   });
+  for (const [name, remote] of Object.entries(R)) if (!A[name]) A[name] = LOCAL ? (...a) => S[name](...a) : (...a) => remote(...a);
+  if (!LOCAL && tokens.get()) A.refreshMe();
 })();

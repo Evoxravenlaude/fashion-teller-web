@@ -2,17 +2,21 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import views as v
+from . import views as v, views_extra as x
 
 urlpatterns = [
     # accounts
     path('auth/register/', v.register), path('auth/login/', v.login), path('auth/refresh/', TokenRefreshView.as_view()),
+    path('auth/forgot/', x.forgot), path('auth/reset/', x.reset), path('auth/verify/', x.verify), path('me/verify/send/', x.verify_send),
+    path('config/', x.config), path('dev/mail/', x.dev_mail), path('webhooks/paystack/', x.paystack_webhook),
+    path('payouts/banks/', x.banks), path('me/payout-account/', x.payout_account), path('me/earnings/', x.my_earnings),
+    path('admin/payouts/', x.admin_payouts), path('admin/payouts/<str:pk>/', x.admin_payout),
     path('me/', v.me), path('me/password/', v.password), path('me/game/', v.game), path('me/unread/', v.unread),
     path('me/notifications/', v.notifications), path('me/notifications/read/', v.notifications_read),
     path('me/measurements/', v.measurements), path('me/measurements/<str:pk>/', v.measurement), path('me/designer/', v.my_designer),
     # designs
     path('designs/', v.designs), path('designs/<str:pk>/', v.design), path('designs/<str:pk>/versions/', v.design_versions), path('designs/<str:pk>/restore/', v.design_restore),
-    path('designs/<str:pk>/duplicate/', v.design_duplicate), path('designs/<str:pk>/try-on/', v.design_try_on), path('designs/<str:pk>/publish/', v.design_publish), path('designs/<str:pk>/unpublish/', v.design_unpublish),
+    path('designs/<str:pk>/duplicate/', v.design_duplicate), path('designs/<str:pk>/try-on/', x.try_on), path('try-on/<str:pk>/', x.try_on_status), path('designs/<str:pk>/publish/', v.design_publish), path('designs/<str:pk>/unpublish/', v.design_unpublish),
     path('designs/<str:pk>/like/', v.design_like), path('designs/<str:pk>/save/', v.design_save), path('designs/<str:pk>/remix/', v.design_remix),
     path('designs/<str:pk>/requests/', v.design_requests), path('designs/<str:pk>/requests/latest/', v.design_request_latest), path('designs/<str:pk>/quotes/', v.design_quotes),
     path('discover/', v.discover), path('reports/', v.reports),

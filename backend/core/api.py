@@ -142,7 +142,7 @@ def vendor_of(u):
 def pub(u):
     p, v = profile_of(u), vendor_of(u)
     return {'id': str(u.id), 'email': u.email, 'name': u.name, 'role': u.role, 'phone': u.phone, 'city': u.city, 'country': u.country, 'vendor_id': str(v.id) if v else None,
-            'status': u.status, 'created_at': iso(u.created_at), 'demo': u.demo, 'designer': bool(p), 'handle': p.handle if p else None, 'hue': hue(u.id)}
+            'status': u.status, 'created_at': iso(u.created_at), 'demo': u.demo, 'email_verified': u.email_verified, 'email_prefs': {'orders': True, 'messages': True, **(u.email_prefs or {})}, 'designer': bool(p), 'handle': p.handle if p else None, 'hue': hue(u.id)}
 
 
 def person(u):
@@ -291,6 +291,10 @@ def notify(user, kind, title, body, href, key=''):
     """Tell someone something happened. `key` folds a burst into one line that keeps updating."""
     if user is None or user.sample:
         return
+    fresh = not key or not Notification.objects.filter(user=user, key=key, read=False).exists()
+    if fresh:                                      # one email per new notification, not one per update to it
+        from . import extras
+        extras.notify_mail(user, kind, txt(title, 120), txt(body, 200), href)
     if key:
         Notification.objects.filter(user=user, key=key, read=False).delete()
     Notification.objects.create(user=user, kind=kind, title=txt(title, 120), body=txt(body, 200), href=href, key=key)

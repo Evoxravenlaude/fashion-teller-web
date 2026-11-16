@@ -26,6 +26,8 @@ class User(AbstractBaseUser):
     status = models.CharField(max_length=10, default='active')       # active | suspended
     sample = models.BooleanField(default=False)                         # a built-in tailor or designer that acts on its own (SAMPLE_MODE)
     demo = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=False)
+    email_prefs = models.JSONField(default=dict, blank=True)             # {orders: bool, messages: bool}; missing means yes
     created_at = models.DateTimeField(default=now)
     objects = UserManager()
     USERNAME_FIELD = 'email'
@@ -353,3 +355,67 @@ class Audit(models.Model):
 class Game(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='game')
     data = models.JSONField(default=dict)
+
+
+class Mail(models.Model):
+    """Every email the site sends, and whether it went. Also what the development mailbox shows."""
+    user = NFK(User, related_name='mails')
+    to = models.EmailField()
+    kind = models.CharField(max_length=20)                              # verify | reset | order | quote | commission | payout | message
+    subject = models.CharField(max_length=160)
+    text = models.TextField()
+    link = models.CharField(max_length=400, blank=True)                 # a path on the site
+    status = models.CharField(max_length=10, default='queued')         # queued | sent | failed
+    error = models.CharField(max_length=300, blank=True)
+    tries = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(default=now)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-id']
+
+
+class PayoutAccount(models.Model):
+    """Where a tailor or designer is paid. With Paystack transfers on, only the recipient code and last four digits are kept."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='payout_account')
+    bank_code = models.CharField(max_length=12)
+    bank_name = models.CharField(max_length=80)
+    account_name = models.CharField(max_length=120)
+    last4 = models.CharField(max_length=4)
+    number = models.CharField(max_length=10, blank=True)                # kept only when payouts are made by hand
+    recipient_code = models.CharField(max_length=40, blank=True)        # Paystack transfer recipient
+    created_at = models.DateTimeField(default=now)
+
+
+class Payout(models.Model):
+    """Money owed to a tailor or designer once a payment is released: the amount paid, less the platform fee."""
+    user = FK(User, related_name='payouts')
+    kind = models.CharField(max_length=12)                              # order | commission
+    order = NFK(Order, related_name='payouts')
+    commission = NFK(Commission, related_name='payouts')
+    title = models.CharField(max_length=120)
+    gross = models.PositiveIntegerField()
+    fee = models.PositiveIntegerField()
+    net = models.PositiveIntegerField()
+    status = models.CharField(max_length=12, default='pending', db_index=True)   # pending | processing | paid | failed | reversed
+    reference = models.CharField(max_length=40, unique=True)
+    transfer_code = models.CharField(max_length=40, blank=True)
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(default=now)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-id']
+
+
+class TryOnJob(models.Model):
+    """One photoreal try-on picture asked of the AI service."""
+    user = FK(User, related_name='tryons')
+    design = NFK(Design)
+    provider = models.CharField(max_length=20)
+    provider_id = models.CharField(max_length=80, blank=True)
+    status = models.CharField(max_length=10, default='running')        # running | done | failed
+    error = models.CharField(max_length=200, blank=True)
+    image = models.TextField(blank=True)                                # the finished picture, as a data URL or an https URL
+    created_at = models.DateTimeField(default=now)

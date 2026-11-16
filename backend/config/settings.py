@@ -37,7 +37,10 @@ SILENCED_SYSTEM_CHECKS = ['security.W003']
 WSGI_APPLICATION = 'config.wsgi.application'
 TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [], 'APP_DIRS': True, 'OPTIONS': {'context_processors': []}}]
 
-DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': env('SQLITE_PATH') or BASE_DIR / 'db.sqlite3', 'OPTIONS': {'timeout': 20}}}
+# SQLite for development. Emails and payouts are sent from background threads that also write here, so writers queue
+# for the lock (IMMEDIATE) rather than failing with "database is locked", and readers are not blocked meanwhile (WAL).
+DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': env('SQLITE_PATH') or BASE_DIR / 'db.sqlite3',
+                         'OPTIONS': {'timeout': 20, 'transaction_mode': 'IMMEDIATE', 'init_command': 'PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;'}}}
 if env('DATABASE_URL'):
     import dj_database_url
     DATABASES['default'] = dj_database_url.parse(env('DATABASE_URL'), conn_max_age=60)
@@ -55,7 +58,7 @@ APPEND_SLASH = False
 # The site is a separate origin (Vercel); only the origins listed here may call the API from a browser.
 CORS_ALLOWED_ORIGINS = csv('CORS_ORIGINS', 'http://localhost:8787,http://127.0.0.1:8787,http://localhost:3000,http://localhost:5173' if DEBUG else '')
 CORS_ALLOW_CREDENTIALS = False                    # tokens travel in the Authorization header, never in cookies
-DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024      # a design with a full sketch and three progress photos fits well inside
+DATA_UPLOAD_MAX_MEMORY_SIZE = 9 * 1024 * 1024      # a photoreal try-on sends a photo and a garment picture; everything else is far smaller
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework_simplejwt.authentication.JWTAuthentication'],
@@ -91,3 +94,40 @@ SAMPLE_MODE = flag('SAMPLE_MODE', '1' if DEBUG else '0')
 SAMPLE_QUOTE_DELAY = tuple(float(x) for x in csv('SAMPLE_QUOTE_DELAY', '2,9'))[:2]
 SAMPLE_PHASE_SECONDS = float(env('SAMPLE_PHASE_SECONDS', '30'))
 LOGGING = {'version': 1, 'disable_existing_loggers': False, 'handlers': {'console': {'class': 'logging.StreamHandler'}}, 'root': {'handlers': ['console'], 'level': 'WARNING'}}
+
+# ───────── email ─────────
+# Sent over plain SMTP, which every provider offers (Resend, Postmark, Amazon SES, Brevo, Mailgun…), so changing
+# provider is a change of these settings only. With no EMAIL_HOST: development prints emails to the console and
+# keeps them in the mail log; a server sends nothing and says so in /api/v1/config/.
+SITE_URL = env('SITE_URL', 'http://localhost:3000').rstrip('/')         # where links in emails point
+EMAIL_HOST = env('EMAIL_HOST', '')
+EMAIL_PORT = int(env('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_SSL = flag('EMAIL_USE_SSL', '0')
+EMAIL_USE_TLS = flag('EMAIL_USE_TLS', '0' if EMAIL_USE_SSL else '1')
+EMAIL_TIMEOUT = 15
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', 'Fashion Teller <hello@fashionteller.com>')
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend' if EMAIL_HOST else 'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.dummy.EmailBackend'
+MAIL_MODE = 'smtp' if EMAIL_HOST else 'console' if DEBUG else 'off'
+MAIL_ASYNC = flag('MAIL_ASYNC', '1')               # send after the request has answered, on a background thread
+MAIL_DEBUG = DEBUG and flag('MAIL_DEBUG', '1')     # /api/v1/dev/mail/ lists recent emails, links included. Development only: it cannot be switched on with DEBUG off.
+PASSWORD_RESET_TIMEOUT = 3600                      # a reset link works for one hour
+VERIFY_LINK_DAYS = 3
+
+# ───────── payouts ─────────
+# What Fashion Teller keeps when a payment is released to a tailor or designer.
+PLATFORM_FEE_PERCENT = max(0.0, min(50.0, float(env('PLATFORM_FEE_PERCENT', '10'))))
+# paystack: sent automatically with Paystack Transfers.  manual: you pay from your bank and mark each one as sent.
+# test: nothing moves; payouts complete by themselves (only where the test checkout is allowed).
+PAYOUTS = 'paystack' if PAYSTACK_SECRET_KEY and flag('PAYSTACK_TRANSFERS', '1') else 'test' if ALLOW_TEST_PAYMENTS else 'manual'
+TEST_PAYOUT_SECONDS = float(env('TEST_PAYOUT_SECONDS', '6'))
+
+# ───────── photoreal try-on (optional) ─────────
+# An AI service that redraws a customer's photo with the garment on. Off until a key is set. Each picture costs money,
+# so there is a daily limit per account.
+FASHN_API_KEY = env('FASHN_API_KEY', '')
+FASHN_API_URL = env('FASHN_API_URL', 'https://api.fashn.ai/v1').rstrip('/')        # the browser tests point this at a stand-in
+AI_TRYON_PROVIDER = env('AI_TRYON_PROVIDER', 'fashn' if FASHN_API_KEY else '')
+AI_TRYON_MODEL = env('AI_TRYON_MODEL', 'tryon-v1.6')
+AI_TRYON_DAILY_LIMIT = int(env('AI_TRYON_DAILY_LIMIT', '10'))

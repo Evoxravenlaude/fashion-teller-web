@@ -41,7 +41,7 @@ class Command(BaseCommand):
                 pw = getpass.getpass('Password (8+ characters): ')
                 if len(pw) < 8:
                     self.stderr.write('Too short.'); return
-                u = User.objects.create_user(admin, pw, name='Fashion Teller Admin')
+                u = User.objects.create_user(admin, pw, name='Fashion Teller Admin', email_verified=True)
             u.role, u.status = 'admin', 'active'; u.save()
             self.stdout.write(self.style.SUCCESS(f'{u.email} is an admin.')); return
         if not settings.DEBUG and not demo:
@@ -64,7 +64,7 @@ class Command(BaseCommand):
 
         users = {}
         for u in db['users']:
-            obj = User(email=u['email'], name=u['name'], role=u['role'], phone=u.get('phone', ''), city=u.get('city', ''), country=u.get('country', ''), status=u['status'], sample=bool(u.get('sample')), demo=bool(u.get('demo')), created_at=T(u['createdAt']))
+            obj = User(email=u['email'], name=u['name'], role=u['role'], phone=u.get('phone', ''), city=u.get('city', ''), country=u.get('country', ''), status=u['status'], email_verified=True, sample=bool(u.get('sample')), demo=bool(u.get('demo')), created_at=T(u['createdAt']))
             obj.set_password(demo[u['email']]) if u['email'] in demo else obj.set_unusable_password()
             obj.save(); users[u['id']] = obj; ids[u['id']] = str(obj.id)
         vendors = {}

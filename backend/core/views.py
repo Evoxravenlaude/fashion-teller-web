@@ -14,11 +14,11 @@ from django.db.models import Q, Sum
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from . import rules as R
+from . import extras, rules as R
 from .api import (PHASES, Fail, access, audit, cards, charge, commission_out, current_version, design_out, designer_out, event, first, followers_of, game_out, get, init_payment,
                   iso, mark_delivered, measurement_out, message_out, mini, money, new_design, notify, now, order_out, person, play, profile_of, pub, queue_reply, quote_out, rate,
                   request_out, review_out, route, say, simulate, simulate_order, simulate_quotes, thread_for, thread_out, today, txt, unread_in, vendor_of, vendor_pub, whole)
-from .models import (Application, Audit, Commission, ContactMessage, Design, Designer, Follow, Like, Measurement, Member, Message, Notification, Order, Payment, Quote, QuoteRequest,
+from .models import (Application, Audit, Commission, ContactMessage, Design, Designer, Follow, Like, Measurement, Member, Message, Notification, Order, Payment, Payout, Quote, QuoteRequest,
                      Report, Review, Saved, Thread, User, Vendor, Version)
 
 HANDLE = re.compile(r'^[a-z0-9][a-z0-9._]{2,23}$')
@@ -54,7 +54,7 @@ def create_account(d, role='customer'):
     password_ok(d.get('password'))
     if User.objects.filter(email=email).exists(): raise Fail('An account with this email already exists. Sign in instead.', 409)
     u = User.objects.create_user(email, d['password'], name=txt(d['name'], 80), role=role if role in ('customer', 'tailor') else 'customer', phone=txt(d.get('phone'), 30), city=txt(d.get('city'), 60), country=txt(d.get('country'), 60))
-    audit('register', u.name, u)
+    audit('register', u.name, u); extras.send_verification(u)
     return u
 
 
@@ -84,7 +84,10 @@ def me(request):
         if d.get('email') is not None:
             e = email_of(d['email'])
             if User.objects.filter(email=e).exclude(id=u.id).exists(): raise Fail('That email is already in use.')
-            u.email = e
+            if e != u.email:
+                u.email, u.email_verified = e, False; u.save(); extras.send_verification(u)
+        if isinstance(d.get('email_prefs'), dict):
+            u.email_prefs = {'orders': d['email_prefs'].get('orders') is not False, 'messages': d['email_prefs'].get('messages') is not False}
         u.save()
     return pub(u)
 
@@ -263,15 +266,6 @@ def design_restore(request, pk):
         if not d.renamed: d.title = R.title(v.spec)
         d.save()
     return design_out(DESIGNS().get(id=d.id), u)
-
-
-@route(['POST'], throttle='write')
-def design_try_on(request, pk):
-    """Where an AI try-on service plugs in. Contract: body {image: data URL of the person's photo}; answer either
-    {imageUrl: https URL of the finished picture} or {hints: {x, y, w, rot}} (percentages) to place the garment on the photo.
-    No service is connected, so the studio keeps to placing the garment by hand (config.js: ai.tryOn)."""
-    own_design(request, pk)
-    raise Fail('The try-on service is not connected yet. Place the garment on your photo by hand.', 501)
 
 
 @route(['POST'])
@@ -499,13 +493,16 @@ def commission_pay_init(request, pk):
 
 @route(['POST'])
 def commission_pay(request, pk):
-    u = request.me
-    c = Commission.objects.select_for_update().filter(id=pk if str(pk).isdigit() else 0, client=u).first()
+    c = Commission.objects.select_for_update().filter(id=pk if str(pk).isdigit() else 0, client=request.me).first()
     if c is None: raise Fail('Commission not found.', 404)
+    return pay_commission(request.me, c, request.data)
+
+
+def pay_commission(u, c, data):
     if c.status != 'offered' or not c.offer: raise Fail('There is no open offer to pay.')
-    p = charge(u, c.offer['fee'], 'commission', request.data, commission=c)
+    p = charge(u, c.offer['fee'], 'commission', data, commission=c)
     c.paid, c.paid_at, c.status, c.updated_at = c.offer['fee'], now(), 'active', now(); c.save()
-    c = my_commission(request, pk, 'client')
+    c = COMMISSIONS().get(id=c.id)
     say(c.thread, None, f'{first(u)} paid. {money(c.paid)} is held by Fashion Teller until the design is approved.')
     notify(c.designer, 'commission', f'{first(u)} paid for the commission', f'"{c.title}". Deliver within {c.offer["days"]} days.', f'/commissions?id={c.id}'); audit('pay', p.reference, u)
     return {'payment': payment_out(p), 'commission': commission_out(c, u)}
@@ -554,8 +551,9 @@ def commission_approve(request, pk):
     c.payments.filter(status='paid').update(status='released')
     p = profile_of(c.designer)
     if p: p.completed += 1; p.save(update_fields=['completed'])
+    po = extras.payout(c.designer, 'commission', c.title, c.paid, commission=c)
     say(c.thread, None, f'{first(u)} approved the design. {money(c.paid)} released to {first(c.designer)}.')
-    notify(c.designer, 'commission', 'Design approved, payment released', f'{money(c.paid)} for "{c.title}".', f'/commissions?id={c.id}')
+    notify(c.designer, 'commission', 'Design approved, payment released', f'{money(po.net if po else c.paid)} for "{c.title}"' + (f', after the {settings.PLATFORM_FEE_PERCENT:g}% platform fee.' if po and po.fee else '.'), f'/commissions?id={c.id}')
     if not c.designer.sample: play(c.designer, 'collab')
     return {'commission': commission_out(c, u), 'design': design_out(DESIGNS().get(id=nd.id), u), 'reward': play(u, 'collab')}
 
@@ -884,10 +882,23 @@ def order_pay_init(request, number):
 
 @route(['POST'])
 def order_pay(request, number):
-    u, o = request.me, my_order(request, number, lock=True)
-    kind, amount = due_on(o, request.data.get('kind'))
+    return pay_order(request.me, my_order(request, number, lock=True), request.data)
+
+
+def complete_payment(reference):
+    """Paystack's webhook: finish a payment we started but never heard the end of (the customer closed the tab)."""
+    p = Payment.objects.filter(reference=reference, status='pending').select_related('user').first()
+    if p is None: return False
+    data = {'method': 'paystack', 'reference': reference, 'kind': p.kind}
+    if p.order_id: pay_order(p.user, ORDERS().select_for_update(of=('self',)).get(id=p.order_id), data)
+    elif p.commission_id: pay_commission(p.user, Commission.objects.select_for_update().get(id=p.commission_id), data)
+    return True
+
+
+def pay_order(u, o, data):
+    kind, amount = due_on(o, data.get('kind'))
     before = o.status
-    p = charge(u, amount, kind, request.data, order=o)
+    p = charge(u, amount, kind, data, order=o)
     o.paid += amount
     if before == 'awaiting_payment':
         o.plan, o.status, o.paid_at, o.phase, o.eta = 'deposit' if kind == 'deposit' else 'full', 'active', now(), 'vendor_assigned', now() + timedelta(days=o.delivery_days)
@@ -928,7 +939,8 @@ def order_confirm(request, number):
     event(o, 'Received by the customer', f'Payment released to {o.vendor.name}.', 'customer')
     o.save(); o.payments.filter(status='paid').update(status='released')
     Vendor.objects.filter(id=o.vendor_id).update(orders_done=o.vendor.orders_done + 1)
-    notify(o.vendor.user, 'order', f'Order {o.number} confirmed', f'{first(u)} has the garment. {money(o.paid)} released to you.', '/workshop')
+    po = extras.payout(o.vendor.user, 'order', f'Order {o.number}', o.paid, order=o)
+    notify(o.vendor.user, 'order', f'Order {o.number} confirmed', f'{first(u)} has the garment. {money(po.net if po else o.paid)} released to you' + (f', after the {settings.PLATFORM_FEE_PERCENT:g}% platform fee.' if po and po.fee else '.'), '/workshop')
     return order_out(ORDERS().get(id=o.id), u)
 
 
@@ -966,7 +978,7 @@ def admin_stats(request):
             'designers': Designer.objects.count(), 'designs': Design.objects.count(), 'published': Design.objects.filter(published=True).count(), 'versions': Version.objects.count(), 'orders': Order.objects.count(),
             'active_orders': Order.objects.filter(status__in=['active', 'balance_due', 'delivered']).count(), 'delivered': Order.objects.filter(status__in=['delivered', 'completed']).count(),
             'awaiting_payment': Order.objects.filter(status='awaiting_payment').count(), 'commissions': Commission.objects.count(), 'active_commissions': Commission.objects.filter(status__in=['active', 'delivered', 'changes']).count(),
-            'gmv': gmv, 'held': held, 'new_users7d': real.filter(created_at__gt=week).count(), 'orders7d': Order.objects.filter(created_at__gt=week).count(), 'messages': ContactMessage.objects.filter(status='new').count(),
+            'gmv': gmv, 'held': held, 'fees': Payout.objects.aggregate(s=Sum('fee'))['s'] or 0, 'payouts_due': Payout.objects.filter(status__in=['pending', 'failed', 'reversed']).count(), 'new_users7d': real.filter(created_at__gt=week).count(), 'orders7d': Order.objects.filter(created_at__gt=week).count(), 'messages': ContactMessage.objects.filter(status='new').count(),
             'reports': Report.objects.filter(status='open').count(), 'by_phase': [[p, live.filter(phase=p).count()] for p in PHASES]}
 
 

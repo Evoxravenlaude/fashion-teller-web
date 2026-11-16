@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Try it on — Fashion Teller</title>
+<meta name="description" content="See a design on yourself: live through your camera, on a photo or in a video. It all happens on your device.">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="format-detection" content="telephone=no">
+<link rel="canonical" href="/try-on">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Try it on — Fashion Teller">
+<meta property="og:description" content="See a design on yourself: live through your camera, on a photo or in a video. It all happens on your device.">
+<meta property="og:image" content="/assets/media/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/assets/media/favicon.png">
+<link rel="apple-touch-icon" href="/assets/media/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="/assets/media/poster.jpg">
+<link rel="stylesheet" href="/assets/css/site.css">
+<script src="/assets/js/config.js"></script>
+<script src="/assets/js/device.js"></script>
+<script src="/assets/js/engine.js" defer></script>
+<script src="/assets/js/catalog.js" defer></script>
+<script src="/assets/js/store.js" defer></script>
+<script src="/assets/js/api.js" defer></script>
+<script src="/assets/js/site.js" defer></script>
+<script src="/assets/js/account.js" defer></script>
+<script src="/assets/js/viewer3d.js" defer></script>
+<script src="/assets/js/fit.js" defer></script>
+<script src="/assets/js/tryon.js" defer></script>
+</head>
+<body data-page="tryon">
+<a class="skip" href="#main">Skip to content</a>
+<div id="ft-loader" aria-hidden="true">
+  <div class="ld-inner">
+    <div class="ld-art"><canvas></canvas><img src="/assets/media/mark.png" alt=""></div>
+    <div class="ld-row"><div class="ld-bar"><i></i></div><span class="ld-pct">00</span></div>
+  </div>
+</div>
+<div id="ft-wipe" aria-hidden="true"><span class="wm"><b>Fashion</b> <i>Teller</i></span></div>
+<div id="ft-cursor" aria-hidden="true"></div>
+
+<header class="nav">
+  <a class="brand" href="/" aria-label="Fashion Teller home">
+    <img src="/assets/media/mark.png" alt="" width="26" height="34">
+    <span class="wm"><b>Fashion</b> <i>Teller</i></span>
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="/how-it-works" data-nav="how" data-auth="out">How it works</a>
+    <a href="/studio" data-nav="studio">Studio</a>
+    <a href="/discover" data-nav="discover">Discover</a>
+    <a href="/designers" data-nav="designers">Designers</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" hidden>My studio</a>
+    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" hidden>Orders</a>
+    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" hidden>Workshop</a>
+    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" hidden>Admin</a>
+    <a href="/tailors" data-nav="tailors" data-auth="out">For tailors</a>
+  </nav>
+  <div class="nav-end">
+    <a class="btn ghost sm" href="/signin" data-auth="out">Sign in</a>
+    <a class="btn gold sm mag" href="/studio" data-auth="out">Open studio</a>
+    <a class="streak" href="/designs" data-auth="in" data-role="customer" id="navStreak" hidden aria-label="Your design streak"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-4-1-6 1-9.5z" fill="currentColor"/></svg><b>0</b></a>
+    <a class="navic" href="/messages" data-auth="in" data-role="member" hidden aria-label="Messages"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><i class="dot" data-count="messages" hidden></i></a>
+    <div class="bell" data-auth="in" hidden>
+      <button class="navic" id="bellBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="bellPop" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><i class="dot" data-count="notifications" hidden></i></button>
+      <div class="pop" id="bellPop" hidden></div>
+    </div>
+    <div class="acct" data-auth="in" hidden>
+      <button class="avatar" id="acctBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"><span class="ini"></span></button>
+      <div class="acct-menu" id="acctMenu" role="menu" hidden>
+        <div class="who"><b class="acct-name"></b><span class="acct-email"></span><i class="acct-role"></i></div>
+        <a href="/studio" role="menuitem">Studio</a>
+        <a href="/designs" role="menuitem" data-role="customer">My studio</a>
+        <a href="/orders" role="menuitem" data-role="customer">Orders</a>
+        <a href="/commissions" role="menuitem" data-role="member">Commissions</a>
+        <a href="/messages" role="menuitem" data-role="member">Messages</a>
+        <a href="/account#measurements" role="menuitem" data-role="customer">Measurements</a>
+        <a href="/account#designer" role="menuitem" data-role="customer">Designer profile</a>
+        <a href="/workshop" role="menuitem" data-role="tailor">Workshop</a>
+        <a href="/admin" role="menuitem" data-role="admin">Admin dashboard</a>
+        <a href="/account" role="menuitem">Account</a>
+        <button type="button" role="menuitem" data-signout>Sign out</button>
+      </div>
+    </div>
+    <button class="menu-btn" aria-expanded="false" aria-controls="menu" aria-label="Menu"><i></i><i></i></button>
+  </div>
+</header>
+<div class="menu" id="menu">
+  <nav aria-label="Menu">
+    <a href="/" data-nav="home" style="--i:0">Home</a>
+    <a href="/studio" data-nav="studio" style="--i:1">Studio</a>
+    <a href="/discover" data-nav="discover" style="--i:2">Discover</a>
+    <a href="/designers" data-nav="designers" style="--i:3">Designers</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" style="--i:4" hidden>My studio</a>
+    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" style="--i:5" hidden>Orders</a>
+    <a href="/commissions" data-nav="commissions" data-auth="in" data-role="member" style="--i:6" hidden>Commissions</a>
+    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" style="--i:4" hidden>Workshop</a>
+    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" style="--i:4" hidden>Admin</a>
+    <a href="/account" data-nav="account" data-auth="in" style="--i:7" hidden>Account</a>
+    <a href="/how-it-works" data-nav="how" data-auth="out" style="--i:4">How it works</a>
+    <a href="/tailors" data-nav="tailors" data-auth="out" style="--i:5">For tailors</a>
+    <a href="/about" data-nav="about" style="--i:8">About</a>
+  </nav>
+  <div class="menu-foot"><span class="menu-who" data-auth="in" hidden></span><span data-auth="out">Design it. See it. Have it made.</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><a class="btn gold" href="/signin" data-auth="out">Sign in</a><button class="btn ghost" type="button" data-signout data-auth="in" hidden>Sign out</button></div>
+</div>
+<nav class="tabbar" aria-label="App" data-auth="in" hidden>
+  <a href="/discover" data-tb="discover"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.500" stroke="currentColor" stroke-width="1.7"/><path d="M15.500 8.500l-2 5-5 2 2-5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>Discover</span></a>
+  <a href="/designers" data-tb="designers"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.500" stroke="currentColor" stroke-width="1.7"/><path d="M2.500 20c.800-3.600 3.300-5.500 6.500-5.500s5.700 1.900 6.500 5.500M16 4.800a3.500 3.500 0 0 1 0 6.400M18.500 14.800c1.700.8 2.700 2.600 3 5.200" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Designers</span></a>
+  <a href="/studio" data-tb="studio" class="tb-main" aria-label="Design"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.200" stroke-linecap="round"/></svg></a>
+  <a href="/messages" data-tb="messages" data-role="member"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>Inbox</span><i class="dot" data-count="messages" hidden></i></a>
+  <a href="/designs" data-tb="me" data-me-href><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M4 21c1.500-4 4.500-6 8-6s6.500 2 8 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Me</span></a>
+</nav>
+<main id="main" class="tryon">
+  <h1 class="sr">Try it on</h1>
+  <div class="to-top">
+    <a class="to-back" id="toBack" href="/studio" aria-label="Back to the design"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    <div class="to-title"><h2 id="toName">Your design</h2><small>Your camera, photos and videos stay on this device.</small></div>
+    <div class="to-seg" role="group" aria-label="What to try it on">
+      <button type="button" data-src="camera" aria-pressed="false">Camera</button>
+      <button type="button" data-src="photo" aria-pressed="false">Photo</button>
+      <button type="button" data-src="video" aria-pressed="false">Video</button>
+    </div>
+  </div>
+
+  <div class="to-stage" id="toStage">
+    <canvas class="to-view" id="toView" role="img" aria-label="You, wearing the design" hidden></canvas>
+    <svg class="to-pts" id="toPts" hidden aria-label="Body points. Drag a point to move it."></svg>
+    <div class="to-start" id="toStart">
+      <div class="to-art" id="toArt" aria-hidden="true"></div>
+      <h2>See it on you</h2>
+      <p>The garment sits on your shoulders, bends with your arms and legs, and moves when you move. Stand back so the camera sees you from the hips up, or the whole of you for long pieces.</p>
+      <div class="to-pick">
+        <button class="btn gold" type="button" data-src="camera">Turn on the camera</button>
+        <button class="btn ghost light" type="button" data-src="photo">Use a photo</button>
+        <button class="btn ghost light" type="button" data-src="video">Use a video</button>
+      </div>
+      <p class="to-fine" id="toFine"></p>
+    </div>
+    <div class="to-load" id="toLoad" hidden role="status">
+      <span class="spin"></span><b id="toLoadT">Getting the fitting room ready</b>
+      <div class="to-prog"><i id="toProg"></i></div><small id="toLoadS">A one-time download. It is kept for next time.</small>
+    </div>
+    <div class="to-msg" id="toMsg" role="status" aria-live="polite" hidden></div>
+    <div class="to-rec" id="toRecDot" hidden><i></i><span id="toRecT">0:00</span></div>
+    <aside class="to-panel" id="toPanel" hidden aria-label="Adjust the fit">
+      <div class="to-panel-h"><b>Adjust the fit</b><button class="linkbtn" type="button" id="toReset">Reset</button></div>
+      <div class="to-chips" id="toChips" role="group" aria-label="What to adjust"></div>
+      <div class="slider"><div class="top"><label for="adjWidth">Width</label><output id="adjWidthO">100%</output></div><input class="range" id="adjWidth" data-adj="width" type="range" min="80" max="130" value="100"></div>
+      <div class="slider"><div class="top"><label for="adjEase">Snug to loose</label><output id="adjEaseO">100%</output></div><input class="range" id="adjEase" data-adj="ease" type="range" min="80" max="140" value="100"></div>
+      <div class="slider"><div class="top"><label for="adjLength">Length</label><output id="adjLengthO">100%</output></div><input class="range" id="adjLength" data-adj="length" type="range" min="80" max="120" value="100"></div>
+      <div class="slider"><div class="top"><label for="adjDy">Up and down</label><output id="adjDyO">0</output></div><input class="range" id="adjDy" data-adj="dy" type="range" min="-30" max="30" value="0"></div>
+      <div class="slider"><div class="top"><label for="adjDx">Left and right</label><output id="adjDxO">0</output></div><input class="range" id="adjDx" data-adj="dx" type="range" min="-30" max="30" value="0"></div>
+      <label class="to-check" id="toSwayL"><input type="checkbox" id="toSway" checked> Let loose cloth sway as you move</label>
+      <label class="to-check" id="toMirrorL" hidden><input type="checkbox" id="toMirror" checked> Show me as in a mirror</label>
+    </aside>
+  </div>
+
+  <div class="to-bar" id="toBar" hidden>
+    <div class="to-ward" id="toWard" role="group" aria-label="Garments to try"></div>
+    <div class="to-acts">
+      <button class="to-btn" type="button" id="toAdjust" aria-expanded="false" aria-controls="toPanel"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="16" cy="7" r="2.2" stroke="currentColor" stroke-width="1.7"/><circle cx="8" cy="17" r="2.2" stroke="currentColor" stroke-width="1.7"/></svg><span>Adjust</span></button>
+      <button class="to-btn" type="button" id="toPoints" hidden aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="13" r="2" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="13" r="2" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="20" r="2" stroke="currentColor" stroke-width="1.7"/><path d="M11 6.6L7.2 11.4M13 6.6l3.8 4.8M7.4 14.6l3.4 3.8M16.6 14.6l-3.4 3.8" stroke="currentColor" stroke-width="1.4"/></svg><span>Move points</span></button>
+      <button class="to-btn" type="button" id="toFlip" hidden><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9a8 8 0 0114-3l2 2M20 15a8 8 0 01-14 3l-2-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M20 4v4h-4M4 20v-4h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Flip</span></button>
+      <button class="to-btn" type="button" id="toPlay" hidden aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Pause</span></button>
+      <button class="to-shutter" type="button" id="toShot" aria-label="Take a picture"><i></i></button>
+      <button class="to-btn" type="button" id="toRec" hidden aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6" fill="currentColor"/></svg><span>Record</span></button>
+      <button class="to-btn" type="button" id="toExport" hidden><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Save video</span></button>
+      <button class="to-btn" type="button" id="toReal" hidden><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z" fill="currentColor"/></svg><span>Photoreal</span></button>
+      <button class="to-btn" type="button" id="toNew" hidden><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M4 16l4.5-4.5 4 4 3-3L20 17" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span id="toNewT">New photo</span></button>
+    </div>
+  </div>
+
+  <input type="file" id="toFile" accept="image/*" hidden aria-label="Choose a photo">
+  <input type="file" id="toVFile" accept="video/*" hidden aria-label="Choose a video">
+  <video id="toVideo" playsinline muted hidden></video>
+</main>
+</body>
+</html>

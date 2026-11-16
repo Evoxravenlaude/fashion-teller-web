@@ -1,0 +1,52 @@
+MediaPipe files used by the try-on (assets/js/fit.js)
+=====================================================
+
+These files find a person's body in a camera frame, photo or video. They run in the visitor's browser.
+Nothing they see is sent anywhere.
+
+They are the work of Google (the MediaPipe authors) and are licensed under the Apache License, Version 2.0.
+The licence text is in LICENSE.txt in this folder. The files are unmodified.
+
+1. The library
+   vision_bundle.mjs, wasm/vision_wasm_internal.js, wasm/vision_wasm_internal.wasm
+   From the npm package @mediapipe/tasks-vision, version 1.2.3
+   https://registry.npmjs.org/@mediapipe/tasks-vision/-/tasks-vision-1.2.3.tgz
+
+   sha256
+   fb0c02c296f44ce0cc324ba16bd646d8773eb4a7847db4019cc4d0430db7a9b5  vision_bundle.mjs
+   2aa5fd3fdd3d8208cd7587df0bb19fb6925c4ea16a76dd025aedc1f64d6a6309  wasm/vision_wasm_internal.js
+   225bc06c0f51a9cf31fea0e9e0b0243e9e01fb5ef332cc1a7fa6656dbdfdaabf  wasm/vision_wasm_internal.wasm
+
+2. The body models (BlazePose, "Pose Landmarker" lite and full, float16)
+   pose_landmarker_lite.task   5,777,746 bytes   used on phones and tablets
+   pose_landmarker_full.task   9,398,198 bytes   used on laptops and desktops
+
+   sha256
+   59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a  pose_landmarker_lite.task
+   4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad  pose_landmarker_full.task
+
+   PLEASE CHECK THESE TWO FILES BEFORE GOING LIVE.
+   Google publishes the models here:
+     https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task
+     https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task
+   That address could not be reached from the machine this build was made on, so the two copies here were taken from
+   an npm package that redistributes them (pose-landmarker-react-native 0.1.0). What was checked instead:
+     - full: the same file, byte for byte, is in a second package (vision-camera-pose-landmarks-plugin 0.1.0), and a
+       third (expo-mediapipe-pose 0.3.0) carries the same two networks inside a differently zipped bundle.
+     - lite: only the one source was found.
+   Each file is a zip of two networks. Their checksums, for comparing with a copy from Google:
+     lite  pose_detector.tflite            46837eb883e6ec75b52c5f5ff6a9b78bd35e66c13f95e8c3566c582d146cb1d9
+     lite  pose_landmarks_detector.tflite  ad6cfd3c903eb31a4ee788b809e45ecf9fa69923b69b9f3f2d9ae616ff433e58
+     full  pose_detector.tflite            04f5a96483f8ce5913f8730ad2aa0c4c999c80a4b75653bc0e4712de18e104b2
+     full  pose_landmarks_detector.tflite  82be6d591b9dad7d29fe21dc9fd892bf8b9602c458fb05209283de8282a0c488
+   Both load and work, but a copy from a third party is not the same as a copy from the publisher. Download the two
+   files from the addresses above and replace these, or compare checksums:
+
+     curl -LO https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task
+     curl -LO https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task
+     sha256sum pose_landmarker_*.task
+
+   If Google has published a newer model since, the checksums will differ and the newer files are the ones to use.
+
+Model cards (what the models were trained on, where they do well and badly):
+   https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker

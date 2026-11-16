@@ -1,0 +1,22 @@
+<main id="main" class="app">
+  <section class="app-head">
+    <div class="wrap">
+      <div class="sec-head" style="margin-bottom:0;align-items:end">
+        <div><h1 class="h2 split">Discover</h1><p class="body rv">Designs people made in the studio. Like them, remix them into your own, or have one made.</p></div>
+        <div class="rv row-btns" style="justify-content:flex-end"><a class="btn gold mag" href="/studio">Design your own</a></div>
+      </div>
+    </div>
+  </section>
+  <section class="sec tight">
+    <div class="wrap">
+      <div class="filters">
+        <div class="tabs" id="fSort" role="tablist" aria-label="Feed"><button type="button" role="tab" data-tab="trending">Trending</button><button type="button" role="tab" data-tab="new">New</button><button type="button" role="tab" data-tab="following">Following</button><button type="button" role="tab" data-tab="saved">Saved</button></div>
+        <label class="search"><span class="sr">Search designs</span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.500" stroke="currentColor" stroke-width="1.800"/><path d="M16 16l4.500 4.500" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/></svg><input id="fQ" type="search" placeholder="Search designs, tags, designers" maxlength="60" autocomplete="off"></label>
+      </div>
+      <div class="filters" style="margin-top:-12px"><div class="chips" id="fGarment" role="group" aria-label="Style"></div><p class="muted small" id="fCount" style="margin:0" aria-live="polite"></p></div>
+      <h2 class="sr">Designs</h2>
+      <div id="feed"></div>
+      <div class="more"><button class="btn ghost" type="button" id="moreBtn" hidden>Show more</button></div>
+    </div>
+  </section>
+</main>

@@ -17,7 +17,9 @@
       lit = n;
     };
     const q = () => { if (!queued) { queued = true; requestAnimationFrame(upd); } };
-    addEventListener('scroll', q, { passive: true }); addEventListener('resize', q); upd();
+    /* reduced motion: the whole statement is readable straight away */
+    if (FT.reduced) words.forEach(w => w.classList.add('lit'));
+    else { addEventListener('scroll', q, { passive: true }); addEventListener('resize', q); upd(); }
 
     const form = $('#contactForm');
     FT.form(form, {

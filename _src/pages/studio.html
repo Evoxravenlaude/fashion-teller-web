@@ -1,10 +1,14 @@
 <main id="main" class="studio">
+  <h1 class="sr">Design studio</h1>
   <section class="st-stage" id="stage" aria-label="Your design">
     <div class="st-bg" aria-hidden="true"></div>
     <div class="st-center">
       <div class="st-frame" id="frame">
         <div class="st-art" id="stArt" aria-live="polite"></div>
-        <div class="st-turn" id="stTurn" hidden><div class="turn-face" id="turnFace"></div><i class="turn-light" id="turnLight"></i></div>
+        <div class="st-turn" id="stTurn" hidden></div>
+        <div class="v3d-bar" id="v3dBar" hidden></div>
+        <div class="st-tools" id="stTools"><div class="st-seg" role="group" aria-label="How to view the design"><button type="button" data-view="flat" aria-pressed="true">Flat</button><button type="button" data-view="3d" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l8 4.500v9L12 21l-8-4.500v-9zM4 7.500l8 4.500 8-4.500M12 12v9" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/></svg>3D</button></div></div>
+        <div class="st-est" id="stEst" aria-live="off"></div>
         <div class="st-try" id="stTry" hidden>
           <img class="try-photo" id="tryPhoto" alt="Your photo">
           <div class="try-garm" id="tryGarm"></div>
@@ -20,7 +24,7 @@
     </div>
     <div class="st-meta">
       <div class="st-titlebox"><p class="st-title" id="stTitle"></p><p class="st-sub" id="stSub"></p></div>
-      <div class="st-vers"><ol class="st-versions" id="stVersions" aria-label="Saved versions"></ol></div>
+      <div class="st-vers"><div class="st-next" id="stNext"></div><ol class="st-versions" id="stVersions" aria-label="Saved versions"></ol></div>
     </div>
   </section>
 
@@ -45,19 +49,20 @@
           <button class="iconbtn plain" type="button" id="undoBtn" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <button class="iconbtn plain" type="button" id="redoBtn" aria-label="Redo"><svg viewBox="0 0 24 24" fill="none"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <button class="iconbtn plain" type="button" id="shuffleBtn" aria-label="Surprise me"><svg viewBox="0 0 24 24" fill="none"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          <button class="chip ai-chip" type="button" id="aiBtn"><i>AI</i> Describe it</button>
+          <button class="chip ai-chip" type="button" id="aiBtn">Describe it</button>
           <button class="btn ink sm" type="button" id="saveBtn">Save</button>
         </div>
         <button class="btn gold mag" id="toPreview" type="button">See it in 3D &amp; on you</button>
+        <div class="nexts" id="nexts"></div>
       </div>
 
       <div class="pane" data-pane="2">
         <h2>See it before it is made</h2>
         <div class="tabs" id="pvTabs" role="tablist"><button type="button" role="tab" data-tab="pv3d">3D view</button><button type="button" role="tab" data-tab="pvtry">Try it on</button><button type="button" role="tab" data-tab="pvvers">Versions</button></div>
         <div class="pvbox" data-panel="pv3d">
-          <p class="hint" style="margin:0">Drag the garment to turn it around.</p>
-          <div class="row-btns compact"><button class="btn ghost sm" type="button" data-turn="0">Front</button><button class="btn ghost sm" type="button" data-turn="180">Back</button><button class="btn ghost sm" type="button" id="spinBtn">Spin</button></div>
-          <div class="ai-row" id="ai3d"></div>
+          <p class="hint" id="v3dNote">Your design, built in 3D from the same pattern the tailor gets. Drag to turn it, pinch or scroll to zoom, double-tap to look closer.</p>
+          <div class="grp" id="toneGrp"><span>Mannequin</span><div class="swatches" id="tones"></div></div>
+          <div class="row-btns compact"><button class="btn ghost sm" type="button" id="snapBtn">Save a picture</button><button class="btn ghost sm" type="button" id="roomBtn">Open design room</button></div>
         </div>
         <div class="pvbox" data-panel="pvtry" hidden>
           <label class="btn ink" for="tryFile">Upload a photo</label><input id="tryFile" type="file" accept="image/*" hidden>
@@ -103,7 +108,7 @@
 
       <div class="pane" data-pane="5">
         <h2>Pay securely in naira</h2>
-        <p class="hint">Held by Fashion Teller and released to the tailor on delivery.</p>
+        <p class="hint">Held by Fashion Teller and released to the tailor when you confirm delivery.</p>
         <dl class="summary" id="paySummary"></dl>
         <div class="grp"><span>Payment plan</span><div class="plan" id="plan" role="radiogroup">
           <button type="button" class="planopt" data-v="full" aria-checked="true"><b>Pay in full</b><span id="planFull"></span></button>
@@ -138,6 +143,7 @@
         <p class="hint" id="trkHint"></p>
         <ol class="trk-v" id="trkV" aria-label="Production tracker"></ol>
         <dl class="summary" id="summary"></dl>
+        <div class="nexts" id="trkActs"></div>
         <div class="balance" id="balance" hidden><div><b>Balance due on delivery</b><span id="balAmt"></span></div><button class="btn gold sm" id="balBtn" type="button">Pay balance</button></div>
         <h3 class="h4">Updates from the tailor</h3>
         <ol class="feed" id="feed"></ol>

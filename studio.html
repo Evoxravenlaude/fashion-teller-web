@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Studio — Fashion Teller</title>
-<meta name="description" content="Describe a garment, refine it version by version, add your measurements, compare verified tailors, pay in naira and track production.">
+<meta name="description" content="Design a garment from templates, colours and your own sketch, see it in 3D, add your measurements, compare verified tailors, pay in naira and track production.">
 <meta name="theme-color" content="#FFFFFF">
+<meta name="format-detection" content="telephone=no">
 <link rel="canonical" href="/studio">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Studio — Fashion Teller">
-<meta property="og:description" content="Describe a garment, refine it version by version, add your measurements, compare verified tailors, pay in naira and track production.">
+<meta property="og:description" content="Design a garment from templates, colours and your own sketch, see it in 3D, add your measurements, compare verified tailors, pay in naira and track production.">
 <meta property="og:image" content="/assets/media/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="/assets/media/favicon.png">
@@ -22,6 +23,7 @@
 <script src="/assets/js/config.js"></script>
 <script src="/assets/js/device.js"></script>
 <script src="/assets/js/engine.js" defer></script>
+<script src="/assets/js/catalog.js" defer></script>
 <script src="/assets/js/store.js" defer></script>
 <script src="/assets/js/api.js" defer></script>
 <script src="/assets/js/site.js" defer></script>
@@ -45,19 +47,25 @@
     <span class="wm"><b>Fashion</b> <i>Teller</i></span>
   </a>
   <nav class="nav-links" aria-label="Primary">
-    <a href="/how-it-works" data-nav="how">How it works</a>
+    <a href="/how-it-works" data-nav="how" data-auth="out">How it works</a>
     <a href="/studio" data-nav="studio">Studio</a>
+    <a href="/discover" data-nav="discover">Discover</a>
+    <a href="/designers" data-nav="designers">Designers</a>
     <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" hidden>My studio</a>
     <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" hidden>Orders</a>
     <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" hidden>Workshop</a>
     <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" hidden>Admin</a>
     <a href="/tailors" data-nav="tailors" data-auth="out">For tailors</a>
-    <a href="/about" data-nav="about" data-auth="out">About</a>
   </nav>
   <div class="nav-end">
     <a class="btn ghost sm" href="/signin" data-auth="out">Sign in</a>
     <a class="btn gold sm mag" href="/studio" data-auth="out">Open studio</a>
     <a class="streak" href="/designs" data-auth="in" data-role="customer" id="navStreak" hidden aria-label="Your design streak"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-4-1-6 1-9.5z" fill="currentColor"/></svg><b>0</b></a>
+    <a class="navic" href="/messages" data-auth="in" data-role="member" hidden aria-label="Messages"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><i class="dot" data-count="messages" hidden></i></a>
+    <div class="bell" data-auth="in" hidden>
+      <button class="navic" id="bellBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="bellPop" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><i class="dot" data-count="notifications" hidden></i></button>
+      <div class="pop" id="bellPop" hidden></div>
+    </div>
     <div class="acct" data-auth="in" hidden>
       <button class="avatar" id="acctBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"><span class="ini"></span></button>
       <div class="acct-menu" id="acctMenu" role="menu" hidden>
@@ -65,7 +73,10 @@
         <a href="/studio" role="menuitem">Studio</a>
         <a href="/designs" role="menuitem" data-role="customer">My studio</a>
         <a href="/orders" role="menuitem" data-role="customer">Orders</a>
+        <a href="/commissions" role="menuitem" data-role="member">Commissions</a>
+        <a href="/messages" role="menuitem" data-role="member">Messages</a>
         <a href="/account#measurements" role="menuitem" data-role="customer">Measurements</a>
+        <a href="/account#designer" role="menuitem" data-role="customer">Designer profile</a>
         <a href="/workshop" role="menuitem" data-role="tailor">Workshop</a>
         <a href="/admin" role="menuitem" data-role="admin">Admin dashboard</a>
         <a href="/account" role="menuitem">Account</a>
@@ -79,24 +90,38 @@
   <nav aria-label="Menu">
     <a href="/" data-nav="home" style="--i:0">Home</a>
     <a href="/studio" data-nav="studio" style="--i:1">Studio</a>
-    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" style="--i:2" hidden>My studio</a>
-    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" style="--i:3" hidden>Orders</a>
-    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" style="--i:2" hidden>Workshop</a>
-    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" style="--i:2" hidden>Admin</a>
-    <a href="/account" data-nav="account" data-auth="in" style="--i:4" hidden>Account</a>
-    <a href="/how-it-works" data-nav="how" style="--i:5">How it works</a>
-    <a href="/tailors" data-nav="tailors" style="--i:6">For tailors</a>
-    <a href="/about" data-nav="about" style="--i:7">About</a>
+    <a href="/discover" data-nav="discover" style="--i:2">Discover</a>
+    <a href="/designers" data-nav="designers" style="--i:3">Designers</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" style="--i:4" hidden>My studio</a>
+    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" style="--i:5" hidden>Orders</a>
+    <a href="/commissions" data-nav="commissions" data-auth="in" data-role="member" style="--i:6" hidden>Commissions</a>
+    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" style="--i:4" hidden>Workshop</a>
+    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" style="--i:4" hidden>Admin</a>
+    <a href="/account" data-nav="account" data-auth="in" style="--i:7" hidden>Account</a>
+    <a href="/how-it-works" data-nav="how" data-auth="out" style="--i:4">How it works</a>
+    <a href="/tailors" data-nav="tailors" data-auth="out" style="--i:5">For tailors</a>
+    <a href="/about" data-nav="about" style="--i:8">About</a>
   </nav>
-  <div class="menu-foot"><span class="menu-who" data-auth="in" hidden></span><span data-auth="out">Design smarter, wear better.</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><a class="btn gold" href="/signin" data-auth="out">Sign in</a><button class="btn ghost" type="button" data-signout data-auth="in" hidden>Sign out</button></div>
+  <div class="menu-foot"><span class="menu-who" data-auth="in" hidden></span><span data-auth="out">Design it. See it. Have it made.</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><a class="btn gold" href="/signin" data-auth="out">Sign in</a><button class="btn ghost" type="button" data-signout data-auth="in" hidden>Sign out</button></div>
 </div>
+<nav class="tabbar" aria-label="App" data-auth="in" hidden>
+  <a href="/discover" data-tb="discover"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.500" stroke="currentColor" stroke-width="1.7"/><path d="M15.500 8.500l-2 5-5 2 2-5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>Discover</span></a>
+  <a href="/designers" data-tb="designers"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.500" stroke="currentColor" stroke-width="1.7"/><path d="M2.500 20c.800-3.600 3.300-5.500 6.500-5.500s5.700 1.900 6.500 5.500M16 4.800a3.500 3.500 0 0 1 0 6.400M18.500 14.800c1.700.8 2.700 2.600 3 5.200" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Designers</span></a>
+  <a href="/studio" data-tb="studio" class="tb-main" aria-label="Design"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.200" stroke-linecap="round"/></svg></a>
+  <a href="/messages" data-tb="messages" data-role="member"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>Inbox</span><i class="dot" data-count="messages" hidden></i></a>
+  <a href="/designs" data-tb="me" data-me-href><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M4 21c1.500-4 4.500-6 8-6s6.500 2 8 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Me</span></a>
+</nav>
 <main id="main" class="studio">
+  <h1 class="sr">Design studio</h1>
   <section class="st-stage" id="stage" aria-label="Your design">
     <div class="st-bg" aria-hidden="true"></div>
     <div class="st-center">
       <div class="st-frame" id="frame">
         <div class="st-art" id="stArt" aria-live="polite"></div>
-        <div class="st-turn" id="stTurn" hidden><div class="turn-face" id="turnFace"></div><i class="turn-light" id="turnLight"></i></div>
+        <div class="st-turn" id="stTurn" hidden></div>
+        <div class="v3d-bar" id="v3dBar" hidden></div>
+        <div class="st-tools" id="stTools"><div class="st-seg" role="group" aria-label="How to view the design"><button type="button" data-view="flat" aria-pressed="true">Flat</button><button type="button" data-view="3d" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l8 4.500v9L12 21l-8-4.500v-9zM4 7.500l8 4.500 8-4.500M12 12v9" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/></svg>3D</button></div></div>
+        <div class="st-est" id="stEst" aria-live="off"></div>
         <div class="st-try" id="stTry" hidden>
           <img class="try-photo" id="tryPhoto" alt="Your photo">
           <div class="try-garm" id="tryGarm"></div>
@@ -112,7 +137,7 @@
     </div>
     <div class="st-meta">
       <div class="st-titlebox"><p class="st-title" id="stTitle"></p><p class="st-sub" id="stSub"></p></div>
-      <div class="st-vers"><ol class="st-versions" id="stVersions" aria-label="Saved versions"></ol></div>
+      <div class="st-vers"><div class="st-next" id="stNext"></div><ol class="st-versions" id="stVersions" aria-label="Saved versions"></ol></div>
     </div>
   </section>
 
@@ -137,19 +162,20 @@
           <button class="iconbtn plain" type="button" id="undoBtn" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <button class="iconbtn plain" type="button" id="redoBtn" aria-label="Redo"><svg viewBox="0 0 24 24" fill="none"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <button class="iconbtn plain" type="button" id="shuffleBtn" aria-label="Surprise me"><svg viewBox="0 0 24 24" fill="none"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          <button class="chip ai-chip" type="button" id="aiBtn"><i>AI</i> Describe it</button>
+          <button class="chip ai-chip" type="button" id="aiBtn">Describe it</button>
           <button class="btn ink sm" type="button" id="saveBtn">Save</button>
         </div>
         <button class="btn gold mag" id="toPreview" type="button">See it in 3D &amp; on you</button>
+        <div class="nexts" id="nexts"></div>
       </div>
 
       <div class="pane" data-pane="2">
         <h2>See it before it is made</h2>
         <div class="tabs" id="pvTabs" role="tablist"><button type="button" role="tab" data-tab="pv3d">3D view</button><button type="button" role="tab" data-tab="pvtry">Try it on</button><button type="button" role="tab" data-tab="pvvers">Versions</button></div>
         <div class="pvbox" data-panel="pv3d">
-          <p class="hint" style="margin:0">Drag the garment to turn it around.</p>
-          <div class="row-btns compact"><button class="btn ghost sm" type="button" data-turn="0">Front</button><button class="btn ghost sm" type="button" data-turn="180">Back</button><button class="btn ghost sm" type="button" id="spinBtn">Spin</button></div>
-          <div class="ai-row" id="ai3d"></div>
+          <p class="hint" id="v3dNote">Your design, built in 3D from the same pattern the tailor gets. Drag to turn it, pinch or scroll to zoom, double-tap to look closer.</p>
+          <div class="grp" id="toneGrp"><span>Mannequin</span><div class="swatches" id="tones"></div></div>
+          <div class="row-btns compact"><button class="btn ghost sm" type="button" id="snapBtn">Save a picture</button><button class="btn ghost sm" type="button" id="roomBtn">Open design room</button></div>
         </div>
         <div class="pvbox" data-panel="pvtry" hidden>
           <label class="btn ink" for="tryFile">Upload a photo</label><input id="tryFile" type="file" accept="image/*" hidden>
@@ -195,7 +221,7 @@
 
       <div class="pane" data-pane="5">
         <h2>Pay securely in naira</h2>
-        <p class="hint">Held by Fashion Teller and released to the tailor on delivery.</p>
+        <p class="hint">Held by Fashion Teller and released to the tailor when you confirm delivery.</p>
         <dl class="summary" id="paySummary"></dl>
         <div class="grp"><span>Payment plan</span><div class="plan" id="plan" role="radiogroup">
           <button type="button" class="planopt" data-v="full" aria-checked="true"><b>Pay in full</b><span id="planFull"></span></button>
@@ -230,6 +256,7 @@
         <p class="hint" id="trkHint"></p>
         <ol class="trk-v" id="trkV" aria-label="Production tracker"></ol>
         <dl class="summary" id="summary"></dl>
+        <div class="nexts" id="trkActs"></div>
         <div class="balance" id="balance" hidden><div><b>Balance due on delivery</b><span id="balAmt"></span></div><button class="btn gold sm" id="balBtn" type="button">Pay balance</button></div>
         <h3 class="h4">Updates from the tailor</h3>
         <ol class="feed" id="feed"></ol>

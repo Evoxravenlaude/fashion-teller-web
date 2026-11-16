@@ -4,18 +4,24 @@ import pathlib
 R = pathlib.Path(__file__).parent
 SRC, OUT = R, R.parent  # _src/ -> site root
 PAGES = {
-  'index':        dict(page='home',     path='/',             js=['home'],     title='Fashion Teller — Describe it. See it. Have it made.', desc='Describe the clothing you want in plain language. See the design, refine it, and have a verified tailor make and deliver it.'),
-  'how-it-works': dict(page='how',      path='/how-it-works', js=['how'],      title='How it works — Fashion Teller', desc='Four phases from a sentence to a finished garment: concept, vendor assigned, tailoring, doorstep delivery.'),
-  'studio':       dict(page='studio',   path='/studio',       js=['studio'],   title='Studio — Fashion Teller', desc='Describe a garment, refine it version by version, add your measurements, compare verified tailors, pay in naira and track production.', footer=False),
+  'index':        dict(page='home',     path='/',             js=['home'],     title='Fashion Teller — Design it. See it on you. Have it made.', desc='Design your own clothes from templates, colours and your own sketch. See them in 3D, share them, hire a designer, and have a verified tailor make and deliver them.'),
+  'how-it-works': dict(page='how',      path='/how-it-works', js=['how'],      title='How it works — Fashion Teller', desc='Four phases from your design to a finished garment: design approved, tailor assigned, tailoring, delivered to your door.'),
+  'studio':       dict(page='studio',   path='/studio',       js=['studio'],   title='Studio — Fashion Teller', desc='Design a garment from templates, colours and your own sketch, see it in 3D, add your measurements, compare verified tailors, pay in naira and track production.', footer=False),
   'tailors':      dict(page='tailors',  path='/tailors',      js=['tailors'],  title='For tailors — Fashion Teller', desc='Quote on designs from customers beyond your area. See where your quote would rank, then apply to be verified.'),
   'about':        dict(page='about',    path='/about',        js=['about'],    title='About — Fashion Teller', desc='Why Fashion Teller exists, what it does, and where it is going next.'),
   'signin':       dict(page='signin',   path='/signin',       js=['signin'],   title='Sign in — Fashion Teller', desc='Sign in or create a Fashion Teller account to save designs, add measurements and start production.'),
-  'designs':      dict(page='designs',  path='/designs',      js=['designs'],  title='My designs — Fashion Teller', desc='Every design you have generated, with all of its versions.'),
+  'discover':     dict(page='discover', path='/discover',     js=['discover'], title='Discover — Fashion Teller', desc='Designs people made in the Fashion Teller studio. Like them, remix them into your own, or have one made.'),
+  'designers':    dict(page='designers', path='/designers',   js=['designers'], title='Designers — Fashion Teller', desc='Hire a designer to design something for you, or follow the ones whose work you like.'),
+  'designer':     dict(page='designer', path='/designer',     js=['designer'], title='Designer — Fashion Teller', desc='A designer on Fashion Teller: published designs, reviews and commissions.'),
+  'design':       dict(page='design',   path='/design',       js=['design'],   title='Design — Fashion Teller', desc='A design made in the Fashion Teller studio, in 3D.', footer=False),
+  'commissions':  dict(page='commissions', path='/commissions', js=['commissions'], title='Commissions — Fashion Teller', desc='Designs made for you by a designer, and designs you are making for clients.'),
+  'messages':     dict(page='messages', path='/messages',     js=['messages'], title='Messages — Fashion Teller', desc='Conversations with designers and tailors.', footer=False),
+  'designs':      dict(page='designs',  path='/designs',      js=['designs'],  title='My studio — Fashion Teller', desc='Every design you have saved, with all of its versions, your streak and your badges.'),
   'account':      dict(page='account',  path='/account',      js=['account-page'], title='Account — Fashion Teller', desc='Your profile, password and measurement profiles.'),
-  'orders':       dict(page='orders',   path='/orders',       js=['orders'],   title='Orders — Fashion Teller', desc='Track every order from concept to your door.'),
+  'orders':       dict(page='orders',   path='/orders',       js=['orders'],   title='Orders — Fashion Teller', desc='Track every order from the tailor to your door.'),
   'workshop':     dict(page='workshop', path='/workshop',     js=['workshop'], title='Workshop — Fashion Teller', desc='For verified tailors: quote on requests, manage orders and update customers.'),
   'admin':        dict(page='admin',    path='/admin',        js=['admin'],    title='Admin — Fashion Teller', desc='Fashion Teller operations dashboard.'),
-  '404':          dict(page='404',      path='/404',          js=[],           title='Page not found — Fashion Teller', desc='This page could not be found.'),
+  '404':          dict(page='404',      path='/404',          js=['notfound'],           title='Page not found — Fashion Teller', desc='This page could not be found.'),
 }
 head = (SRC / 'partials/head.html').read_text(); foot = (SRC / 'partials/footer.html').read_text()
 for name, m in PAGES.items():

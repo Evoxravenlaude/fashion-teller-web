@@ -3,7 +3,7 @@
     <div class="wrap">
       <div class="sec-head" style="margin-bottom:0;align-items:end">
         <div><h1 class="h2 split">Account</h1><p class="body rv" id="aSub"></p></div>
-        <div class="tabs rv" id="aTabs" role="tablist"><button type="button" role="tab" data-tab="profile">Profile</button><button type="button" role="tab" data-tab="measurements">Measurements</button><button type="button" role="tab" data-tab="security">Password</button></div>
+        <div class="tabs rv" id="aTabs" role="tablist"><button type="button" role="tab" data-tab="profile">Profile</button><button type="button" role="tab" data-tab="measurements">Measurements</button><button type="button" role="tab" data-tab="designer">Designer profile</button><button type="button" role="tab" data-tab="security">Password</button></div>
       </div>
     </div>
   </section>
@@ -27,6 +27,21 @@
         <div class="split2" style="align-items:start">
           <div class="copy"><h2 class="h3">Measurement profiles</h2><p class="body">Measure once, reuse on every order. Keep a profile for each person you order for. Use a soft tape, snug but not tight.</p><button class="btn ink mag" type="button" id="mAdd">Add a profile</button></div>
           <div><div class="mlist big" id="mList"></div><div id="mForm" hidden style="margin-top:20px"></div></div>
+        </div>
+      </div>
+      <div data-panel="designer" hidden>
+        <div class="split2" style="align-items:start">
+          <div class="copy"><h2 class="h3" id="dgTitle">Become a designer</h2><p class="body" id="dgIntro">Publish your designs under your own name and take commissions. Clients send a brief, you reply with a fee, and you are paid when they approve the design.</p><div id="dgSide"></div></div>
+          <form class="form" id="designerForm" novalidate>
+            <div class="field"><label for="dg-handle">Handle</label><input id="dg-handle" name="handle" maxlength="24" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="yourname"><small class="tip">Your profile lives at /designer?id=@handle</small></div>
+            <div class="field"><span class="lbl">Commissions</span><div class="seg sm" data-open><button type="button" data-v="1" aria-pressed="true">Open</button><button type="button" data-v="" aria-pressed="false">Closed</button></div></div>
+            <div class="field full"><label for="dg-bio">About your work</label><textarea id="dg-bio" name="bio" maxlength="400" placeholder="What you design, who for, and what makes it yours."></textarea></div>
+            <div class="field full"><span class="lbl">What you design</span><div class="chips" id="dgSpecs"></div></div>
+            <div class="field"><label for="dg-fee">Fees start from (₦)</label><input id="dg-fee" name="feeFrom" type="number" inputmode="numeric" min="1000" step="500" placeholder="15000"></div>
+            <div class="field"><label for="dg-days">Usual delivery (days)</label><input id="dg-days" name="turnaroundDays" type="number" inputmode="numeric" min="1" max="60" value="3"></div>
+            <p class="err full" role="alert"></p>
+            <div class="foot-row"><p>Shown on your public profile and in the designers directory.</p><button class="btn ink mag" type="submit">Save designer profile</button></div>
+          </form>
         </div>
       </div>
       <div data-panel="security" hidden>

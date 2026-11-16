@@ -6,6 +6,7 @@
 <title>Account — Fashion Teller</title>
 <meta name="description" content="Your profile, password and measurement profiles.">
 <meta name="theme-color" content="#FFFFFF">
+<meta name="format-detection" content="telephone=no">
 <link rel="canonical" href="/account">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Account — Fashion Teller">
@@ -22,6 +23,7 @@
 <script src="/assets/js/config.js"></script>
 <script src="/assets/js/device.js"></script>
 <script src="/assets/js/engine.js" defer></script>
+<script src="/assets/js/catalog.js" defer></script>
 <script src="/assets/js/store.js" defer></script>
 <script src="/assets/js/api.js" defer></script>
 <script src="/assets/js/site.js" defer></script>
@@ -45,19 +47,25 @@
     <span class="wm"><b>Fashion</b> <i>Teller</i></span>
   </a>
   <nav class="nav-links" aria-label="Primary">
-    <a href="/how-it-works" data-nav="how">How it works</a>
+    <a href="/how-it-works" data-nav="how" data-auth="out">How it works</a>
     <a href="/studio" data-nav="studio">Studio</a>
+    <a href="/discover" data-nav="discover">Discover</a>
+    <a href="/designers" data-nav="designers">Designers</a>
     <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" hidden>My studio</a>
     <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" hidden>Orders</a>
     <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" hidden>Workshop</a>
     <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" hidden>Admin</a>
     <a href="/tailors" data-nav="tailors" data-auth="out">For tailors</a>
-    <a href="/about" data-nav="about" data-auth="out">About</a>
   </nav>
   <div class="nav-end">
     <a class="btn ghost sm" href="/signin" data-auth="out">Sign in</a>
     <a class="btn gold sm mag" href="/studio" data-auth="out">Open studio</a>
     <a class="streak" href="/designs" data-auth="in" data-role="customer" id="navStreak" hidden aria-label="Your design streak"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-4-1-6 1-9.5z" fill="currentColor"/></svg><b>0</b></a>
+    <a class="navic" href="/messages" data-auth="in" data-role="member" hidden aria-label="Messages"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><i class="dot" data-count="messages" hidden></i></a>
+    <div class="bell" data-auth="in" hidden>
+      <button class="navic" id="bellBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="bellPop" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><i class="dot" data-count="notifications" hidden></i></button>
+      <div class="pop" id="bellPop" hidden></div>
+    </div>
     <div class="acct" data-auth="in" hidden>
       <button class="avatar" id="acctBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu"><span class="ini"></span></button>
       <div class="acct-menu" id="acctMenu" role="menu" hidden>
@@ -65,7 +73,10 @@
         <a href="/studio" role="menuitem">Studio</a>
         <a href="/designs" role="menuitem" data-role="customer">My studio</a>
         <a href="/orders" role="menuitem" data-role="customer">Orders</a>
+        <a href="/commissions" role="menuitem" data-role="member">Commissions</a>
+        <a href="/messages" role="menuitem" data-role="member">Messages</a>
         <a href="/account#measurements" role="menuitem" data-role="customer">Measurements</a>
+        <a href="/account#designer" role="menuitem" data-role="customer">Designer profile</a>
         <a href="/workshop" role="menuitem" data-role="tailor">Workshop</a>
         <a href="/admin" role="menuitem" data-role="admin">Admin dashboard</a>
         <a href="/account" role="menuitem">Account</a>
@@ -79,23 +90,33 @@
   <nav aria-label="Menu">
     <a href="/" data-nav="home" style="--i:0">Home</a>
     <a href="/studio" data-nav="studio" style="--i:1">Studio</a>
-    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" style="--i:2" hidden>My studio</a>
-    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" style="--i:3" hidden>Orders</a>
-    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" style="--i:2" hidden>Workshop</a>
-    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" style="--i:2" hidden>Admin</a>
-    <a href="/account" data-nav="account" data-auth="in" style="--i:4" hidden>Account</a>
-    <a href="/how-it-works" data-nav="how" style="--i:5">How it works</a>
-    <a href="/tailors" data-nav="tailors" style="--i:6">For tailors</a>
-    <a href="/about" data-nav="about" style="--i:7">About</a>
+    <a href="/discover" data-nav="discover" style="--i:2">Discover</a>
+    <a href="/designers" data-nav="designers" style="--i:3">Designers</a>
+    <a href="/designs" data-nav="designs" data-auth="in" data-role="customer" style="--i:4" hidden>My studio</a>
+    <a href="/orders" data-nav="orders" data-auth="in" data-role="customer" style="--i:5" hidden>Orders</a>
+    <a href="/commissions" data-nav="commissions" data-auth="in" data-role="member" style="--i:6" hidden>Commissions</a>
+    <a href="/workshop" data-nav="workshop" data-auth="in" data-role="tailor" style="--i:4" hidden>Workshop</a>
+    <a href="/admin" data-nav="admin" data-auth="in" data-role="admin" style="--i:4" hidden>Admin</a>
+    <a href="/account" data-nav="account" data-auth="in" style="--i:7" hidden>Account</a>
+    <a href="/how-it-works" data-nav="how" data-auth="out" style="--i:4">How it works</a>
+    <a href="/tailors" data-nav="tailors" data-auth="out" style="--i:5">For tailors</a>
+    <a href="/about" data-nav="about" style="--i:8">About</a>
   </nav>
-  <div class="menu-foot"><span class="menu-who" data-auth="in" hidden></span><span data-auth="out">Design smarter, wear better.</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><a class="btn gold" href="/signin" data-auth="out">Sign in</a><button class="btn ghost" type="button" data-signout data-auth="in" hidden>Sign out</button></div>
+  <div class="menu-foot"><span class="menu-who" data-auth="in" hidden></span><span data-auth="out">Design it. See it. Have it made.</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><a class="btn gold" href="/signin" data-auth="out">Sign in</a><button class="btn ghost" type="button" data-signout data-auth="in" hidden>Sign out</button></div>
 </div>
+<nav class="tabbar" aria-label="App" data-auth="in" hidden>
+  <a href="/discover" data-tb="discover"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.500" stroke="currentColor" stroke-width="1.7"/><path d="M15.500 8.500l-2 5-5 2 2-5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>Discover</span></a>
+  <a href="/designers" data-tb="designers"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.500" stroke="currentColor" stroke-width="1.7"/><path d="M2.500 20c.800-3.600 3.300-5.500 6.500-5.500s5.700 1.900 6.500 5.500M16 4.800a3.500 3.500 0 0 1 0 6.400M18.500 14.800c1.700.8 2.700 2.600 3 5.200" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Designers</span></a>
+  <a href="/studio" data-tb="studio" class="tb-main" aria-label="Design"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.200" stroke-linecap="round"/></svg></a>
+  <a href="/messages" data-tb="messages" data-role="member"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>Inbox</span><i class="dot" data-count="messages" hidden></i></a>
+  <a href="/designs" data-tb="me" data-me-href><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.7"/><path d="M4 21c1.500-4 4.500-6 8-6s6.500 2 8 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>Me</span></a>
+</nav>
 <main id="main" class="app">
   <section class="app-head">
     <div class="wrap">
       <div class="sec-head" style="margin-bottom:0;align-items:end">
         <div><h1 class="h2 split">Account</h1><p class="body rv" id="aSub"></p></div>
-        <div class="tabs rv" id="aTabs" role="tablist"><button type="button" role="tab" data-tab="profile">Profile</button><button type="button" role="tab" data-tab="measurements">Measurements</button><button type="button" role="tab" data-tab="security">Password</button></div>
+        <div class="tabs rv" id="aTabs" role="tablist"><button type="button" role="tab" data-tab="profile">Profile</button><button type="button" role="tab" data-tab="measurements">Measurements</button><button type="button" role="tab" data-tab="designer">Designer profile</button><button type="button" role="tab" data-tab="security">Password</button></div>
       </div>
     </div>
   </section>
@@ -121,6 +142,21 @@
           <div><div class="mlist big" id="mList"></div><div id="mForm" hidden style="margin-top:20px"></div></div>
         </div>
       </div>
+      <div data-panel="designer" hidden>
+        <div class="split2" style="align-items:start">
+          <div class="copy"><h2 class="h3" id="dgTitle">Become a designer</h2><p class="body" id="dgIntro">Publish your designs under your own name and take commissions. Clients send a brief, you reply with a fee, and you are paid when they approve the design.</p><div id="dgSide"></div></div>
+          <form class="form" id="designerForm" novalidate>
+            <div class="field"><label for="dg-handle">Handle</label><input id="dg-handle" name="handle" maxlength="24" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="yourname"><small class="tip">Your profile lives at /designer?id=@handle</small></div>
+            <div class="field"><span class="lbl">Commissions</span><div class="seg sm" data-open><button type="button" data-v="1" aria-pressed="true">Open</button><button type="button" data-v="" aria-pressed="false">Closed</button></div></div>
+            <div class="field full"><label for="dg-bio">About your work</label><textarea id="dg-bio" name="bio" maxlength="400" placeholder="What you design, who for, and what makes it yours."></textarea></div>
+            <div class="field full"><span class="lbl">What you design</span><div class="chips" id="dgSpecs"></div></div>
+            <div class="field"><label for="dg-fee">Fees start from (₦)</label><input id="dg-fee" name="feeFrom" type="number" inputmode="numeric" min="1000" step="500" placeholder="15000"></div>
+            <div class="field"><label for="dg-days">Usual delivery (days)</label><input id="dg-days" name="turnaroundDays" type="number" inputmode="numeric" min="1" max="60" value="3"></div>
+            <p class="err full" role="alert"></p>
+            <div class="foot-row"><p>Shown on your public profile and in the designers directory.</p><button class="btn ink mag" type="submit">Save designer profile</button></div>
+          </form>
+        </div>
+      </div>
       <div data-panel="security" hidden>
         <div class="split2" style="align-items:start">
           <div class="copy"><h2 class="h3">Change password</h2><p class="body">At least 8 characters. You stay signed in on this device.</p></div>
@@ -141,11 +177,11 @@
     <div>
       <img src="/assets/media/logo.png" alt="Fashion Teller. Design smarter, wear better." width="220" height="87" loading="lazy">
     </div>
-    <div><h4>Product</h4><ul><li><a href="/how-it-works">How it works</a></li><li><a href="/studio">Studio</a></li><li><a href="/designs">My studio</a></li><li><a href="/orders">Orders</a></li></ul></div>
-    <div><h4>Makers</h4><ul><li><a href="/tailors">For tailors</a></li><li><a href="/tailors#apply">Apply as a tailor</a></li><li><a href="/workshop">Workshop</a></li></ul></div>
-    <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="/about#contact">Contact</a></li><li><a href="/signin">Sign in</a></li></ul></div>
+    <div><h2>Product</h2><ul><li><a href="/how-it-works">How it works</a></li><li><a href="/studio">Studio</a></li><li><a href="/discover">Discover</a></li><li><a href="/designs">My studio</a></li><li><a href="/orders">Orders</a></li></ul></div>
+    <div><h2>Makers</h2><ul><li><a href="/designers">Designers</a></li><li><a href="/account#designer">Become a designer</a></li><li><a href="/tailors">For tailors</a></li><li><a href="/tailors#apply">Apply as a tailor</a></li><li><a href="/workshop">Workshop</a></li></ul></div>
+    <div><h2>Company</h2><ul><li><a href="/about">About</a></li><li><a href="/about#contact">Contact</a></li><li><a href="/signin">Sign in</a></li></ul></div>
   </div>
-  <div class="base"><span>© <span data-year></span> Fashion Teller</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><span>Quotes and payments are in Nigerian naira (₦). Payments are held by Fashion Teller until delivery.</span></div>
+  <div class="base"><span>© <span data-year></span> Fashion Teller</span><label class="qctl"><span>Graphics</span><select class="qsel" aria-label="Graphics quality"><option value="auto">Auto</option><option value="full">Full</option><option value="balanced">Balanced</option><option value="lite">Lite</option></select></label><span>Quotes and payments are in Nigerian naira (₦). Payments are held by Fashion Teller until you confirm delivery.</span></div>
 </footer>
 </body>
 </html>

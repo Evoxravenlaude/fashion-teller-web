@@ -1,6 +1,6 @@
 (() => {
   document.addEventListener('DOMContentLoaded', async () => {
-    const { $, $$, reduced } = FT;
+    const { $, reduced } = FT;
 
 
     /* gold thread follows the pointer over the concept video */
@@ -18,6 +18,14 @@
     const order = by => FT.sortVendors(all, by).forEach(v => { FT.vendorFill(els.get(v.id), v, FT.vendorTags(v, all)); list.appendChild(els.get(v.id)); });
     order('match');
     FT.seg($('#cmpSeg'), by => FT.flip(() => [...list.children], () => order(by)));
+
+    /* community: trending designs and featured designers */
+    (async () => {
+      const App = window.FTApp, feed = $('#homeFeed'), ds = $('#homeDesigners'); if (!App || !feed) return;
+      feed.innerHTML = Array.from({ length: 5 }, () => '<div class="dcard sk"><div class="dcard-art"></div><div class="sk-l"></div></div>').join('');
+      try { const r = await FTApi.discover({ sort: 'trending', limit: 8 }); feed.innerHTML = r.items.map((d, i) => App.dcard(d, { rank: i < 3 ? i + 1 : null })).join(''); App.hydrate(feed); if (!r.items.length) $('#community').hidden = true; } catch { $('#community').hidden = true; }
+      try { const list = (await FTApi.listDesigners({ open: true })).slice(0, 3); ds.innerHTML = list.map(App.pcard).join(''); } catch { ds.innerHTML = ''; }
+    })();
 
     await FT.ready;
 

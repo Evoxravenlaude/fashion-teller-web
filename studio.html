@@ -122,11 +122,6 @@
         <div class="v3d-bar" id="v3dBar" hidden></div>
         <div class="st-tools" id="stTools"><div class="st-seg" role="group" aria-label="How to view the design"><button type="button" data-view="flat" aria-pressed="true">Flat</button><button type="button" data-view="3d" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l8 4.500v9L12 21l-8-4.500v-9zM4 7.500l8 4.500 8-4.500M12 12v9" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"/></svg>3D</button></div></div>
         <div class="st-est" id="stEst" aria-live="off"></div>
-        <div class="st-try" id="stTry" hidden>
-          <img class="try-photo" id="tryPhoto" alt="Your photo">
-          <div class="try-garm" id="tryGarm"></div>
-          <div class="try-empty" id="tryEmpty"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><p>Add a photo of yourself</p><span>Stand straight, facing the camera. Your photo stays on this device.</span></div>
-        </div>
         <canvas id="stThread" aria-hidden="true"></canvas>
         <div class="st-badge" id="stBadge"><span id="stVerLbl">New design</span> <b id="stVer"></b></div>
         <div class="st-gen" id="stGen" aria-live="polite"><span id="stGenText"></span><i><b id="stGenBar"></b></i></div>
@@ -178,16 +173,8 @@
           <div class="row-btns compact"><button class="btn ghost sm" type="button" id="snapBtn">Save a picture</button><button class="btn ghost sm" type="button" id="roomBtn">Open design room</button></div>
         </div>
         <div class="pvbox" data-panel="pvtry" hidden>
-          <label class="btn ink" for="tryFile">Upload a photo</label><input id="tryFile" type="file" accept="image/*" hidden>
-          <label class="btn ghost" for="tryCam" id="tryCamLbl">Take a selfie</label><input id="tryCam" type="file" accept="image/*" capture="user" hidden>
-          <div class="trycontrols" id="tryControls" hidden>
-            <div class="slider"><div class="top"><label for="trySize">Size</label><output id="trySizeOut">100%</output></div><input class="range" id="trySize" type="range" min="40" max="180" value="100"></div>
-            <div class="slider"><div class="top"><label for="tryRot">Tilt</label><output id="tryRotOut">0°</output></div><input class="range" id="tryRot" type="range" min="-25" max="25" value="0"></div>
-            <div class="slider"><div class="top"><label for="tryOp">See-through</label><output id="tryOpOut">0%</output></div><input class="range" id="tryOp" type="range" min="0" max="60" value="0"></div>
-            <p class="hint" style="margin:0">Drag the garment onto your shoulders. Pinch to resize on a phone.</p>
-            <div class="row-btns compact"><button class="btn ghost sm" type="button" id="tryFit"></button><button class="btn ink sm" type="button" id="trySave">Save the look</button><button class="btn ghost sm" type="button" id="tryClear">Remove photo</button></div>
-          </div>
-          <p class="muted small" id="tryNote"></p>
+          <p class="hint">See this design on you. It sits on your shoulders, bends with your arms and legs, and moves when you move. Your camera, photos and videos stay on your device.</p>
+          <div class="row-btns compact"><a class="btn ink sm" href="/try-on?draft=1&amp;src=camera" data-try>Use the camera</a><a class="btn ghost sm" href="/try-on?draft=1" data-try>Use a photo or video</a></div>
         </div>
         <div class="pvbox" data-panel="pvvers" hidden><ol class="vgrid" id="vgrid"></ol></div>
         <p class="err" id="err2" role="alert"></p>

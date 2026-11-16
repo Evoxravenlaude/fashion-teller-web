@@ -30,7 +30,7 @@
 
   /* ───────── persistence ───────── */
   let db = null;
-  const LISTS = ['users', 'designs', 'measurements', 'vendors', 'applications', 'requests', 'quotes', 'orders', 'payments', 'designers', 'likes', 'saves', 'follows', 'commissions', 'threads', 'chat', 'outbox', 'notifications', 'reviews', 'reports', 'messages', 'audit'];
+  const LISTS = ['users', 'designs', 'measurements', 'vendors', 'applications', 'requests', 'quotes', 'orders', 'payments', 'designers', 'likes', 'saves', 'follows', 'commissions', 'threads', 'chat', 'outbox', 'notifications', 'reviews', 'reports', 'messages', 'audit', 'payouts', 'payoutAccounts', 'mail', 'tokens'];
   const empty = () => { const d = { v: 2, games: {}, seededAt: null }; for (const k of LISTS) d[k] = []; return d; };
   function load() {
     try { db = JSON.parse(localStorage.getItem(KEY)) || empty(); } catch { db = empty(); }
@@ -222,13 +222,46 @@
   const need = role => { const u = me(); if (!u) fail('Sign in to continue.', 401); if (role && u.role !== role && u.role !== 'admin') fail('This area is for ' + role + ' accounts.', 403); return u; };
   const profileOf = id => db.designers.find(p => p.userId === id);
   const vendorOf = u => u && db.vendors.find(v => v.userId === u.id);
-  const pub = u => u && ({ id: u.id, email: u.email, name: u.name, role: u.role, phone: u.phone || '', city: u.city || '', country: u.country || '', vendorId: u.vendorId || null, status: u.status, createdAt: u.createdAt, demo: !!u.demo, designer: !!profileOf(u.id), handle: profileOf(u.id)?.handle || null, hue: hash32(u.id) % 360 });
+  const pub = u => u && ({ id: u.id, email: u.email, name: u.name, role: u.role, phone: u.phone || '', city: u.city || '', country: u.country || '', vendorId: u.vendorId || null, status: u.status, createdAt: u.createdAt, demo: !!u.demo, emailVerified: verified(u), emailPrefs: prefsOf(u), designer: !!profileOf(u.id), handle: profileOf(u.id)?.handle || null, hue: hash32(u.id) % 360 });
+  const verified = u => u.emailVerified ?? !!(u.demo || u.sample), prefsOf = u => ({ orders: true, messages: true, ...(u.emailPrefs || {}) });
   /* what anyone may see of a person */
   const person = id => { const u = userById(id); if (!u) return { id, name: 'Former member', handle: null, hue: 0, city: '', country: '', designer: false, vendorId: null }; const p = profileOf(id); return { id: u.id, name: u.vendorId && u.sample ? db.vendors.find(v => v.id === u.vendorId)?.name || u.name : u.name, handle: p?.handle || null, hue: hash32(u.id) % 360, city: u.city || '', country: u.country || '', designer: !!p, vendorId: u.vendorId || null }; };
   const audit = (action, target, by) => { db.audit.unshift({ at: iso(), by: by || me()?.id || 'system', action, target: String(target) }); db.audit.length = Math.min(db.audit.length, 400); };
   /* `key` folds a burst into one line: five quotes on one design are one notification that keeps updating, not five. */
+  /* ───────── email ─────────
+     Built-in mode has no mail server, so every email is kept in a demo mailbox (FTStore.mailbox) that the site can show.
+     The backend sends the same emails for real. */
+  const MAILS = { order: 'orders', quote: 'orders', commission: 'orders', payout: 'orders', message: 'messages' };
+  function mail(to, kind, subject, text, link) { db.mail.unshift({ id: uid('m_'), to, kind, subject, text, link: link || '/', at: iso() }); db.mail.length = Math.min(db.mail.length, 80); }
+  function token(kind, u, hours) { db.tokens = db.tokens.filter(t => !(t.userId === u.id && t.kind === kind) && t.exp > now()); const t = { token: uid('k') + uid(), kind, userId: u.id, email: u.email, exp: now() + hours * 3600000 }; db.tokens.push(t); return t.token; }
+  function sendVerify(u) { mail(u.email, 'verify', 'Confirm your email address', `Hello ${u.name.split(' ')[0]}. Confirm this is your address so we can reach you about your orders and payments.`, '/signin?verify=' + token('verify', u, 72)); }
+
+  /* ───────── payouts ─────────
+     When a payment is released, the tailor or designer is owed it less the platform fee. Built-in mode pretends to send it:
+     a payout waits until they have added bank details, then goes "on its way" and arrives a few seconds later. */
+  const feePct = () => Math.max(0, Math.min(50, +(C.payments?.platformFeePercent ?? 10) || 0));
+  const BANKS = [['044', 'Access Bank'], ['050', 'Ecobank'], ['070', 'Fidelity Bank'], ['011', 'First Bank'], ['214', 'FCMB'], ['058', 'GTBank'], ['082', 'Keystone Bank'], ['50211', 'Kuda'], ['50515', 'Moniepoint'], ['999992', 'OPay'], ['999991', 'PalmPay'], ['076', 'Polaris Bank'], ['101', 'Providus Bank'], ['221', 'Stanbic IBTC'], ['232', 'Sterling Bank'], ['032', 'Union Bank'], ['033', 'UBA'], ['035', 'Wema Bank'], ['057', 'Zenith Bank']];
+  function payout(userId, kind, refId, title, gross) {
+    const u = userById(userId); if (!u || !(gross > 0)) return null;
+    const fee = Math.round(gross * feePct() / 100), po = { id: uid('po_'), userId, kind, refId, title: txt(title, 120), gross, fee, net: gross - fee, status: u.sample ? 'paid' : 'pending', createdAt: iso(), sentAt: u.sample ? iso() : null, paidAt: u.sample ? iso() : null, reference: 'FTP' + hash32(refId + userId).toString(36).toUpperCase(), note: '' };
+    db.payouts.unshift(po); if (!u.sample) settle(userId); return po;
+  }
+  function settle(userId) {
+    const acc = db.payoutAccounts.find(a => a.userId === userId), due = db.payouts.filter(x => x.userId === userId && x.status === 'pending'); if (!due.length) return;
+    if (!acc || !verified(userById(userId))) return notify(userId, 'payout', acc ? 'Confirm your email to be paid' : 'Add your bank details to be paid', `${fmt(due.reduce((n, x) => n + x.net, 0))} is waiting for you.`, '/account#payouts', 'payout-account');
+    for (const x of due) { x.status = 'processing'; x.sentAt = iso(); }
+  }
+  function simulatePayouts() {
+    let changed = false;
+    for (const x of db.payouts) if (x.status === 'processing' && now() - ms(x.sentAt) > Math.min(8000, (C.sample?.orderPhaseMs || 30000) / 3)) { const acc = db.payoutAccounts.find(a => a.userId === x.userId); x.status = 'paid'; x.paidAt = iso(); changed = true; notify(x.userId, 'payout', `${fmt(x.net)} sent to your bank`, `${acc ? acc.bankName + ' ••' + acc.last4 : 'Your account'} · ${x.title}`, '/account#payouts'); }
+    return changed;
+  }
+  const payoutOut = x => ({ ...clone(x) });
+
   function notify(userId, kind, title, body, href, key = null) {
     if (!userId || !userById(userId) || userById(userId).sample) return;
+    const fresh = !key || !db.notifications.some(n => n.userId === userId && n.key === key && !n.read), group = MAILS[kind];
+    if (fresh && group && prefsOf(userById(userId))[group]) mail(userById(userId).email, kind, txt(title, 120), txt(body, 200), href);
     if (key) db.notifications = db.notifications.filter(n => !(n.userId === userId && n.key === key && !n.read));
     db.notifications.unshift({ id: uid('n_'), userId, kind, title: txt(title, 120), body: txt(body, 200), href, at: iso(), read: false, ...(key ? { key } : {}) });
     let n = 0; db.notifications = db.notifications.filter(x => x.userId !== userId || ++n <= 60);
@@ -349,6 +382,7 @@
     for (const o of db.orders) if (o.userId === u.id || u.role === 'admin') changed = simulateOrder(o) || changed;
     for (const c of db.commissions) if (c.clientId === u.id) changed = simulateCommission(c) || changed;
     changed = simulateReplies() || changed;
+    changed = simulatePayouts() || changed;
     if (changed) save();
   }
 
@@ -447,8 +481,8 @@
       if (db.users.some(u => u.email === em)) fail('An account with this email already exists. Sign in instead.', 409);
       if (!['customer', 'tailor'].includes(role)) role = 'customer';
       const salt = newSalt();
-      const u = { id: uid('u_'), email: em, name: txt(name, 80), role, passHash: await hashPassword(password, salt), salt, phone: txt(phone, 30), city: txt(city, 60), country: txt(country, 60), status: 'active', createdAt: iso(), demo: false };
-      db.users.push(u); audit('register', u.id, u.id); save();
+      const u = { id: uid('u_'), email: em, name: txt(name, 80), role, passHash: await hashPassword(password, salt), salt, phone: txt(phone, 30), city: txt(city, 60), country: txt(country, 60), status: 'active', createdAt: iso(), demo: false, emailVerified: false };
+      db.users.push(u); audit('register', u.id, u.id); sendVerify(u); save();
       session.set({ userId: u.id, token: uid('t_'), at: iso() });
       return pub(u);
     },
@@ -470,8 +504,9 @@
     async updateProfile(patch) {
       const u = need();
       for (const k of ['name', 'phone', 'city', 'country']) if (patch[k] != null) u[k] = txt(patch[k], 80);
+      if (patch.emailPrefs && typeof patch.emailPrefs === 'object') u.emailPrefs = { orders: patch.emailPrefs.orders !== false, messages: patch.emailPrefs.messages !== false };
       if (!u.name) fail('Enter your name.');
-      if (patch.email != null) { const em = String(patch.email).trim().toLowerCase(); if (!email(em)) fail('Enter a valid email address.'); if (db.users.some(x => x.email === em && x.id !== u.id)) fail('That email is already in use.'); u.email = em; }
+      if (patch.email != null) { const em = String(patch.email).trim().toLowerCase(); if (!email(em)) fail('Enter a valid email address.'); if (db.users.some(x => x.email === em && x.id !== u.id)) fail('That email is already in use.'); if (em !== u.email) { u.email = em; u.emailVerified = false; sendVerify(u); } }
       save(); return pub(u);
     },
     async changePassword(current, next) {
@@ -479,6 +514,49 @@
       if (u.passHash == null || (await hashPassword(current, u.salt)) !== u.passHash) fail('Your current password is not right.');
       if (!next || next.length < 8) fail('Use a new password of at least 8 characters.');
       u.salt = newSalt(); u.passHash = await hashPassword(next, u.salt); save(); return true;
+    },
+    /* ───── email: confirm an address, reset a forgotten password ───── */
+    async sendVerification() { const u = need(); if (verified(u)) return true; sendVerify(u); save(); return true; },
+    async verifyEmail(tok) {
+      const t = db.tokens.find(x => x.token === tok && x.kind === 'verify' && x.exp > now()), u = t && userById(t.userId);
+      if (!u || u.email !== t.email) fail('This confirmation link has expired or was already used. Ask for a new one from your account.');
+      u.emailVerified = true; db.tokens = db.tokens.filter(x => x !== t); audit('email:verified', u.id, u.id); settle(u.id); save(); return { email: u.email };
+    },
+    /** Always answers the same way, so nobody can find out which addresses have accounts. */
+    async forgotPassword(em) {
+      em = String(em || '').trim().toLowerCase(); await wait(250); if (!email(em)) fail('Enter a valid email address.');
+      const u = db.users.find(x => x.email === em && !x.sample && x.status !== 'suspended');
+      if (u) { mail(u.email, 'reset', 'Reset your password', `Hello ${u.name.split(' ')[0]}. Use this link to choose a new password. It works once and for one hour. If you did not ask for it, ignore this email.`, '/signin?reset=' + token('reset', u, 1)); save(); }
+      return true;
+    },
+    async resetPassword(tok, next) {
+      const t = db.tokens.find(x => x.token === tok && x.kind === 'reset' && x.exp > now()), u = t && userById(t.userId);
+      if (!u) fail('This reset link has expired or was already used. Ask for a new one.');
+      if (!next || next.length < 8) fail('Use a new password of at least 8 characters.');
+      u.salt = newSalt(); u.passHash = await hashPassword(next, u.salt); if (u.email === t.email) u.emailVerified = true;
+      db.tokens = db.tokens.filter(x => x.userId !== u.id); audit('password:reset', u.id, u.id); save(); return { email: u.email };
+    },
+    /** The demo mailbox: every email this browser would have sent, newest first. Built-in mode only. */
+    async mailbox() { return db.mail.slice(0, 40).map(clone); },
+    /** What this installation has switched on. The backend answers the same question at /config/. */
+    async features() { return { feePercent: feePct(), payouts: 'test', mail: 'demo', tryOnAi: false, paymentsLive: false }; },
+
+    /* ───── payouts: where to send the money, and what has been sent ───── */
+    async listBanks() { return BANKS.map(([code, name]) => ({ code, name })); },
+    async payoutAccount() { const u = need(), a = db.payoutAccounts.find(x => x.userId === u.id); return a ? { bankCode: a.bankCode, bankName: a.bankName, accountName: a.accountName, last4: a.last4 } : null; },
+    async savePayoutAccount({ bankCode, number }) {
+      const u = need(); if (!verified(u)) fail('Confirm your email address first. We sent you a link.');
+      const bank = BANKS.find(b => b[0] === String(bankCode)); if (!bank) fail('Choose your bank.');
+      number = String(number || '').replace(/\D/g, ''); if (number.length !== 10) fail('Enter the 10-digit account number.');
+      await wait(300);
+      db.payoutAccounts = db.payoutAccounts.filter(x => x.userId !== u.id);
+      db.payoutAccounts.push({ userId: u.id, bankCode: bank[0], bankName: bank[1], accountName: u.name, last4: number.slice(-4), number, at: iso() });
+      audit('payout:account', u.id, u.id); settle(u.id); save(); return S.payoutAccount();
+    },
+    async earnings() {
+      const u = need(); simulate(u); const mine = db.payouts.filter(x => x.userId === u.id), sum = st => mine.filter(x => x.status === st).reduce((n, x) => n + x.net, 0);
+      const held = db.payments.filter(p => p.status === 'paid' && ((u.vendorId && p.vendorId === u.vendorId) || p.designerId === u.id)).reduce((n, p) => n + p.amount, 0);
+      return { feePercent: feePct(), held, heldNet: held - Math.round(held * feePct() / 100), pending: sum('pending'), processing: sum('processing'), paid: sum('paid'), failed: sum('failed'), account: await S.payoutAccount(), payouts: mine.slice(0, 60).map(payoutOut) };
     },
 
     /* ───── designs + versions ───── */
@@ -690,8 +768,9 @@
       db.designs.unshift(nd); c.resultDesignId = nd.id; c.status = 'approved'; c.updatedAt = iso();
       db.payments.filter(p => p.commissionId === c.id && p.status === 'paid').forEach(p => (p.status = 'released'));
       const prof = profileOf(c.designerId); if (prof) prof.completed = (prof.completed || 0) + 1;
+      const po = payout(c.designerId, 'commission', c.id, c.title, c.paid);
       say(c.threadId, 'system', `${u.name.split(' ')[0]} approved the design. ${fmt(c.paid)} released to ${designer.name.split(' ')[0]}.`);
-      notify(c.designerId, 'commission', 'Design approved, payment released', `${fmt(c.paid)} for "${c.title}".`, `/commissions?id=${c.id}`);
+      notify(c.designerId, 'commission', 'Design approved, payment released', `${fmt(po ? po.net : c.paid)} for "${c.title}"${po && po.fee ? `, after the ${feePct()}% platform fee` : ''}.`, `/commissions?id=${c.id}`);
       const dUser = userById(c.designerId); if (dUser && !dUser.sample) play(dUser, 'collab');
       const reward = play(u, 'collab'); save(); return { commission: commissionOut(c), design: designOut(nd), reward };
     },
@@ -908,7 +987,8 @@
       const v = db.vendors.find(x => x.id === o.vendorId);
       o.status = 'completed'; o.receivedAt = iso(); o.events.push({ at: iso(), phase: 'delivered', title: 'Received by the customer', body: `Payment released to ${v.name}.`, by: 'customer' });
       db.payments.filter(p => p.orderId === o.id && p.status === 'paid').forEach(p => (p.status = 'released')); v.ordersDone += 1;
-      notify(v.userId, 'order', `Order ${o.id} confirmed`, `${u.name.split(' ')[0]} has the garment. ${fmt(o.paid)} released to you.`, '/workshop'); save(); return S._orderOut(o);
+      const po = payout(v.userId, 'order', o.id, `Order ${o.id}`, o.paid);
+      notify(v.userId, 'order', `Order ${o.id} confirmed`, `${u.name.split(' ')[0]} has the garment. ${fmt(po ? po.net : o.paid)} released to you${po && po.fee ? `, after the ${feePct()}% platform fee` : ''}.`, '/workshop'); save(); return S._orderOut(o);
     },
     async reportProblem(id, { reason = '', body = '' } = {}) {
       const u = need(), o = db.orders.find(x => x.id === id && x.userId === u.id); if (!o) fail('Order not found.', 404);
@@ -941,10 +1021,19 @@
     async contact(form) { if (!email(form?.email)) fail('Enter a valid email address.'); if (!txt(form.message, 4000)) fail('Write your message first.'); db.messages.unshift({ id: uid('msg_'), name: txt(form.name, 80), email: txt(form.email, 120), topic: txt(form.topic, 60), message: txt(form.message, 4000), status: 'new', createdAt: iso() }); db.messages.length = Math.min(db.messages.length, 200); save(); return true; },
 
     /* ───── admin ───── */
+    async adminPayouts() { need('admin'); simulatePayouts(); return db.payouts.slice(0, 200).map(x => { const a = db.payoutAccounts.find(y => y.userId === x.userId); return { ...payoutOut(x), payee: person(x.userId), account: a ? { bankName: a.bankName, accountName: a.accountName, last4: a.last4, number: a.number } : null }; }); },
+    /** Mark a payout as sent by hand (with the bank reference), or send a failed one again. */
+    async adminPayout(id, { action, reference = '' }) {
+      const a = need('admin'), x = db.payouts.find(y => y.id === id); if (!x) fail('Payout not found.', 404);
+      if (action === 'paid') { if (x.status === 'paid') fail('This payout is already marked as sent.'); x.status = 'paid'; x.paidAt = iso(); x.note = txt(reference, 80); notify(x.userId, 'payout', `${fmt(x.net)} sent to your bank`, x.title, '/account#payouts'); }
+      else if (action === 'retry') { if (!['failed', 'pending'].includes(x.status)) fail('Only a failed or waiting payout can be sent again.'); x.status = 'pending'; settle(x.userId); }
+      else fail('Choose paid or retry.');
+      audit('payout:' + action, id, a.id); save(); return payoutOut(x);
+    },
     async adminStats() {
       need('admin');
       const paid = db.payments.filter(p => ['paid', 'released'].includes(p.status)), gmv = paid.reduce((s, p) => s + p.amount, 0), d7 = now() - 7 * DAY;
-      return { users: db.users.filter(u => !u.sample).length, customers: db.users.filter(u => u.role === 'customer' && !u.sample).length, tailors: db.vendors.filter(v => v.verified === 'verified').length, pendingTailors: db.vendors.filter(v => v.verified === 'pending').length, designers: db.designers.length, designs: db.designs.length, published: db.designs.filter(d => d.published).length, versions: db.designs.reduce((s, d) => s + d.versions.length, 0), orders: db.orders.length, activeOrders: db.orders.filter(o => ['active', 'balance_due', 'delivered'].includes(o.status)).length, delivered: db.orders.filter(o => ['delivered', 'completed'].includes(o.status)).length, awaitingPayment: db.orders.filter(o => o.status === 'awaiting_payment').length, commissions: db.commissions.length, activeCommissions: db.commissions.filter(c => ['active', 'delivered', 'changes'].includes(c.status)).length, gmv, held: db.payments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0), newUsers7d: db.users.filter(u => !u.sample && ms(u.createdAt) > d7).length, orders7d: db.orders.filter(o => ms(o.createdAt) > d7).length, messages: db.messages.filter(m => m.status === 'new').length, reports: db.reports.filter(r => r.status === 'open').length, byPhase: PHASES.map(p => [p, db.orders.filter(o => o.phase === p && !['cancelled', 'awaiting_payment'].includes(o.status)).length]) };
+      return { users: db.users.filter(u => !u.sample).length, customers: db.users.filter(u => u.role === 'customer' && !u.sample).length, tailors: db.vendors.filter(v => v.verified === 'verified').length, pendingTailors: db.vendors.filter(v => v.verified === 'pending').length, designers: db.designers.length, designs: db.designs.length, published: db.designs.filter(d => d.published).length, versions: db.designs.reduce((s, d) => s + d.versions.length, 0), orders: db.orders.length, activeOrders: db.orders.filter(o => ['active', 'balance_due', 'delivered'].includes(o.status)).length, delivered: db.orders.filter(o => ['delivered', 'completed'].includes(o.status)).length, awaitingPayment: db.orders.filter(o => o.status === 'awaiting_payment').length, commissions: db.commissions.length, activeCommissions: db.commissions.filter(c => ['active', 'delivered', 'changes'].includes(c.status)).length, gmv, fees: db.payouts.reduce((n, x) => n + x.fee, 0), payoutsDue: db.payouts.filter(x => ['pending', 'failed'].includes(x.status)).length, held: db.payments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0), newUsers7d: db.users.filter(u => !u.sample && ms(u.createdAt) > d7).length, orders7d: db.orders.filter(o => ms(o.createdAt) > d7).length, messages: db.messages.filter(m => m.status === 'new').length, reports: db.reports.filter(r => r.status === 'open').length, byPhase: PHASES.map(p => [p, db.orders.filter(o => o.phase === p && !['cancelled', 'awaiting_payment'].includes(o.status)).length]) };
     },
     async adminUsers() { need('admin'); return db.users.filter(u => !u.sample).map(u => ({ ...pub(u), designs: db.designs.filter(d => d.userId === u.id).length, orders: db.orders.filter(o => o.userId === u.id).length, spent: db.payments.filter(p => p.userId === u.id && ['paid', 'released'].includes(p.status)).reduce((s, p) => s + p.amount, 0) })); },
     async adminVendors() { need('admin'); return db.vendors.map(v => ({ ...vendorPub(v), user: pub(userById(v.userId)), application: db.applications.find(a => a.vendorId === v.id) || null, quotes: db.quotes.filter(q => q.vendorId === v.id).length, orders: db.orders.filter(o => o.vendorId === v.id).length })); },

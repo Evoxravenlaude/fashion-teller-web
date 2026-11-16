@@ -31,13 +31,14 @@
           <details class="small"><summary>Measurements (${esc(r.measurement?.label || '—')}, ${esc(r.measurement?.fit || '')} fit)</summary><div class="chips" style="margin-top:8px">${measureList(r.measurement)}</div>${r.measurement?.notes ? `<p class="muted">${esc(r.measurement.notes)}</p>` : ''}</details>
           <a class="linkbtn" href="/design?id=${enc(d.id)}">${App.ICON.cube}See it in 3D and open the spec sheet</a>
           <form class="form two qform" novalidate>
-            <div class="field"><label for="qp-${esc(r.id)}">Your price (₦, fabric included)</label><input id="qp-${esc(r.id)}" name="price" inputmode="numeric" type="number" step="500" min="1000" value="${esc(r.myQuote?.price ?? r.suggested?.price ?? '')}"></div>
+            <div class="field"><label for="qp-${esc(r.id)}">Your price (₦, fabric included)</label><input id="qp-${esc(r.id)}" name="price" inputmode="numeric" type="number" step="500" min="1000" value="${esc(r.myQuote?.price ?? r.suggested?.price ?? '')}"><small class="tip" data-fee></small></div>
             <div class="field"><label for="qd-${esc(r.id)}">Delivery (days)</label><input id="qd-${esc(r.id)}" name="deliveryDays" inputmode="numeric" type="number" min="1" max="90" value="${esc(r.myQuote?.deliveryDays ?? r.suggested?.deliveryDays ?? '')}"></div>
             <div class="field full"><label for="qn-${esc(r.id)}">Note to the customer</label><input id="qn-${esc(r.id)}" name="note" maxlength="400" value="${esc(r.myQuote?.note ?? '')}" placeholder="Fabric included. Two fittings by video."></div>
             <p class="err full" role="alert"></p>
             <div class="foot-row"><p>${r.suggested ? `Suggested from the design: ${FT.money(r.suggested.price)}, ${App.plural(r.suggested.deliveryDays, 'day')}.` : ''}</p><button class="btn ink" type="submit" ${vendor.status !== 'verified' ? 'disabled' : ''}>${r.myQuote ? 'Update quote' : 'Send quote'}</button></div>
           </form>
         </div></article>`; }).join('')}</div>`;
+      App.feeHints(el);
       $$('.qform', el).forEach(f => f.addEventListener('submit', async e => {
         e.preventDefault(); const rid = f.closest('.req').dataset.id, d = Object.fromEntries(new FormData(f)), err = $('.err', f), btn = $('button[type="submit"]', f);
         btn.disabled = true; err.textContent = '';

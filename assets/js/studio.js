@@ -1,7 +1,7 @@
 /**
  * Studio — the product. The customer designs the garment themselves, like building an avatar:
  *   1 Design   templates, style, colour palettes per style + fabric, parts, embroidery, details and a finger-sketch layer
- *   2 See it   the design built in real 3D on a mannequin (assets/js/viewer3d.js), and try-on on the user's own photo
+ *   2 See it   the design built in real 3D on a mannequin (assets/js/viewer3d.js), and a door to Try it on (/try-on)
  *   3 Measure → 4 Tailors → 5 Pay → 6 Track
  * Every save is a version and counts towards the daily streak. "Describe it" is an optional shortcut that sets the parts from a sentence.
  * The working design (draft) survives reloads; designs, versions, orders and payments live in the account.
@@ -54,7 +54,6 @@
       stage.classList.toggle('drawing', stageMode === 'edit' && S.step === 1 && S.tab === 'sketch');
       if (stageMode === 'edit') art.innerHTML = E.render(draft, { id: 'st', live: true });
       else if (stageMode === '3d') show3d();
-      else if (stageMode === 'try') renderTry();
       const est = E.estimate(draft); $('#stEst').innerHTML = `<small>Likely cost to make</small><b>${FT.money(est.low, { compact: true })} – ${FT.money(est.high, { compact: true })} · ${est.daysLow}–${est.daysHigh} days</b>`;
       $('#stNext').innerHTML = design ? `<a href="/design?id=${encodeURIComponent(design.id)}" title="Versions, sharing, publishing and the tailor’s spec sheet">${App.ICON.cube}Design room</a>` : '';
       const v = design && design.versions.find(x => x.n === S.baseN);
@@ -277,10 +276,9 @@
     /* ═════════ step 2: see it — 3D turnaround + try-on ═════════ */
     function setStageMode(m) {
       stageMode = m; if (m !== '3d') viewer?.spin?.(false);
-      art.hidden = m !== 'edit'; turn.hidden = m !== '3d'; bar.hidden = m !== '3d'; $('#stTry').hidden = m !== 'try';
-      stage.classList.toggle('mode-3d', m === '3d'); stage.classList.toggle('mode-try', m === 'try');
+      art.hidden = m !== 'edit'; turn.hidden = m !== '3d'; bar.hidden = m !== '3d';
+      stage.classList.toggle('mode-3d', m === '3d');
       $$('#stTools [data-view]').forEach(b => b.setAttribute('aria-pressed', (b.dataset.view === '3d') === (m === '3d')));
-      $('#stTools').hidden = m === 'try';
       renderStage(); if (m === '3d') requestAnimationFrame(() => viewer?.resize?.());
     }
     /* The design in real 3D. The viewer is built the first time it is asked for; where WebGL is missing it shows the flat front and back instead. */
@@ -311,74 +309,10 @@
     });
     $('#roomBtn').addEventListener('click', async () => { if (await saveDesign({ quiet: true })) FT.go('/design?id=' + encodeURIComponent(design.id)); });
 
-    /* try-on: the user's photo with the garment laid over it */
-    const T = { x: 50, y: 12, w: 78, rot: 0, op: 0, has: false };
-    let photoUrl = null;
-    function renderTry() {
-      $('#tryEmpty').hidden = T.has; $('#tryPhoto').hidden = !T.has; $('#tryControls').hidden = !T.has;
-      const g = $('#tryGarm'); g.hidden = !T.has; if (!T.has) return;
-      const key = JSON.stringify(draft).length; if (g.dataset.key !== String(key)) { g.innerHTML = E.render(draft, { id: 'try', bg: false }); g.dataset.key = key; }
-      g.style.left = T.x + '%'; g.style.top = T.y + '%'; g.style.width = T.w + '%'; g.style.transform = `translateX(-50%) rotate(${T.rot}deg)`; g.style.opacity = (1 - T.op / 100).toFixed(2);
-      $('#trySize').value = Math.round(T.w / 0.78); $('#trySizeOut').textContent = Math.round(T.w / 0.78) + '%'; $('#tryRot').value = T.rot; $('#tryRotOut').textContent = T.rot + '°'; $('#tryOp').value = T.op; $('#tryOpOut').textContent = T.op + '%';
-    }
-    const loadPhoto = file => {
-      if (!file || !file.type.startsWith('image/')) return;
-      if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = URL.createObjectURL(file);
-      const img = $('#tryPhoto'); img.onload = () => { T.has = true; Object.assign(T, { x: 50, y: 14, w: 74, rot: 0, op: 0 }); renderTry(); FT.toast('Drag the garment onto your shoulders'); }; img.src = photoUrl;
-    };
-    $('#tryFile').addEventListener('change', e => loadPhoto(e.target.files[0]));
-    $('#tryCam').addEventListener('change', e => loadPhoto(e.target.files[0]));
-    if (!matchMedia('(pointer: coarse)').matches) $('#tryCamLbl').hidden = true;
-    $('#trySize').addEventListener('input', e => { T.w = +e.target.value * 0.78; renderTry(); });
-    $('#tryRot').addEventListener('input', e => { T.rot = +e.target.value; renderTry(); });
-    $('#tryOp').addEventListener('input', e => { T.op = +e.target.value; renderTry(); });
-    $('#tryClear').addEventListener('click', () => { T.has = false; if (photoUrl) URL.revokeObjectURL(photoUrl); photoUrl = null; $('#tryPhoto').removeAttribute('src'); renderTry(); });
-    { // drag + pinch on the garment
-      const g = $('#tryGarm'), frame = $('#frame'), pts = new Map(); let start = null;
-      g.addEventListener('pointerdown', e => { g.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); start = { ...T, pts: new Map(pts) }; });
-      g.addEventListener('pointermove', e => {
-        if (!pts.has(e.pointerId) || !start) return; pts.set(e.pointerId, [e.clientX, e.clientY]); const r = frame.getBoundingClientRect();
-        if (pts.size === 1) { const [x0, y0] = start.pts.get(e.pointerId) || [e.clientX, e.clientY]; T.x = start.x + (e.clientX - x0) / r.width * 100; T.y = start.y + (e.clientY - y0) / r.height * 100; }
-        else if (pts.size === 2 && start.pts.size === 2) { const dist = m => { const [a, b] = [...m.values()]; return Math.hypot(a[0] - b[0], a[1] - b[1]); }; T.w = Math.max(30, Math.min(140, start.w * dist(pts) / dist(start.pts))); }
-        renderTry();
-      });
-      const up = e => { pts.delete(e.pointerId); start = pts.size ? { ...T, pts: new Map(pts) } : null; };
-      g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
-    }
-    function renderTryFit() {
-      const b = $('#tryFit');
-      b.innerHTML = A.ai.tryOn ? 'Fit to my body' : 'Centre on me';
-      $('#tryNote').textContent = A.ai.tryOn ? 'Fit to my body sends your photo to Fashion Teller to place the garment on you. Placing it by hand keeps the photo on your device.' : 'Your photo stays on this device and is never uploaded.';
-    }
-    $('#tryFit').addEventListener('click', async () => {
-      if (!T.has) return;
-      if (!A.ai.tryOn) { Object.assign(T, { x: 50, y: 13, w: 74, rot: 0 }); renderTry(); return; }
-      const b = $('#tryFit'); b.disabled = true; b.innerHTML = '<span class="spin"></span>Fitting';
-      try {
-        if (!(await saveDesign({ quiet: true }))) return;
-        const c = document.createElement('canvas'), img = $('#tryPhoto'), sc = Math.min(1, 1024 / Math.max(img.naturalWidth, img.naturalHeight)); c.width = img.naturalWidth * sc; c.height = img.naturalHeight * sc; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        const r = await A.tryOnFit(design.id, c.toDataURL('image/jpeg', 0.85));
-        if (r.imageUrl && /^https:\/\//.test(r.imageUrl)) App.sheet(`<h3>On you</h3><img src="${FT.esc(r.imageUrl)}" alt="Your try-on" style="width:100%;border-radius:14px">`);
-        else if (r.x != null) { Object.assign(T, { x: r.x, y: r.y, w: r.width ?? T.w, rot: r.rotation ?? 0 }); renderTry(); }
-      } catch (e) { FT.toast(e.message); Object.assign(T, { x: 50, y: 13, w: 74, rot: 0 }); renderTry(); }
-      finally { renderTryFit(); b.disabled = false; }
-    });
-    $('#trySave').addEventListener('click', async () => {
-      const frame = $('#frame').getBoundingClientRect(), img = $('#tryPhoto'), W = 720, H = Math.round(720 * frame.height / frame.width);
-      const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
-      const s = Math.max(W / img.naturalWidth, H / img.naturalHeight); x.drawImage(img, (W - img.naturalWidth * s) / 2, (H - img.naturalHeight * s) / 2, img.naturalWidth * s, img.naturalHeight * s);
-      const svg = E.render(draft, { id: 'sv', bg: false }), url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-      const g = new Image(); await new Promise((ok, no) => { g.onload = ok; g.onerror = no; g.src = url; });
-      const gw = W * T.w / 100, gh = gw * 1150 / 720; x.save(); x.globalAlpha = 1 - T.op / 100; x.translate(W * T.x / 100, H * T.y / 100); x.rotate(T.rot * Math.PI / 180); x.drawImage(g, -gw / 2, 0, gw, gh); x.restore(); URL.revokeObjectURL(url);
-      x.font = '600 18px Jost, sans-serif'; x.fillStyle = 'rgba(255,255,255,.85)'; x.fillText('FASHION TELLER', 18, H - 20);
-      c.toBlob(async blob => {
-        const file = new File([blob], 'fashion-teller-look.png', { type: 'image/png' });
-        if (navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], title: 'My Fashion Teller look' }); return; } catch {} }
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); FT.toast('Look saved to your device');
-      }, 'image/png');
-    });
+    /* try-on lives on its own page (/try-on): live camera, photo and video. It picks the open design up from the saved draft. */
+    document.addEventListener('click', e => { if (e.target.closest('[data-try]')) persistDraft(); }, true);
 
-    App.tabs($('#pvTabs'), id => { setStageMode(id === 'pv3d' ? '3d' : id === 'pvtry' ? 'try' : 'edit'); if (id === 'pvvers') renderVersions(); }, { hash: false, initial: 'pv3d' });
+    App.tabs($('#pvTabs'), id => { setStageMode(id === 'pvvers' ? 'edit' : '3d'); if (id === 'pvvers') renderVersions(); }, { hash: false, initial: 'pv3d' });
     function renderVersions() {
       const g = $('#vgrid');
       if (!design) { g.innerHTML = '<li class="muted small">Save your design to start keeping versions. Every save is a new version you can go back to.</li>'; return; }
@@ -407,7 +341,7 @@
         if (!on) p.classList.remove('on');
       });
       document.querySelector('.studio').classList.toggle('building', n <= 2);
-      if (n === 2) { const cur = $$('#pvTabs [data-tab]').find(b => b.classList.contains('on'))?.dataset.tab || 'pv3d'; setStageMode(cur === 'pv3d' ? '3d' : cur === 'pvtry' ? 'try' : 'edit'); renderTryFit(); if (cur === 'pvvers') renderVersions(); }
+      if (n === 2) { const cur = $$('#pvTabs [data-tab]').find(b => b.classList.contains('on'))?.dataset.tab || 'pv3d'; setStageMode(cur === 'pvvers' ? 'edit' : '3d'); if (cur === 'pvvers') renderVersions(); }
       else setStageMode(n === 1 && S.view === '3d' && S.tab !== 'sketch' ? '3d' : 'edit');
       render();
       if (n === 3) loadMeasurements();

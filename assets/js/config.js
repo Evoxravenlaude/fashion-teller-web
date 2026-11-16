@@ -16,11 +16,13 @@
  *              without moving money. Set a Paystack public key (pk_test_… or pk_live_…) to pay with Paystack;
  *              the backend then verifies every payment with Paystack before recording it (PAYSTACK_SECRET_KEY).
  *              depositPercent is the share paid up front on a tailoring order; the rest is due before delivery.
- * ai           tryOn 'manual' -> the customer places the garment over their own photo by hand; the photo never
- *                                leaves the device. This is what ships.
- *                    'remote' -> "Fit to my body" sends the photo to the backend (POST /designs/{id}/try-on/). That
- *                                endpoint is a marked hook: connect an AI try-on service there first (see README).
- *              The 3D view needs no service: it is drawn live in the browser from the design itself.
+ *              platformFeePercent is what Fashion Teller keeps when a payment is released to a tailor or designer.
+ *              It applies in built-in mode; the backend has its own setting (PLATFORM_FEE_PERCENT), which wins.
+ * tryOn        Try it on (/try-on) finds the body on the device itself, so nothing is uploaded and there is nothing
+ *              to switch on. model: 'lite' is quicker, 'full' is steadier, 'auto' picks lite on phones and tablets.
+ *              delegate: 'GPU' (falls back by itself) or 'CPU'. Photoreal try-on is separate: it appears by itself
+ *              when the backend has an AI service connected (README: Photoreal try-on).
+ *              The 3D view needs no service either: it is drawn live in the browser from the design itself.
  * demoAccounts true   -> the sign-in page offers one-tap demo accounts (customer, designer, tailor, admin).
  *                        Set false before launch.
  * sample       Pace of the built-in sample tailors and designers while apiBaseUrl is empty: how quickly they quote
@@ -42,8 +44,8 @@ window.FT_CONFIG = {
   formEndpoint: '',
 
   currency: { code: 'NGN', symbol: '₦', locale: 'en-NG' },
-  payments: { paystackPublicKey: '', depositPercent: 50 },
-  ai: { tryOn: 'manual' },
+  payments: { paystackPublicKey: '', depositPercent: 50, platformFeePercent: 10 },
+  tryOn: { model: 'auto', delegate: 'GPU' },
   demoAccounts: true,
   sample: { quoteDelayMs: [1800, 9000], orderPhaseMs: 30000 },
 

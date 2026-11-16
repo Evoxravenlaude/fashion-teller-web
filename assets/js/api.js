@@ -171,6 +171,16 @@
     confirmDelivery: o => post(`/orders/${id(o)}/confirm/`),
     reportProblem: (o, b) => post(`/orders/${id(o)}/problem/`, b),
     contact: f => post('/contact/', f).then(() => true),
+    /* email: confirm an address, reset a forgotten password (links arrive by email; built-in mode keeps them in a demo mailbox) */
+    sendVerification: () => post('/me/verify/send/').then(() => true),
+    forgotPassword: email => request('/auth/forgot/', { method: 'POST', body: { email }, auth: false }).then(() => true),
+    resetPassword: (token, password) => request('/auth/reset/', { method: 'POST', body: { token, password }, auth: false }),
+    mailbox: () => Promise.resolve([]),
+    /* payouts: where a tailor or designer is paid, and what has been sent */
+    listBanks: () => get('/payouts/banks/'),
+    payoutAccount: () => get('/me/payout-account/'),
+    savePayoutAccount: o => put('/me/payout-account/', o),
+    earnings: () => get('/me/earnings/'),
     /* admin */
     adminStats: () => get('/admin/stats/'), adminUsers: () => get('/admin/users/'), adminVendors: () => get('/admin/vendors/'), adminDesigns: () => get('/admin/designs/'), adminOrders: () => get('/admin/orders/'),
     adminPayments: () => get('/admin/payments/'), adminCommissions: () => get('/admin/commissions/'), adminReports: () => get('/admin/reports/'), adminMessages: () => get('/admin/messages/'), adminApplications: () => get('/admin/applications/'), adminAudit: () => get('/admin/audit/'),
@@ -180,6 +190,8 @@
     adminResolveIssue: (o, b) => post(`/admin/orders/${id(o)}/issue/`, b),
     adminRefund: p => post(`/admin/payments/${id(p)}/refund/`),
     adminResolveReport: (r, action) => post(`/admin/reports/${id(r)}/resolve/`, { action }),
+    adminPayouts: () => get('/admin/payouts/'),
+    adminPayout: (p, o) => post(`/admin/payouts/${id(p)}/`, o),
   };
 
   const A = (window.FTApi = {
@@ -202,9 +214,14 @@
     /** Start a Paystack payment: the backend creates the reference it will later verify. */
     async initPayment(target, kind) { if (LOCAL) return { reference: 'FT' + Date.now().toString(36).toUpperCase(), amount: null }; return target.commissionId ? post(`/commissions/${id(target.commissionId)}/pay/init/`) : post(`/orders/${id(target.orderId || target)}/pay/init/`, { kind }); },
 
-    /** Optional AI services on the backend. Without them the studio uses its own 3D view and manual try-on. */
-    ai: { tryOn: !LOCAL && C.ai?.tryOn === 'remote' },
-    async tryOnFit(designId, imageDataUrl) { if (!A.ai.tryOn) throw new ApiError('The AI try-on service is not connected.', 0); return post(`/designs/${id(designId)}/try-on/`, { image: imageDataUrl }); },
+    async verifyEmail(token) { const r = LOCAL ? await S.verifyEmail(token) : await request('/auth/verify/', { method: 'POST', body: { token }, auth: false }); if (!LOCAL) await A.refreshMe(); return r; },
+
+    /** What this installation has switched on: the platform fee, payouts, email, photoreal try-on. Asked once. */
+    features() { return A._features || (A._features = (LOCAL ? S.features() : request('/config/', { auth: false })).catch(() => ({ feePercent: 0, payouts: 'off', mail: 'off', tryOnAi: false, paymentsLive: false })).then(f => { A.ai.tryOn = !LOCAL && !!f.tryOnAi; return f; })); },
+    /** Photoreal try-on: an AI service on the backend redraws a photo with the garment on. Off until features() says otherwise. */
+    ai: { tryOn: false },
+    async tryOnStart(designId, body) { if (!A.ai.tryOn) throw new ApiError('Photoreal try-on is not switched on.', 0); return post(`/designs/${id(designId)}/try-on/`, body); },
+    async tryOnStatus(jobId) { return get(`/try-on/${id(jobId)}/`); },
   });
   for (const [name, remote] of Object.entries(R)) if (!A[name]) A[name] = LOCAL ? (...a) => S[name](...a) : (...a) => remote(...a);
   if (!LOCAL && tokens.get()) A.refreshMe();

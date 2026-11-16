@@ -3,12 +3,13 @@
     <div class="wrap">
       <div class="sec-head" style="margin-bottom:0;align-items:end">
         <div><h1 class="h2 split">Account</h1><p class="body rv" id="aSub"></p></div>
-        <div class="tabs rv" id="aTabs" role="tablist"><button type="button" role="tab" data-tab="profile">Profile</button><button type="button" role="tab" data-tab="measurements">Measurements</button><button type="button" role="tab" data-tab="designer">Designer profile</button><button type="button" role="tab" data-tab="security">Password</button></div>
+        <div class="tabs rv" id="aTabs" role="tablist"><button type="button" role="tab" data-tab="profile">Profile</button><button type="button" role="tab" data-tab="measurements">Measurements</button><button type="button" role="tab" data-tab="designer">Designer profile</button><button type="button" role="tab" data-tab="payouts" hidden>Payouts</button><button type="button" role="tab" data-tab="security">Password</button></div>
       </div>
     </div>
   </section>
   <section class="sec tight">
     <div class="wrap" id="aRoot">
+      <div id="aVerify"></div>
       <div data-panel="profile">
         <div class="split2" style="align-items:start">
           <div class="copy"><h2 class="h3">Your details</h2><p class="body">Tailors see your name and city on requests. Your email is used to sign in and for order updates.</p></div>
@@ -21,6 +22,13 @@
             <p class="err full" role="alert"></p>
             <div class="foot-row"><p id="p-role"></p><button class="btn ink mag" type="submit">Save changes</button></div>
           </form>
+        </div>
+        <div class="split2" style="align-items:start;margin-top:56px">
+          <div class="copy"><h2 class="h3">Emails</h2><p class="body">Everything also shows under the bell. Choose what should reach your inbox as well.</p></div>
+          <div><div class="prefs" id="prefs">
+            <label><input type="checkbox" data-pref="orders"> <span><b>Orders, quotes, commissions and payouts</b><br><span class="muted small">A new quote, a production update, a delivery, money sent to you.</span></span></label>
+            <label><input type="checkbox" data-pref="messages"> <span><b>New messages</b><br><span class="muted small">One email when a conversation has something unread, not one per message.</span></span></label>
+          </div><p class="feehint">Sign-in emails, such as a password reset, are always sent.</p></div>
         </div>
       </div>
       <div data-panel="measurements" hidden>
@@ -42,6 +50,12 @@
             <p class="err full" role="alert"></p>
             <div class="foot-row"><p>Shown on your public profile and in the designers directory.</p><button class="btn ink mag" type="submit">Save designer profile</button></div>
           </form>
+        </div>
+      </div>
+      <div data-panel="payouts" hidden>
+        <div class="split2" style="align-items:start">
+          <div class="copy"><h2 class="h3">Getting paid</h2><p class="body" id="poIntro">When a customer confirms they have the garment, or approves your design, the payment is released and sent to your bank account.</p><p class="body" id="poFee"></p></div>
+          <div id="poRoot"><div class="loading"><span class="spin"></span></div></div>
         </div>
       </div>
       <div data-panel="security" hidden>

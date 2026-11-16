@@ -35,6 +35,7 @@
     App.units = m => (m.unit === 'in' ? 'in' : 'cm');
     App.stars = (n, size = 14) => { const v = Math.max(0, Math.min(5, Number(n) || 0)); return `<span class="stars" style="--v:${v};--s:${size}px" role="img" aria-label="${v.toFixed(1)} out of 5"></span>`; };
     App.ICON = {
+      tryon: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M6 21v-6l-2-4 4-2.5h8L20 11l-2 4v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
       design: '<svg viewBox="0 0 24 24" fill="none"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4zM13 6l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
       order: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4H6zM3 6h18M16 10a4 4 0 0 1-8 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
       tape: '<svg viewBox="0 0 24 24" fill="none"><path d="M3 9h18v6H3zM7 9v3M11 9v2M15 9v3M19 9v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
@@ -56,6 +57,16 @@
     App.empty = (icon, title, body, action) => `<div class="empty"><div class="ic">${icon}</div><h2>${title}</h2><p>${body}</p>${action || ''}</div>`;
     /* links that arrive as data (notifications) may only point inside the site */
     App.path = h => (typeof h === 'string' && /^\/(?![/\\])/.test(h) ? h : '#');
+    /* under a price field: what the tailor or designer actually receives once the platform fee is taken */
+    App.feeHints = async root => {
+      const els = $$('[data-fee]', root); if (!els.length) return; const f = await A.features(); if (!f.feePercent) return;
+      for (const el of els) { const input = el.closest('.field')?.querySelector('input'); if (!input) continue; const up = () => { const v = Math.round(+input.value || 0); el.textContent = v > 0 ? `You receive ${FT.money(v - Math.round(v * f.feePercent / 100))} after the ${f.feePercent}% platform fee.` : `Fashion Teller keeps ${f.feePercent}% as its platform fee.`; }; input.addEventListener('input', up); up(); }
+    };
+    App.mailbox = async () => {
+      const list = await A.mailbox();
+      App.sheet(`<h3>Demo mailbox</h3><p class="muted" style="margin-top:-6px">Built-in mode has no mail server, so the emails this site would send are kept here. With the backend connected they go to the real address.</p>
+        <div class="mails">${list.length ? list.map(m => `<article class="mailrow"><div class="mailrow-h"><b>${esc(m.subject)}</b><time datetime="${esc(m.at)}">${App.ago(m.at)}</time></div><p class="muted small">To ${esc(m.to)}</p><p>${esc(m.text)}</p><a class="btn ink sm" href="${esc(App.path(m.link))}">${m.kind === 'reset' ? 'Choose a new password' : m.kind === 'verify' ? 'Confirm this address' : 'Open'}</a></article>`).join('') : '<p class="muted">No emails yet.</p>'}</div>`, { wide: true });
+    };
     App.likeLabel = (name, n) => `Like${name ? ' ' + name : ''}, ${App.count(n)} ${n === 1 ? 'like' : 'likes'}`;
     App.skeleton = (n = 6, cls = 'dcard') => `<div class="feed-grid" aria-hidden="true">${Array.from({ length: n }, () => `<div class="${cls} sk"><div class="dcard-art"></div><div class="sk-l"></div><div class="sk-l short"></div></div>`).join('')}</div>`;
 
@@ -317,7 +328,7 @@
         <div class="field full" data-up><span class="lbl">I am here to</span><div class="seg sm" data-rolepick><button type="button" data-v="customer" aria-pressed="${role !== 'tailor'}">Design and wear</button><button type="button" data-v="tailor" aria-pressed="${role === 'tailor'}">Make clothes (tailor)</button></div></div>
         <div class="field full" data-up><label for="au-name">Full name</label><input id="au-name" name="name" autocomplete="name" maxlength="80"></div>
         <div class="field full"><label for="au-email">Email</label><input id="au-email" name="email" type="email" autocomplete="${mode === 'in' ? 'username' : 'email'}" inputmode="email" placeholder="you@example.com" maxlength="120"></div>
-        <div class="field full"><label for="au-pass">Password</label><input id="au-pass" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128"><small class="tip" data-up>At least 8 characters.</small></div>
+        <div class="field full"><label for="au-pass">Password</label><input id="au-pass" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128"><small class="tip" data-up>At least 8 characters.</small><button class="linkbtn auth-forgot" type="button" data-forgot>Forgot your password?</button></div>
         <div class="field" data-up><label for="au-city">City</label><input id="au-city" name="city" autocomplete="address-level2" maxlength="60"></div>
         <div class="field" data-up><label for="au-country">Country</label><select id="au-country" name="country">${COUNTRIES.map(c => `<option${c === 'Nigeria' ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
         <p class="err full" role="alert"></p>
@@ -332,7 +343,7 @@
       $$('[data-mode]', root).forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
       const rp = $('[data-rolepick]', form); if (rp) FT.seg(rp, v => { r = v; setMode(m); });
       setMode(m);
-      form.addEventListener('click', e => { const d = e.target.closest('[data-demo]'); if (!d) return; const acct = DEMO[d.dataset.demo]; $('#au-email', form).value = acct.email; $('#au-pass', form).value = acct.password; setMode('in'); form.requestSubmit(); });
+      form.addEventListener('click', e => { if (e.target.closest('[data-forgot]')) { location.href = '/signin?forgot=' + encodeURIComponent($('#au-email', form).value.trim()); return; } const d = e.target.closest('[data-demo]'); if (!d) return; const acct = DEMO[d.dataset.demo]; $('#au-email', form).value = acct.email; $('#au-pass', form).value = acct.password; setMode('in'); form.requestSubmit(); });
       form.addEventListener('submit', async e => {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(form)), err = $('.err', form), btn = $('[data-submit]', form);

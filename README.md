@@ -22,6 +22,7 @@ The site runs in two modes, switched by one line in `assets/js/config.js`:
     /                 Home
     /how-it-works     The four production phases, FAQ
     /studio           Design → See it (3D, try-on) → Measure → Tailors → Pay → Track
+    /try-on           See a design on yourself: live through the camera, on a photo, in a video
     /discover         Designs people have published: trending, new, following, saved
     /designers        Designers you can hire or follow
     /designer?id=     A designer's profile, work and reviews; start a commission
@@ -30,11 +31,13 @@ The site runs in two modes, switched by one line in `assets/js/config.js`:
     /commissions      Commissions, for the client and for the designer
     /messages         Conversations with tailors, designers and clients
     /orders           Orders with live tracking
-    /account          Profile, measurements, designer profile, password
+    /account          Profile, emails, measurements, designer profile, payouts, password
     /workshop         The tailor's side: requests, quotes, orders, reviews, profile
-    /admin            Operations: tailors, orders, payments, commissions, reports, users, designs, inbox
+    /admin            Operations: tailors, orders, payments, payouts, commissions, reports, users, designs, inbox
     /tailors          For tailors: rank simulator and application
-    /signin  /about  /404
+    /signin           Sign in, create an account, forgot password; also where emailed links land
+    /speed            Speed check: times the 3D view on the device in hand (not linked from the site)
+    /about  /404
 
 ## What the product does
 
@@ -46,7 +49,26 @@ AI service).
 **Seeing it.** The 3D view is drawn live in the browser from the design itself: the garment is built from the same
 pattern pieces as the flat drawing and put on a mannequin with real fabric texture, lighting and shadow. Drag to turn,
 front / back / side, skin tones, snapshot. It needs WebGL; without it the flat front/back view is shown instead.
-Try-on places the garment over the customer's own photo by hand; the photo never leaves the device.
+The viewer times its own frames and steps the picture down on a device that cannot keep up (see "3D speed").
+
+**Trying it on** (`/try-on`, opened from the studio or a design's page). The same 3D garment, worn by the customer:
+
+- **Live.** They switch the camera on and the garment sits on their shoulders, bends at the elbows, hips and knees,
+  turns when they turn and sways when they move. Take a picture or record a clip; both have the garment in them.
+- **A photo.** Upload a picture; the person in it is found and dressed. In a group it dresses whoever fills most of
+  the picture.
+- **A video.** Upload a clip; the garment follows the person through it. Export saves a new video with the garment in.
+- **Fitting it.** Width, snug-to-loose, length, up/down and left/right sliders, and (on photos) twelve body points
+  that can be dragged or moved with the arrow keys when the automatic fit is off. Any saved design or template can be
+  swapped in from the rail.
+
+All of that happens on the device. The body is found by a model that runs in the browser (Google MediaPipe, shipped
+in `assets/vendor/mediapipe/`, 20 to 24 MB before compression, downloaded once and cached); no picture, video or
+camera frame is uploaded.
+The camera needs `https` (or `localhost`), like every site. Limits worth knowing are under "Known limits".
+
+**Photoreal** is the one optional AI feature: on a photo, a button sends that photo and a picture of the garment to an
+AI service that redraws the person wearing it. It is off until the backend has a key (see "Photoreal try-on").
 
 **After a design** (the design room, `/design?id=`): rename, duplicate, restore any version, print a spec sheet for a
 tailor, share a link, publish to Discover with a caption and tags, allow or forbid remixes, have it made.
@@ -65,11 +87,20 @@ compares and pays (in full, or a deposit with the balance before delivery). The 
 customer confirms delivery, which releases the payment, or reports a problem, which holds it until an admin refunds or
 releases. Reviews follow.
 
+**Getting paid.** When a customer confirms delivery or approves a commission, the money is released to the tailor or
+designer less the platform fee. They add a bank account under Account → Payouts, see what is held, on its way and
+paid, and every price they enter shows what they will receive after the fee.
+
 **Messages and notifications.** One conversation per order, per commission, or direct. A bell in the nav with unread
-counts.
+counts. Order, quote, commission and payout news is also emailed, and so is one email per conversation with something
+unread; each member chooses which under Account → Emails.
+
+**Accounts.** New accounts confirm their email from a link. "Forgot password?" emails a link that works once, for an
+hour. Changing the address asks for confirmation again.
 
 **Admin.** Verify tailors, move or cancel orders, resolve reported problems, refunds, commissions, content reports
-(take a design off Discover, suspend an account), users, contact inbox, audit trail.
+(take a design off Discover, suspend an account), users, contact inbox, audit trail, payouts (what is owed, sent and
+failed; mark as sent or send again) and the platform fees earned.
 
 ## Demo accounts
 
@@ -86,7 +117,9 @@ Sample tailors and designers act on their own so every flow can be finished alon
 offers, deliver designs and reply to messages. Test card: `4084 0840 8408 4081`, any future expiry, any CVV; CVV `000`
 is declined.
 
-Built-in mode: `FTStore.reset()` in the browser console starts the data from scratch.
+Built-in mode: `FTStore.reset()` in the browser console starts the data from scratch. Built-in mode sends no real email
+and moves no real money: emails land in a demo mailbox (linked from `/signin` and the account page) and payouts
+"arrive" a few seconds after they are sent.
 
 ## Run it locally
 
@@ -119,35 +152,140 @@ command. `vercel.json` turns on clean URLs and sends the security headers; `.ver
 | `ALLOWED_HOSTS` | Required. The API's hostname. |
 | `CORS_ORIGINS` | Required. The site's origin(s); only these may call the API from a browser. |
 | `DATABASE_URL` | Postgres. Without it the API uses a SQLite file, which most hosts wipe on redeploy. |
-| `PAYSTACK_SECRET_KEY` | Turns on real payments; every payment is verified with Paystack before it is recorded. |
+| `PAYSTACK_SECRET_KEY` | Turns on real payments; every payment is verified with Paystack before it is recorded. Also turns on automatic payouts (below). |
+| `SITE_URL` | The site's address. Links in emails point here. |
+| `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL` | Turns on email (below). Without them no email is sent, so password reset and address confirmation do not work. |
+| `PLATFORM_FEE_PERCENT` | What Fashion Teller keeps from each released payment. Default 10. |
+| `FASHN_API_KEY` | Optional. Turns on Photoreal try-on (below). |
 
 Then:
 
     python manage.py migrate
     python manage.py seed --admin you@example.com      # your admin account; asks for a password
 
-and in `assets/js/config.js` set `apiBaseUrl`, `payments.paystackPublicKey` and `demoAccounts: false`.
+and in `assets/js/config.js` set `apiBaseUrl`, `payments.paystackPublicKey` and `demoAccounts: false`. Set
+`payments.platformFeePercent` there to the same number as `PLATFORM_FEE_PERCENT` (the site reads the backend's figure
+when it is connected; the one in `config.js` is what built-in mode uses).
 
 On a server the backend is locked down unless you say otherwise: debug is off, the test checkout refuses to take
 "payments" (`ALLOW_TEST_PAYMENTS`), the sample tailors and designers are off (`SAMPLE_MODE`), and `seed` will not load
 the demo accounts without `--demo`.
 
-**Before real customers**, see "Not built yet" below: three of those items (payouts, password reset, the Paystack live
-test) matter on day one.
+**Before real customers**, do the four checks under "Check with the real services": none of the outside services
+(Paystack, the email provider, the AI service) could be reached from where this was built.
 
-## Not built yet
+### Email
 
-- **Payouts.** "Released" is a status. No money is transferred to a tailor or designer; that needs Paystack transfers
-  or subaccounts and a decision on the platform's cut. No platform fee is taken anywhere.
-- **Email.** No password reset, no email verification, no emailed notifications. Notifications are in-app only.
-- **A live Paystack payment has not been run.** The verify path is implemented and tested against a stub. Make one test
-  payment with your keys; if the Paystack window is blocked, the browser console names the origin to add to the
-  content security policy in `vercel.json`.
-- **AI try-on.** `POST /designs/{id}/try-on/` is a marked hook that answers "not connected". The shipped try-on is
-  manual placement.
+Any provider that offers SMTP works; nothing in the code is tied to one. **Resend** is the pick: the quickest to set
+up, free for 3,000 emails a month (no more than 100 in a day), then $20 a month for 50,000.
+
+1. Create the account, add your sending domain and put the DNS records it shows you (SPF, DKIM) on the domain. Without
+   them mail goes to spam.
+2. On the backend set `EMAIL_HOST=smtp.resend.com`, `EMAIL_PORT=587`, `EMAIL_HOST_USER=resend`,
+   `EMAIL_HOST_PASSWORD=<the API key>`, `DEFAULT_FROM_EMAIL=Fashion Teller <hello@yourdomain>` and `SITE_URL`.
+
+Postmark and Amazon SES work the same way with their own host, user and password (`backend/.env.example` has them).
+Until those settings are there, a server sends nothing and the site says so: "Forgot password?" answers that reset
+by email is not set up yet, nobody is asked to confirm an address, and bank details can be added without it. Set
+email up before launch; without it a member who forgets their password needs you to reset it for them.
+Emails go out after the request has answered, so a slow mail server never slows the site; every email is logged in
+the `Mail` table with whether it was sent. Sample and demo accounts have made-up addresses and are never sent to. In
+development, with no `EMAIL_HOST`, emails are printed to the console and listed at `/api/v1/dev/mail/`; that route
+does not exist with debug off.
+
+### Payouts
+
+The customer pays Fashion Teller; the money is held; when the customer confirms delivery (or approves a commission)
+it is released: a payout is created for the total less `PLATFORM_FEE_PERCENT`. What happens next depends on the setup:
+
+| Setup | What happens to a payout |
+|---|---|
+| `PAYSTACK_SECRET_KEY` set | Sent automatically with Paystack Transfers to the member's bank account. Paystack's webhook reports success or failure. |
+| `PAYSTACK_TRANSFERS=0`, or no key on a server | Listed under Admin → Payouts with the bank account; you pay it from your bank and mark it as sent. |
+| No key, development | Pretend: marked paid a few seconds later. No money moves. |
+
+A payout waits until the member has confirmed their email and added a bank account, then goes out at once. With
+Paystack, the account number is checked with the bank when it is added and the name on the account is shown back.
+
+To turn automatic payouts on, in the Paystack dashboard:
+
+1. Add `https://<your-api-host>/api/v1/webhooks/paystack/` as the webhook URL. Every event is checked against
+   Paystack's signature.
+2. Switch off "Confirm transfers before sending" (the OTP step), or every transfer will wait for a code.
+3. Keep money in the Paystack balance. Transfers are paid from that balance, and by default Paystack settles your
+   takings to your bank account instead, so either top the balance up or change the settlement arrangement.
+
+Paystack charges you for each transfer (₦10 up to ₦5,000, ₦25 up to ₦50,000, ₦50 above, plus ₦50 stamp duty from
+₦10,000), on top of its charge for taking the payment (1.5% + ₦100, capped at ₦2,000, for local cards). The member
+receives the full amount after the platform fee; those charges come out of the fee. On a ₦60,000 order at 10% the
+platform keeps ₦6,000 and pays about ₦1,100 of it to Paystack.
+
+A failed transfer (closed account, wrong number) shows as failed for the member and the admin; "Send again" retries
+it after the member fixes the account. A payout still "on its way" after ten minutes gets a "Check with Paystack"
+button, for the case where the server restarted mid-send or a webhook never arrived. The same webhook also completes
+a customer's payment if they closed the tab before the site heard back from Paystack.
+
+### Photoreal try-on (optional)
+
+The pick is **FASHN** (fashn.ai): built for exactly this, about $0.075 a picture. Set `FASHN_API_KEY` on the backend
+and a Photoreal button appears on photos in the try-on, for signed-in members on a saved design. They are told the
+photo is sent to an AI partner and asked first. `AI_TRYON_DAILY_LIMIT` (default 10) caps pictures per member per day,
+because each one costs money. The result is a likeness, not a fitting, and the page says so.
+
+What is kept: the backend passes the member's photo to the service and does not store it. The finished picture is
+held for up to an hour so the page can collect it, and is cleared on the next Photoreal request after that. What the
+service itself keeps is governed by its terms: read FASHN's data retention terms before switching this on, and name
+the service in your privacy notice.
+
+It cannot be live. No such service redraws a person in real time on a phone; the live mode is the tracked 3D garment.
+
+### 3D speed
+
+Phones differ by a factor of twenty in graphics power, so the 3D view measures instead of guessing: while the model
+is turning it times its frames, and if they are slow it steps down (fewer pixels, then no cast shadow, then a coarser
+mesh) and remembers that for a week. A step that buys no speed is undone, since then something else is holding the
+screen back (battery savers cap phones at 30 frames a second). A Graphics level chosen by hand is never overridden.
+The try-on does the same for its garment layer.
+
+To see what a real phone does:
+
+- Open **`/speed`** on it and press Run. It times every picture setting, says which one the site will use there, and
+  has a Copy button for the numbers.
+- Add **`?fps=1`** to any address for a live readout on the 3D view and the try-on (frames a second, time to find the
+  body, time to dress and draw). `?fps=0` switches it off.
+
+### Check with the real services
+
+1. **A payment.** Make one test payment with your Paystack keys. If the Paystack window is blocked, the browser
+   console names the origin to add to the content security policy in `vercel.json`.
+2. **A payout.** With test keys, confirm a delivery as a customer and watch the payout go from "On its way" to
+   "Paid" for the tailor. This exercises the transfer call and the webhook, which were tested against stand-ins only.
+3. **An email.** Create an account with a real address; the confirmation should arrive within a minute and not in
+   spam. Then try "Forgot password?".
+4. **Photoreal**, if you switch it on: one picture. The garment picture sent is the site's flat drawing of the design,
+   not a product photograph, and how faithfully the service reproduces pattern and embroidery from a drawing is the
+   thing to judge.
+
+Also replace or verify the two body-model files as described in `assets/vendor/mediapipe/NOTICE.txt`, and run `/speed`
+and the live try-on on the cheapest phone your customers are likely to have.
+
+## Known limits
+
+- **The try-on is a fitting-room mirror, not a photograph.** The garment is drawn over the person, so their own
+  clothes show around anything slimmer or shorter than what they have on. It is at its best on someone facing the
+  camera, upper body or full length, in fitted clothes.
+- Extreme poses look rough: the hem of a robe in a deep squat, an agbada with both arms raised in front. With the
+  face hidden (turned away, fully covered) the body tracker can lose which way the person faces; the garment holds
+  its last position through a brief loss.
+- One person is dressed per picture or frame.
+- Video export runs at the speed of the video (a 20-second clip takes 20 seconds) and keeps the sound only where the
+  browser allows it. Recording from the camera stops at 60 seconds.
+- **Refunds after a payout.** Once money has gone to a tailor's bank, refunding the customer does not pull it back;
+  that is settled between the platform and the tailor by hand.
 - **Live updates** are polled (about every 6 seconds against the backend), not pushed.
 - **Photos** (tailor updates) are stored inline in the database, capped at three small images per update. Move them to
   object storage before volume grows.
+- The backend's default database is a SQLite file, fine for development. Use Postgres (`DATABASE_URL`) on a server.
 
 ## Backend routes
 
@@ -155,8 +293,8 @@ All under `/api/v1/`. JSON in and out, snake_case on the wire (`api.js` converts
 (`Authorization: Bearer …`), refreshed once on a 401. Errors are `{"detail": "…"}`.
 
 ```
-Accounts      POST auth/register|login|refresh
-              GET/PATCH me     POST me/password     GET me/game     GET me/unread
+Accounts      POST auth/register|login|refresh|forgot|reset|verify
+              GET/PATCH me     POST me/password     POST me/verify/send     GET me/game     GET me/unread
               GET me/notifications     POST me/notifications/read
               GET/POST me/measurements     PATCH/DELETE me/measurements/{id}
               GET/PUT me/designer
@@ -174,10 +312,15 @@ Tailors       GET vendors     GET vendors/{id}     GET/PATCH vendors/me     POST
 Orders        POST designs/{id}/requests     GET designs/{id}/requests/latest     GET designs/{id}/quotes
               GET/POST orders     GET orders/{number}
               POST orders/{number}/pay|pay/init|cancel|confirm|problem
-Admin         GET admin/stats|users|vendors|designs|orders|payments|commissions|reports|messages|applications|audit
+Payouts       GET payouts/banks     GET/PUT me/payout-account     GET me/earnings
+              POST webhooks/paystack   (called by Paystack; signature checked)
+Try-on        POST designs/{id}/try-on   (Photoreal: start a job)     GET try-on/{id}   (its status and result)
+Admin         GET admin/stats|users|vendors|designs|orders|payments|payouts|commissions|reports|messages|applications|audit
               POST admin/users/{id}/status     admin/vendors/{id}/status     admin/orders/{number}/phase
                    admin/orders/{number}/issue     admin/payments/{id}/refund     admin/reports/{id}/resolve
-Other         POST contact     GET /healthz
+                   admin/payouts/{id}   (mark as sent, or send again)
+Other         GET config   (fee, and which of email, payouts and Photoreal are on)     POST contact     GET /healthz
+              GET dev/mail   (development only)
 ```
 
 The server owns the rules: it cleans every design spec against the catalogue, prices, awards XP and streaks, and
@@ -191,7 +334,10 @@ identical output on 143 recorded designs. If you change templates, options, pric
 |---|---|
 | `assets/js/config.js` | The one file to edit to go live or tune rendering |
 | `assets/js/engine.js`, `catalog.js` | Garment construction and drawing; templates, palettes, options, pricing, challenges |
-| `assets/js/viewer3d.js` | The 3D view (three.js, loaded only when opened) |
+| `assets/js/viewer3d.js` | The 3D view (three.js, loaded only when opened); also builds the garment the try-on wears |
+| `assets/js/fit.js` | The try-on engine: finds the body, poses the garment on it, moves the cloth |
+| `assets/js/tryon.js` | The try-on page: camera, photo, video, fit controls, saving |
+| `assets/vendor/` | three.js (a trimmed build) and the MediaPipe library and body models, each with its licence |
 | `assets/js/store.js` | Built-in data layer |
 | `assets/js/api.js` | The single door to data: built-in or backend, same methods |
 | `assets/js/account.js` | Sign-in, nav, shared UI (`FTApp`): cards, sheets, checkout, tabs, 3D mount |
@@ -199,7 +345,7 @@ identical output on 143 recorded designs. If you change templates, options, pric
 | `assets/js/<page>.js` | One script per page |
 | `assets/css/site.css` | All styles; tokens at the top, the app layer in the second half |
 | `_src/` | Page bodies and the shared nav/footer. After editing: `python3 _src/build.py` |
-| `backend/core/` | `models.py`, `views.py` (endpoints), `api.py` (shared logic), `rules.py`, `tests.py` |
+| `backend/core/` | `models.py`, `views.py` (endpoints), `api.py` (shared logic), `rules.py`, `tests.py`; email, payouts and Photoreal are in `extras.py` and `views_extra.py` |
 | `tests/` | Data-layer, backend and browser tests (`tests/README.md`) |
 | `AUDIT.md` | What was tested, what was found and fixed, what is left |
 

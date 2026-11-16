@@ -2,8 +2,8 @@
 import sys
 from playwright.sync_api import sync_playwright
 from e2e_lib import *
-OUT = ['/', '/how-it-works', '/studio', '/discover', '/designers', '/designer?id=@amaserwaa', '/tailors', '/about', '/signin', '/nope']
-IN = {'customer': ['/studio', '/designs', '/orders', '/commissions', '/messages', '/account'], 'designer': ['/commissions', '/account#designer'], 'tailor': ['/workshop', '/workshop#orders'], 'admin': ['/admin', '/admin#orders', '/admin#reports']}
+OUT = ['/', '/how-it-works', '/studio', '/discover', '/designers', '/designer?id=@amaserwaa', '/tailors', '/about', '/signin', '/signin?forgot=1', '/signin?reset=bad', '/try-on?template=senator', '/speed', '/nope']
+IN = {'customer': ['/studio', '/designs', '/orders', '/commissions', '/messages', '/account'], 'designer': ['/commissions', '/account#designer', '/account#payouts'], 'tailor': ['/workshop', '/workshop#orders', '/account#payouts'], 'admin': ['/admin', '/admin#orders', '/admin#payouts', '/admin#reports']}
 REC = "window.__csp = []; document.addEventListener('securitypolicyviolation', e => window.__csp.push(e.violatedDirective + ' <- ' + (e.blockedURI || 'inline') + ' @' + (e.sourceFile || '').split('/').pop() + ':' + e.lineNumber));"
 seen = {}
 with sync_playwright() as p:

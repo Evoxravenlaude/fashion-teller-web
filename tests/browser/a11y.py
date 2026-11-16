@@ -4,10 +4,10 @@ from playwright.sync_api import sync_playwright
 from e2e_lib import *
 import os
 AXE = pathlib.Path(os.environ.get('AXE_JS') or 'node_modules/axe-core/axe.min.js').read_text()     # npm install axe-core (in tests/browser)
-OUT = ['/', '/how-it-works', '/studio', '/discover', '/designers', '/designer?id=@amaserwaa', '/tailors', '/about', '/signin', '/nope']
-IN = {'customer': ['/studio', '/designs', '/designs#published', '/designs#forme', '/designs#badges', '/orders', '/commissions', '/messages', '/account', '/account#measurements', '/account#designer', '/account#security', '/discover?sort=following', '/discover?sort=saved'],
-      'designer': ['/commissions', '/designs', '/account#designer', '/designer?id=@kemilawal'], 'tailor': ['/workshop', '/workshop#quotes', '/workshop#orders', '/workshop#reviews', '/workshop#profile'],
-      'admin': ['/admin', '/admin#tailors', '/admin#orders', '/admin#payments', '/admin#commissions', '/admin#reports', '/admin#users', '/admin#designs', '/admin#inbox']}
+OUT = ['/', '/how-it-works', '/studio', '/discover', '/designers', '/designer?id=@amaserwaa', '/tailors', '/about', '/signin', '/signin?forgot=1', '/signin?reset=bad', '/try-on?template=senator', '/speed', '/nope']
+IN = {'customer': ['/studio', '/designs', '/designs#published', '/designs#forme', '/designs#badges', '/orders', '/commissions', '/messages', '/account', '/account#measurements', '/account#designer', '/account#security', '/try-on?template=senator', '/discover?sort=following', '/discover?sort=saved'],
+      'designer': ['/commissions', '/designs', '/account#designer', '/account#payouts', '/designer?id=@kemilawal'], 'tailor': ['/workshop', '/workshop#quotes', '/workshop#orders', '/workshop#reviews', '/workshop#profile', '/account#payouts'],
+      'admin': ['/admin', '/admin#tailors', '/admin#orders', '/admin#payments', '/admin#payouts', '/admin#commissions', '/admin#reports', '/admin#users', '/admin#designs', '/admin#inbox']}
 size = sys.argv[1] if len(sys.argv) > 1 else 'phone'
 only = sys.argv[2] if len(sys.argv) > 2 else None
 tally = {}

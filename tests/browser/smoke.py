@@ -1,7 +1,7 @@
 import sys
 from playwright.sync_api import sync_playwright
 from e2e_lib import *
-PUBLIC = ['/', '/how-it-works', '/studio', '/discover', '/designers', '/designer?id=u_d1', '/design?id=d_feed4', '/tailors', '/about', '/signin', '/designs', '/orders', '/commissions', '/messages', '/account', '/workshop', '/admin', '/nope']
+PUBLIC = ['/', '/how-it-works', '/studio', '/discover', '/designers', '/designer?id=u_d1', '/design?id=d_feed4', '/tailors', '/about', '/signin', '/try-on?template=senator', '/try-on?design=d_feed4', '/speed', '/signin?forgot=1', '/signin?reset=bad', '/signin?verify=bad', '/designs', '/orders', '/commissions', '/messages', '/account', '/workshop', '/admin', '/nope']
 with sync_playwright() as p:
     s = Session(p, sys.argv[1] if len(sys.argv) > 1 else 'desktop', gl=True)
     for path in PUBLIC:

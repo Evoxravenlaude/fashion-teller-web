@@ -37,6 +37,15 @@ with sync_playwright() as p:
     design_id = pg.evaluate("JSON.parse(sessionStorage.getItem('ft.studio')).designId")
     # 2 see it
     pg.click('#toPreview'); pg.wait_for_timeout(1500); check(pg.locator('#tones [data-tone]').count() == 5, 'mannequin tones offered'); pg.click('#tones [data-tone="3"]')
+    # the doors into the try-on: from the studio (the draft as it stands) and from the design room (the saved design)
+    pg.click('#pvTabs [data-tab="pvtry"]'); pg.wait_for_timeout(300); links = pg.locator('[data-panel="pvtry"] a[data-try]'); check(links.count() == 2 and links.nth(0).is_visible(), 'studio offers the try-on: camera, or a photo or video')
+    href = links.nth(1).get_attribute('href'); pg.evaluate("() => { const a = document.querySelectorAll('[data-panel=\"pvtry\"] a[data-try]')[1]; a.addEventListener('click', e => e.preventDefault(), { once: true }); a.click(); }")
+    title = pg.evaluate("() => { const d = JSON.parse(localStorage.getItem('ft.draft') || 'null'); return d && d.spec ? FTEngine.title(FTEngine.normalize(d.spec)) : ''; }")
+    p2 = pg.context.new_page(); p2.goto(BASE + href, wait_until='domcontentloaded'); p2.wait_for_function('() => window.FTTryOn && FTTryOn.spec', timeout=20000)
+    check(bool(title) and p2.inner_text('#toName') == title and p2.get_attribute('#toBack', 'href') == '/studio', f'the try-on opens on the studio draft ({title})')
+    p2.goto(BASE + f'/design?id={design_id}', wait_until='domcontentloaded'); p2.wait_for_selector('a[href^="/try-on?design="]', timeout=15000); saved = p2.evaluate(f"async () => (await FTApi.getDesign('{design_id}')).title")
+    p2.click('a[href^="/try-on?design="]'); p2.wait_for_function('() => window.FTTryOn && FTTryOn.design', timeout=20000)
+    check(p2.inner_text('#toName') == saved and design_id in p2.get_attribute('#toBack', 'href'), 'and from the design room, on the saved design'); p2.close()
     pg.click('#pvTabs [data-tab="pvvers"]'); check(pg.locator('#vgrid .vcard').count() == 1, 'version list')
     # 3 measure → 4 quotes
     pg.click('#toMeasure'); pg.wait_for_selector('[data-pane="3"].on')

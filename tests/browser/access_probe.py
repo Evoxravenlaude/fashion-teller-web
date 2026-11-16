@@ -40,7 +40,9 @@ s, t = call('POST', '/threads/', {'commission_id': cid}, A); assert s < 300, (s,
 
 # 1. signed out: nothing private
 for meth, path in [('GET', '/me/'), ('GET', '/designs/'), ('GET', f'/designs/{did}/'), ('GET', '/orders/'), ('GET', f'/orders/{num}/'), ('GET', '/commissions/'), ('GET', f'/commissions/{cid}/'), ('GET', '/threads/'), ('GET', f'/threads/{tid}/'),
-                   ('GET', '/me/measurements/'), ('GET', '/admin/stats/'), ('GET', '/admin/users/'), ('GET', '/vendors/orders/'), ('POST', f'/orders/{num}/pay/'), ('POST', '/designs/')]:
+                   ('GET', '/me/measurements/'), ('GET', '/admin/stats/'), ('GET', '/admin/users/'), ('GET', '/vendors/orders/'), ('POST', f'/orders/{num}/pay/'), ('POST', '/designs/'),
+                   ('GET', '/me/earnings/'), ('GET', '/me/payout-account/'), ('PUT', '/me/payout-account/'), ('GET', '/payouts/banks/'), ('GET', '/admin/payouts/'), ('POST', '/admin/payouts/1/'), ('POST', '/me/verify/send/'),
+                   ('POST', f'/designs/{did}/try-on/'), ('GET', '/try-on/1/')]:
     expect(f'signed out {meth} {path}', call(meth, path, {} if meth != 'GET' else None), (401, 403, 404))
 
 # 2. another customer: cannot see or touch Alice's things
@@ -59,7 +61,7 @@ s, lists = call('GET', '/orders/', token=B); expect('other customer sees no orde
 
 # 3. a customer is not a tailor, designer or admin
 for meth, path, body in [('GET', '/vendors/me/', None), ('GET', '/vendors/requests/', None), ('GET', '/vendors/orders/', None), ('POST', f'/vendors/orders/{num}/events/', {'title': 'x', 'phase': 'tailoring'}), ('GET', '/vendors/quotes/', None),
-                         ('GET', '/admin/stats/', None), ('GET', '/admin/users/', None), ('GET', '/admin/orders/', None), ('GET', '/admin/payments/', None), ('GET', '/admin/audit/', None), ('GET', '/admin/reports/', None), ('GET', '/admin/messages/', None),
+                         ('GET', '/admin/stats/', None), ('GET', '/admin/users/', None), ('GET', '/admin/orders/', None), ('GET', '/admin/payments/', None), ('GET', '/admin/payouts/', None), ('POST', '/admin/payouts/1/', {'action': 'paid'}), ('GET', '/admin/audit/', None), ('GET', '/admin/reports/', None), ('GET', '/admin/messages/', None),
                          ('POST', f"/admin/users/{ua['id']}/status/", {'status': 'suspended'}), ('POST', f'/admin/orders/{num}/phase/', {'phase': 'delivered'}), ('POST', f'/admin/orders/{num}/issue/', {'action': 'refund'}),
                          ('PATCH', '/me/', {'role': 'admin'})]:
     got = call(meth, path, body, B)
@@ -79,11 +81,26 @@ if str(me_d.get('id')) != str(des['id']):
     expect('other designer offers on the commission', call('POST', f'/commissions/{cid}/offer/', {'fee': 1000, 'days': 3}, D), (403, 404))
     expect('other designer reads the commission', call('GET', f'/commissions/{cid}/', token=D), (403, 404))
 expect('tailor on admin route', call('GET', '/admin/users/', token=T), (403, 404))
+expect('tailor cannot mark own payout as sent', call('POST', '/admin/payouts/1/', {'action': 'paid'}, T), (403, 404)); expect('designer cannot list payouts', call('GET', '/admin/payouts/', token=D), (403, 404))
+
+# 4b. money and email: no bank details before the address is confirmed, no forged links, no way to learn who has an account, no unsigned webhooks
+expect('bank details before the email is confirmed', call('PUT', '/me/payout-account/', {'bank_code': '058', 'number': '0123456789'}, B), (400,))
+expect('forged confirm link', call('POST', '/auth/verify/', {'token': f"{ua['id']}:{ua['email']}:1abcde:forged"}), (400,))
+expect('forged reset link', call('POST', '/auth/reset/', {'token': f"{ua['id']}.c0ffee-0123456789abcdef0123456789abcdef", 'password': 'taken-over-123'}), (400,))
+known = call('POST', '/auth/forgot/', {'email': ua['email']}); unknown = call('POST', '/auth/forgot/', {'email': 'nobody-at-all@probe.test'})
+expect('forgot password answers the same for any address', (200 if known == unknown and known[0] == 200 else 500, (known, unknown)), (200,))
+expect('Alice can still sign in with her own password', call('POST', '/auth/login/', {'email': ua['email'], 'password': 'probe-pass-123'}), (200,))
+expect('unsigned payment webhook', call('POST', '/webhooks/paystack/', {'event': 'transfer.success', 'data': {'reference': 'ftp-o00000001-u00000001'}}), (401,))
+expect('unsigned charge webhook', call('POST', '/webhooks/paystack/', {'event': 'charge.success', 'data': {'reference': 'FT-anything'}}), (401,))
+s0, mine_e = call('GET', '/me/earnings/', token=B); expect('a customer has no earnings of someone else', (200 if s0 == 200 and mine_e.get('payouts') == [] and not mine_e.get('paid') else 500, mine_e), (200,))
 
 # 5. bad input never becomes a 500
 for meth, path, body in [('POST', '/designs/', {'spec': 'not a spec'}), ('POST', '/designs/', {'spec': {'garment': '<script>', 'sketch': [{'d': 'x' * 100000}] * 500}}), ('POST', '/me/measurements/', {'values': {'chest': 'wide'}}), ('POST', '/orders/', {'quote_id': 'nope'}),
                          ('POST', '/commissions/', {'designer_id': 'nope', 'brief': 'x'}), ('POST', '/threads/', {'user_id': 'nope'}), ('POST', '/reviews/', {'kind': 'vendor', 'id': 'x', 'rating': 99}), ('GET', '/designs/not-a-uuid/', None), ('GET', '/discover/?limit=abc&offset=-5&sort=%00', None),
-                         ('POST', '/reports/', {'kind': 'design', 'id': did, 'reason': ''}), ('POST', '/designs/', [1, 2, 3]), ('PATCH', '/me/', {'name': None, 'email': 5})]:
+                         ('POST', '/reports/', {'kind': 'design', 'id': did, 'reason': ''}), ('POST', '/designs/', [1, 2, 3]), ('PATCH', '/me/', {'name': None, 'email': 5}),
+                         ('PUT', '/me/payout-account/', {'bank_code': ['x'], 'number': {'a': 1}}), ('PUT', '/me/payout-account/', 'text'), ('POST', '/auth/forgot/', {'email': ['a']}), ('POST', '/auth/reset/', {'token': 5, 'password': None}),
+                         ('POST', '/auth/verify/', [1]), ('POST', '/auth/verify/', {'token': {'a': 1}}), ('PATCH', '/me/', {'email_prefs': 'yes'}), ('PATCH', '/me/', {'email_prefs': {'orders': 'maybe', 'x': [1]}}), ('GET', '/try-on/not-a-number/', None),
+                         ('POST', '/admin/payouts/abc/', {'action': 'paid'}), ('GET', '/dev/mail/?to=%00&limit=abc', None)]:
     got = call(meth, path, body, B)
     expect(f'bad input {meth} {path}', (got[0] if got[0] < 500 else 500, got[1]), tuple(range(200, 500)))
 print(f'access probe: {passed} passed, {failed} failed'); sys.exit(1 if failed else 0)

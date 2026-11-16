@@ -144,7 +144,7 @@
         for (let j = 0; j < cols; j++) uv[(i * per + h * cols + j) * 2] = (mid - ring[j]) / tile.w + (cx - CX) / tile.w * (h ? -1 : 1);
       }
     }
-    const g = geo(pos, uv, uv1, gridIndex(n, cols)); weld(g, n, cols); return g;
+    const g = geo(pos, uv, uv1, gridIndex(n, cols)); weld(g, n, cols); g.userData.grid = { rows: n, cols }; return g;
   }
   /** A sleeve: rings around the arm axis, from a closed cap inside the shoulder to an open cuff. */
   function loftTube(part, tile, seg) {
@@ -164,7 +164,7 @@
       }
     }
     const idx = gridIndex(n, cols); if (side < 0) for (let k = 0; k < idx.length; k += 3) { const t = idx[k + 1]; idx[k + 1] = idx[k + 2]; idx[k + 2] = t; }
-    const g = geo(pos, uv, uv1, idx); weld(g, n, cols); return g;
+    const g = geo(pos, uv, uv1, idx); weld(g, n, cols); g.userData.grid = { rows: n, cols }; return g;
   }
   /* simple lofts for the mannequin: rings [[cx, cy, cz, rx, rz], ...] in frame px */
   function loftRings(rings, seg = 28, capTop = false, capBottom = false) {
@@ -186,15 +186,15 @@
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeVertexNormals(); return g;
   }
   function buildMannequin(mat) {
-    const G = new THREE.Group(), add = g => { const m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true; G.add(m); return m; };
+    const G = new THREE.Group(), add = (g, kind, side = 0) => { const m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true; m.userData = { kind, side }; G.add(m); return m; };
     const rings = []; for (let y = MAN[0][0]; y <= B.crotch; y += 8) { const m = manAt(y); rings.push([CX, y, y < 250 ? -4 : 0, m[1], m[2]]); }
-    rings.push([CX, B.crotch + 10, 0, 86, 38], [CX, B.crotch + 22, 0, 66, 12]); add(loftRings(rings, 36, false, false));
-    const head = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 24), mat); head.scale.set(0.44, 0.6, 0.5); head.position.set(0, Y(138), -0.02); head.castShadow = true; G.add(head);
+    rings.push([CX, B.crotch + 10, 0, 86, 38], [CX, B.crotch + 22, 0, 66, 12]); add(loftRings(rings, 36, false, false), 'torso');
+    const head = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 24), mat); head.scale.set(0.44, 0.6, 0.5); head.position.set(0, Y(138), -0.02); head.castShadow = true; head.userData = { kind: 'head' }; G.add(head);
     for (const side of [1, -1]) {
       const j = [CX + side * (ARM.jx - 2), ARM.jy], dir = [side * SIN, COS];
-      add(limb(j, dir, [[-34, 3], [-30, 14], [-22, 23], [-10, 29], [0, 30.5], [60, 29], [170, 24], [190, 25], [260, 22], [ARM.len, 16], [ARM.len + 10, 17], [ARM.len + 40, 19], [ARM.len + 66, 13], [ARM.len + 78, 4]]));
-      const lx = CX + side * 50; add(loftRings(LEG.map(r => [CX + side * r[1], r[0], r[4], r[2], r[3]]), 24, false, false));
-      const foot = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), mat); foot.scale.set(0.26, 0.17, 0.56); foot.position.set(X(lx - side * 2), Y(1112), 0.22); foot.castShadow = true; G.add(foot);
+      add(limb(j, dir, [[-34, 3], [-30, 14], [-22, 23], [-10, 29], [0, 30.5], [60, 29], [170, 24], [190, 25], [260, 22], [ARM.len, 16], [ARM.len + 10, 17], [ARM.len + 40, 19], [ARM.len + 66, 13], [ARM.len + 78, 4]]), 'arm', side);
+      const lx = CX + side * 50; add(loftRings(LEG.map(r => [CX + side * r[1], r[0], r[4], r[2], r[3]]), 24, false, false), 'leg', side);
+      const foot = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), mat); foot.scale.set(0.26, 0.17, 0.56); foot.position.set(X(lx - side * 2), Y(1112), 0.22); foot.castShadow = true; foot.userData = { kind: 'foot', side }; G.add(foot);
     }
     return G;
   }
@@ -207,14 +207,52 @@
     return rt.texture;
   }
 
+  /* ───────── the garment ───────── */
+  /** Build the garment for a spec: meshes in a group, plus each part's geometry so a caller can re-shape it (try-on).
+   *  o: { seg, texScale, lite, aniso, alive() } */
+  async function buildGarment(spec, o = {}) {
+    await load();
+    const m = E.build3d(spec), tile = E.tile(spec), look = LOOK[m.fabric] || LOOK.cotton;
+    const seg = o.seg || 28, texScale = o.texScale || 1.5, AW = Math.round(W * texScale), AH = Math.round(H * texScale);
+    const [tileC, df, db] = await Promise.all([rasterize(tile.svg, tile.w * 4, tile.h * 4), rasterize(E.decoSvg(spec, 'front', 'd3f'), AW, AH), rasterize(E.decoSvg(spec, 'back', 'd3b'), AW, AH)]);
+    if (o.alive && !o.alive()) return null;
+    const texs = [], mats = [], tex = (c, repeat) => { const t = new THREE.CanvasTexture(c); if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, o.aniso || 1); texs.push(t); return t; };
+    const tTile = tex(tileC, true); tTile.colorSpace = THREE.SRGBColorSpace;
+    const tBump = tex(weave(m.fabric), true); tBump.repeat.set(tile.w / 22, tile.h / 22);
+    const atlas = document.createElement('canvas'); atlas.width = AW * 2; atlas.height = AH; { const x = atlas.getContext('2d'); x.drawImage(df, 0, 0); x.drawImage(db, AW, 0); }
+    const tDeco = tex(atlas); tDeco.colorSpace = THREE.SRGBColorSpace; tDeco.channel = 1;
+    const mk = document.createElement('canvas'); mk.width = AW * 2; mk.height = AH; { const x = mk.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, mk.width, mk.height); x.fillStyle = '#000'; x.save(); x.scale(texScale, texScale); for (const c of m.cuts.front) x.fill(new Path2D(c)); x.restore(); x.save(); x.translate(AW, 0); x.scale(texScale, texScale); for (const c of m.cuts.back) x.fill(new Path2D(c)); x.restore(); }
+    const tMask = tex(mk); tMask.channel = 1;
+    const base = { map: tTile, bumpMap: tBump, bumpScale: look[3], roughness: look[0], metalness: 0, sheen: look[1], sheenRoughness: look[2], sheenColor: new THREE.Color(E.shade(m.color, 0.45)), envMapIntensity: look[4] };
+    const cloth = new THREE.MeshPhysicalMaterial({ ...base, alphaMap: tMask, alphaTest: 0.5, side: THREE.FrontSide }); cloth.alphaToCoverage = !o.lite;
+    const inner = new THREE.MeshStandardMaterial({ map: tTile, color: 0x6a6a6a, roughness: 1, metalness: 0, alphaMap: tMask, alphaTest: 0.5, side: THREE.BackSide, envMapIntensity: 0.1 });
+    const plain = new THREE.MeshPhysicalMaterial({ ...base, side: THREE.DoubleSide });
+    const deco = new THREE.MeshStandardMaterial({ map: tDeco, transparent: true, depthWrite: false, roughness: 0.55, metalness: 0.15, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3, envMapIntensity: 0.5 });
+    const white = new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.8, side: THREE.DoubleSide });
+    const styling = new THREE.MeshStandardMaterial({ color: E.lum(m.color) < 0.22 ? 0x8d8a84 : 0x23262d, roughness: 0.9, bumpMap: tBump, bumpScale: 0.5, side: THREE.DoubleSide, envMapIntensity: 0.2 });
+    mats.push(cloth, inner, plain, deco, white, styling);
+    const group = new THREE.Group(), parts = [];
+    for (const p of m.parts) {
+      if (p.type === 'band') { const r0 = p.r + 9, g = loftRings([[CX, p.y0, -3, r0 - 4, r0 * 0.84], [CX, (p.y0 + p.y1) / 2, -2, r0 - 1, r0 * 0.88], [CX, p.y1, 0, r0 + 4, r0 * 0.94]], 32); const mesh = new THREE.Mesh(g, p.tone === 'white' ? white : new THREE.MeshStandardMaterial({ color: new THREE.Color(E.shade(m.color, E.lum(m.color) > 0.62 ? -0.06 : 0.1)), roughness: look[0], side: THREE.DoubleSide })); if (p.tone !== 'white') mats.push(mesh.material); mesh.castShadow = true; group.add(mesh); parts.push({ part: p, geometry: g }); continue; }
+      const cut = p.id === 'body' || (m.cutSleeves && p.type === 'tube');
+      const g = p.type === 'tube' ? loftTube(p, tile, Math.max(10, seg - 10)) : loftRows(p, tile, p.depth === 'leg' ? Math.max(10, seg - 10) : seg);
+      const a = new THREE.Mesh(g, p.styling ? styling : cut ? cloth : plain); a.castShadow = true; a.receiveShadow = true; group.add(a); parts.push({ part: p, geometry: g });
+      if (p.styling) continue;
+      if (cut) { const b = new THREE.Mesh(g, inner); group.add(b); }
+      const d = new THREE.Mesh(g, deco); d.renderOrder = 2; group.add(d);
+    }
+    return { group, mats, texs, parts, model: m };
+  }
+  function disposeBuilt(g) { if (!g) return; g.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); for (const m of g.mats) m.dispose(); for (const t of g.texs) t.dispose(); }
+
   /* ───────── the viewer ───────── */
   async function mount(el, opt = {}) {
     if (!supported()) throw new Error('WebGL is not available');
     await load();
     const R = window.FT_RENDER || {}, lite = R.quality === 'lite', phone = R.device === 'phone';
     const renderer = new THREE.WebGLRenderer({ antialias: !lite, alpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
-    const dprMax = lite ? 1 : phone ? 1.75 : 2;
-    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, dprMax));
+    const baseDpr = Math.min(devicePixelRatio || 1, lite ? 1 : phone ? 1.75 : 2);
+    renderer.setPixelRatio(baseDpr);
     renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.12;
     renderer.shadowMap.enabled = !lite; renderer.shadowMap.type = THREE.PCFShadowMap;
     const cv = renderer.domElement; cv.className = 'v3d-canvas'; cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', '3D view of your design. Drag to turn it.'); cv.style.touchAction = 'pan-y pinch-zoom';
@@ -251,15 +289,75 @@
     let raf = 0, last = performance.now(), visible = true;
     const io = new IntersectionObserver(es => { visible = es[0].isIntersecting; if (visible) kick(); }); io.observe(el);
     function frame(now) {
-      raf = 0; if (disposed) return; const dt = Math.min(50, now - last); last = now;
+      raf = 0; if (disposed) return; const gap = now - last, dt = Math.min(50, gap); last = now;
+      if (run++ > 0) sample(gap);                                     // only gaps between frames drawn back to back say anything about speed
       let moving = false;
       if (st.spin && !st.drag) { st.yaw += dt * 0.00055; moving = true; }
       else if (target && !st.drag) { const d = target.yaw - st.yaw; if (Math.abs(d) > 0.002) { st.yaw += d * Math.min(1, dt * 0.006); moving = true; } else { st.yaw = target.yaw; target = null; } }
       if (!st.drag && Math.abs(st.vy) > 0.00005) { st.yaw += st.vy * dt; st.vy *= Math.pow(0.994, dt); moving = true; }
       if (moving || st.dirty) { place(); renderer.render(scene, cam); st.dirty = false; }
-      if ((moving || st.drag) && visible && !document.hidden) raf = requestAnimationFrame(frame);
+      if ((moving || st.drag) && visible && !document.hidden) raf = requestAnimationFrame(frame); else run = 0;
     }
-    const kick = () => { st.dirty = true; if (!raf && !disposed) { last = performance.now(); raf = requestAnimationFrame(frame); } };
+    const kick = () => { st.dirty = true; if (!raf && !disposed && !perf.busy) { last = performance.now(); run = 0; raf = requestAnimationFrame(frame); } };
+
+    /* speed. The viewer times its own frames while the model is moving. When the device cannot keep up it steps the picture
+       down (fewer pixels first, then no cast shadow) and remembers the step for this kind of device for a week. A step that
+       buys no speed is undone: the screen is being held back by something else (a battery saver caps phones at 30 frames a
+       second), not by the picture. Somebody who chose a Graphics level by hand keeps exactly that. */
+    const TIERS = [[1, true], [0.8, true], [0.64, false], [0.5, false]], LAST = TIERS.length - 1, SLOW = 36, WEEK = 6048e5;      // [pixel ratio ×, sun shadow]; SLOW: ms a frame, so a steady 30 a second is left alone
+    const KEY = 'ft.3d.step.' + (R.device || 'any'), perf = { tier: 0, ms: 0, p90: 0, buf: [], sum: 0, skip: 5, bad: 0, probe: false, from: 0, ref: 0, lock: !!R.userChoice || opt.adapt === false, busy: false };
+    let run = 0, meter = null, lastSpec = null, builtLight = false;
+    const light = () => lite || perf.tier >= 2;                       // the two lightest steps also use a coarser mesh and smaller textures
+    const shadowOn = () => TIERS[perf.tier][1] && !lite;
+    function setTier(t, keep) {
+      perf.tier = clamp(t | 0, 0, LAST); renderer.setPixelRatio(Math.max(0.5, baseDpr * TIERS[perf.tier][0]));
+      key.castShadow = shadowOn(); floor.visible = key.castShadow; perf.buf = []; perf.sum = 0; perf.skip = 5; fit();
+      if (keep) { try { localStorage.setItem(KEY, JSON.stringify({ t: perf.tier, at: Date.now() })); } catch {} }
+      el.dispatchEvent(new CustomEvent('v3d:quality', { detail: info() })); show();
+      return lastSpec && light() !== builtLight ? setSpec(lastSpec) : Promise.resolve();
+    }
+    function sample(ms) {
+      if (perf.busy) return; if (perf.skip) { perf.skip--; return; }
+      perf.buf.push(ms); perf.sum += ms; if (perf.buf.length < 30 && (perf.sum < 1500 || perf.buf.length < 4)) return;     // a reading: 30 frames, or a second and a half on a device that is crawling
+      const b = perf.buf.sort((x, y) => x - y), med = b[b.length >> 1]; perf.ms = med; perf.p90 = b[Math.floor(b.length * 0.9)]; perf.buf = []; perf.sum = 0; show();
+      if (perf.lock) return;
+      if (perf.probe) {
+        if (med < perf.ref * 0.88) { perf.probe = false; setTier(perf.tier, true); }           // the step bought speed: keep it
+        else if (perf.tier < LAST) setTier(perf.tier + 1);                                     // no change yet: frame times move in whole screen refreshes, so try one more
+        else { perf.probe = false; perf.lock = true; setTier(perf.from); }                     // nothing helped: not the picture's doing
+        return;
+      }
+      if (med <= SLOW) { perf.bad = 0; return; }
+      if (++perf.bad < 2) return; perf.bad = 0;
+      if (perf.tier === LAST) { perf.lock = true; return; }
+      perf.probe = true; perf.from = perf.tier; perf.ref = med; setTier(perf.tier + 1);
+    }
+    function info() {
+      const gl = renderer.getContext(), dbg = gl.getExtension('WEBGL_debug_renderer_info'), size = renderer.getDrawingBufferSize(new THREE.Vector2());
+      return { step: perf.tier, steps: TIERS.length, pixelRatio: +renderer.getPixelRatio().toFixed(2), shadows: shadowOn(), ms: +perf.ms.toFixed(1), p90: +perf.p90.toFixed(1), fps: perf.ms ? Math.round(1000 / perf.ms) : 0,
+        width: size.x, height: size.y, triangles: renderer.info.render.triangles, calls: renderer.info.render.calls, gpu: String(gl.getParameter(dbg ? dbg.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || ''), fixed: perf.lock };
+    }
+    function show() {
+      if (!meter) return; const i = info();
+      meter.textContent = `${i.fps || '–'} fps  ${i.ms || '–'} ms (slow frames ${i.p90 || '–'})\nstep ${i.step + 1}/${i.steps}  ${i.width}×${i.height}  shadow ${i.shadows ? 'on' : 'off'}\n${(i.triangles / 1000).toFixed(1)}k triangles, ${i.calls} draws${i.fixed ? '\nquality fixed' : ''}`;
+    }
+    /* Turn the model for `seconds` at every step and time each one. Returns what a person would see on this device. */
+    async function benchmark(seconds = 3) {
+      const was = { tier: perf.tier, lock: perf.lock, yaw: st.yaw, spin: st.spin }, out = [];
+      perf.busy = true; perf.lock = true; cancelAnimationFrame(raf); raf = 0;
+      for (let t = 0; t <= LAST && !disposed; t++) {
+        await setTier(t);
+        const gaps = await new Promise(done => {
+          const g = []; let prev = 0, t0 = 0;
+          const loop = now => { if (disposed) return done(g); if (!t0) t0 = now; else g.push(now - prev); prev = now; st.yaw += 0.02; place(); renderer.render(scene, cam); if (now - t0 < seconds * 1000) requestAnimationFrame(loop); else done(g); };
+          requestAnimationFrame(loop);
+        });
+        let warm = 0; const b = gaps.filter(g => (warm += g) > 450).sort((x, y) => x - y), med = b[b.length >> 1] || 0, i = info();
+        out.push({ step: t + 1, pixelRatio: i.pixelRatio, width: i.width, height: i.height, shadows: i.shadows, ms: +med.toFixed(1), p90: +(b[Math.floor(b.length * 0.9)] || 0).toFixed(1), fps: med ? Math.round(1000 / med) : 0, frames: b.length });
+      }
+      perf.busy = false; perf.lock = was.lock; st.yaw = was.yaw; st.spin = was.spin; if (!disposed) { await setTier(was.tier); kick(); }
+      const i = info(); return { steps: out, gpu: i.gpu, triangles: i.triangles, calls: i.calls, slow: SLOW };
+    }
     /* pointer: drag to turn, drag up/down to tilt (or to move along the body when zoomed), pinch or wheel to zoom */
     const pts = new Map(); let pinch = 0, moved = 0;
     cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY, performance.now()]); st.drag = true; st.vy = 0; target = null; moved = 0; if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]) / st.zoom; } el.classList.add('grabbing'); kick(); });
@@ -279,37 +377,12 @@
     function disposeGarment(g) { if (!g) return; pivot.remove(g.group); g.group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); for (const m of g.mats) m.dispose(); for (const t of g.texs) t.dispose(); }
 
     async function setSpec(spec) {
-      const my = ++token;
-      const m = E.build3d(spec), tile = E.tile(spec), look = LOOK[m.fabric] || LOOK.cotton;
-      const seg = lite ? 16 : phone ? 22 : 28, texScale = lite ? 1 : phone ? 1.25 : 1.5, AW = Math.round(W * texScale), AH = Math.round(H * texScale);
-      const [tileC, df, db] = await Promise.all([rasterize(tile.svg, tile.w * 4, tile.h * 4), rasterize(E.decoSvg(spec, 'front', 'd3f'), AW, AH), rasterize(E.decoSvg(spec, 'back', 'd3b'), AW, AH)]);
-      if (my !== token || disposed) return;
-      const texs = [], mats = [], tex = (c, repeat) => { const t = new THREE.CanvasTexture(c); if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); texs.push(t); return t; };
-      const tTile = tex(tileC, true); tTile.colorSpace = THREE.SRGBColorSpace;
-      const tBump = tex(weave(m.fabric), true); tBump.repeat.set(tile.w / 22, tile.h / 22);
-      const atlas = document.createElement('canvas'); atlas.width = AW * 2; atlas.height = AH; { const x = atlas.getContext('2d'); x.drawImage(df, 0, 0); x.drawImage(db, AW, 0); }
-      const tDeco = tex(atlas); tDeco.colorSpace = THREE.SRGBColorSpace; tDeco.channel = 1;
-      const mk = document.createElement('canvas'); mk.width = AW * 2; mk.height = AH; { const x = mk.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, mk.width, mk.height); x.fillStyle = '#000'; x.save(); x.scale(texScale, texScale); for (const c of m.cuts.front) x.fill(new Path2D(c)); x.restore(); x.save(); x.translate(AW, 0); x.scale(texScale, texScale); for (const c of m.cuts.back) x.fill(new Path2D(c)); x.restore(); }
-      const tMask = tex(mk); tMask.channel = 1;
-      const base = { map: tTile, bumpMap: tBump, bumpScale: look[3], roughness: look[0], metalness: 0, sheen: look[1], sheenRoughness: look[2], sheenColor: new THREE.Color(E.shade(m.color, 0.45)), envMapIntensity: look[4] };
-      const cloth = new THREE.MeshPhysicalMaterial({ ...base, alphaMap: tMask, alphaTest: 0.5, side: THREE.FrontSide }); cloth.alphaToCoverage = !lite;
-      const inner = new THREE.MeshStandardMaterial({ map: tTile, color: 0x6a6a6a, roughness: 1, metalness: 0, alphaMap: tMask, alphaTest: 0.5, side: THREE.BackSide, envMapIntensity: 0.1 });
-      const plain = new THREE.MeshPhysicalMaterial({ ...base, side: THREE.DoubleSide });
-      const deco = new THREE.MeshStandardMaterial({ map: tDeco, transparent: true, depthWrite: false, roughness: 0.55, metalness: 0.15, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3, envMapIntensity: 0.5 });
-      const white = new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.8, side: THREE.DoubleSide });
-      const styling = new THREE.MeshStandardMaterial({ color: E.lum(m.color) < 0.22 ? 0x8d8a84 : 0x23262d, roughness: 0.9, bumpMap: tBump, bumpScale: 0.5, side: THREE.DoubleSide, envMapIntensity: 0.2 });
-      mats.push(cloth, inner, plain, deco, white, styling);
-      const group = new THREE.Group();
-      for (const p of m.parts) {
-        if (p.type === 'band') { const r0 = p.r + 9, g = loftRings([[CX, p.y0, -3, r0 - 4, r0 * 0.84], [CX, (p.y0 + p.y1) / 2, -2, r0 - 1, r0 * 0.88], [CX, p.y1, 0, r0 + 4, r0 * 0.94]], 32); const mesh = new THREE.Mesh(g, p.tone === 'white' ? white : new THREE.MeshStandardMaterial({ color: new THREE.Color(E.shade(m.color, E.lum(m.color) > 0.62 ? -0.06 : 0.1)), roughness: look[0], side: THREE.DoubleSide })); if (p.tone !== 'white') mats.push(mesh.material); mesh.castShadow = true; group.add(mesh); continue; }
-        const cut = p.id === 'body' || (m.cutSleeves && p.type === 'tube');
-        const g = p.type === 'tube' ? loftTube(p, tile, Math.max(10, seg - 10)) : loftRows(p, tile, p.depth === 'leg' ? Math.max(10, seg - 10) : seg);
-        const a = new THREE.Mesh(g, p.styling ? styling : cut ? cloth : plain); a.castShadow = true; a.receiveShadow = true; group.add(a);
-        if (p.styling) continue;
-        if (cut) { const b = new THREE.Mesh(g, inner); group.add(b); }
-        const d = new THREE.Mesh(g, deco); d.renderOrder = 2; group.add(d);
-      }
+      const my = ++token, lo = light(); lastSpec = spec;
+      const built = await buildGarment(spec, { seg: lo ? 16 : phone ? 22 : 28, texScale: lo ? 1 : phone ? 1.25 : 1.5, lite, aniso: renderer.capabilities.getMaxAnisotropy(), alive: () => my === token && !disposed });
+      if (!built) return;
+      const { group, mats, texs } = built;
       const old = garment; garment = { group, mats, texs }; pivot.add(group); disposeGarment(old);
+      builtLight = lo; perf.skip = 5; perf.buf = []; perf.sum = 0;    // the first frames with a new garment upload its textures: not a fair reading
       el.classList.add('ready'); kick();
     }
 
@@ -321,14 +394,19 @@
       get spinning() { return st.spin; },
       zoom(z) { st.zoom = clamp(z, 1, 2.6); kick(); },
       setTone(i) { tone = clamp(i | 0, 0, TONES.length - 1); manMat.color.set(TONES[tone][1]); try { localStorage.setItem('ft.tone', String(tone)); } catch {} kick(); },
-      resize: fit,
+      resize: fit, info, benchmark,
+      get step() { return perf.tier; }, setStep(t, lock = true) { perf.probe = false; perf.lock = lock; setTier(t); kick(); },
       snapshot(type = 'image/png') { place(); renderer.render(scene, cam); return cv.toDataURL(type, 0.92); },
-      dispose() { disposed = true; cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); disposeGarment(garment); man.traverse(o => { if (o.geometry) o.geometry.dispose(); }); manMat.dispose(); scene.environment?.dispose(); renderer.dispose(); cv.remove(); },
+      dispose() { disposed = true; meter?.remove(); cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); disposeGarment(garment); man.traverse(o => { if (o.geometry) o.geometry.dispose(); }); manMat.dispose(); scene.environment?.dispose(); renderer.dispose(); cv.remove(); },
     };
+    try { if (/[?&]fps=1/.test(location.search)) sessionStorage.setItem('ft.fps', '1'); else if (/[?&]fps=0/.test(location.search)) sessionStorage.removeItem('ft.fps'); if (opt.meter ?? !!sessionStorage.getItem('ft.fps')) { meter = document.createElement('pre'); meter.className = 'v3d-meter'; meter.setAttribute('aria-hidden', 'true'); el.appendChild(meter); } } catch {}
+    if (!perf.lock) { try { const k = JSON.parse(localStorage.getItem(KEY) || 'null'); if (k && k.t > 0 && Date.now() - k.at < WEEK) setTier(k.t); } catch {} }
     if (opt.spec) await api.setSpec(opt.spec);
-    kick();
+    show(); kick();
     return api;
   }
 
-  window.FT3D = { supported, mount, load, TONES };
+  /* kit: the pieces the try-on builds on (same garment, same body, its own camera and motion) */
+  const kit = { load, three: () => THREE, buildGarment, disposeBuilt, buildMannequin, softEnv, weld, frame: { W, H, CX, B, ARM, S, FLOOR } };
+  window.FT3D = { supported, mount, load, TONES, kit };
 })();

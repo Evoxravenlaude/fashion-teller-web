@@ -1,0 +1,26 @@
+<main id="main" class="app">
+  <section class="app-head">
+    <div class="wrap">
+      <div class="sec-head" style="margin-bottom:0">
+        <div><h1 class="h2 split">Speed check</h1><p class="body rv">Measures how smoothly this device draws the 3D view, at each of the picture settings the site can step down to. It takes about 15 seconds.</p></div>
+      </div>
+    </div>
+  </section>
+  <section class="sec tight">
+    <div class="wrap">
+      <div class="speed">
+        <div class="speed-view" id="spView"></div>
+        <div class="speed-side">
+          <p class="body" id="spLead">Keep this tab in front while it runs. Close other apps first for a fair reading.</p>
+          <div class="row-btns"><button class="btn ink" type="button" id="spRun">Run the check</button><button class="btn ghost" type="button" id="spCopy" hidden>Copy the results</button></div>
+          <p class="err" id="spErr" role="alert"></p>
+          <div id="spOut" aria-live="polite"></div>
+          <h2 class="h3" style="margin-top:36px">The live try-on</h2>
+          <p class="body">The try-on depends on the camera and on a person being in view, so it is checked in place. This opens it with a readout in the corner: frames a second, and how long finding the body and dressing it take.</p>
+          <div class="row-btns"><a class="btn ghost" id="spTry" href="/try-on?template=grand-agbada&amp;src=camera&amp;fps=1">Open the try-on with the readout</a></div>
+          <p class="small muted" style="margin-top:14px">The readout stays on for this tab. Add <code>?fps=0</code> to any address to switch it off.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>

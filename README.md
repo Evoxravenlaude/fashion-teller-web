@@ -1,182 +1,211 @@
-# Fashion Teller — website + product
+# Fashion Teller
 
-Static multi-page site. No framework, no build step needed to deploy. The whole MVP runs in the browser
-until the Django backend is connected; the same pages then talk to the API without changes.
+People design their own clothes the way they build an avatar: start from a template, swap the parts, pick colours from
+palettes made for that style and fabric, sketch on it with a finger, and turn it around in 3D. Then they take it
+somewhere: publish it, have a tailor make it, or hire a designer to design something for them. Streaks, levels, badges
+and a daily challenge bring them back.
 
-**Product principle:** the customer designs the garment themselves, the way you build an avatar on Snapchat:
-start from a template, swap parts, pick colours from palettes made for that style and fabric, and sketch details with a
-finger. AI is optional and only helps you *see* the design: a 3D render and fitting it to your own photo (plus an
-optional "Describe it" assist). Streaks, XP, levels, badges and a daily challenge bring people back every day.
+This folder holds two things:
 
-    /                 Home: loader, hero with live prompt, phases, tailor comparison demo
-    /how-it-works     Scroll story through the four production phases, FAQ
-    /studio           The product: Design → See it (3D + try-on) → Measure → Tailors → Pay → Track
-    /signin           Sign in / create account (customer or tailor), demo accounts
-    /designs          My studio: streak, level, daily challenge, badges, and every design with all its versions
-    /orders           Orders list and order detail with live tracker and tailor updates
-    /account          Profile, measurement profiles, password
-    /workshop         The tailor's dashboard: requests to quote, quotes sent, orders to run, profile
-    /admin            Operations: stats, tailor verification, orders, payments, users, designs, inbox
-    /tailors          For tailors: live rank simulator, application form (creates the tailor account)
-    /about            Mission, roadmap, contact form
-    /404              Not found
+- **The site** (everything outside `backend/`): static pages, plain JavaScript, one stylesheet. No build step to deploy.
+- **The backend** (`backend/`): a Django REST API with the same rules as the site.
 
-## What is built (MVP)
+The site runs in two modes, switched by one line in `assets/js/config.js`:
 
-| System | Where | Notes |
+| `apiBaseUrl` | Mode | What it means |
 |---|---|---|
-| User accounts | `account.js`, `/signin`, `/account` | Sign up / sign in / sign out, roles customer · tailor · admin, profile, password change. Passwords salted + PBKDF2-hashed before storage. Account menu in the nav on every page. |
-| Design builder | `engine.js`, studio step 1 | 15 templates across kaftan, agbada, boubou, dress, suit and shirt. Tabs for Style, Colours, Fabric (10 textures + 9 patterns incl. Ankara, Kente, Adire, aso-oke stripe), Collar (per style), Sleeves (+ puff), Length, Fit, Embroidery (placement, weight, thread colour), Details (pockets, buttons, belt, notes for the tailor). Every option is a live thumbnail of *your* design with that option. Undo / redo, "Surprise me". |
-| Colour palettes | `engine.js` `E.palettes` | Each fabric texture has its own palettes (e.g. Lagos Market for Ankara, Royal Owambe for aso-oke, Bridal Lace) and each style adds one (Senator Classics, Grand Occasion…). Main colour + accent swatches, plus a custom colour picker. |
-| Sketch layer | studio → Sketch tab | Draw on the garment with a finger or mouse; thread colours from the palette, three brush sizes, Mirror (draws both sides), Stay on the garment (clips to the garment), undo stroke, clear. Strokes are saved in the version and shown to the tailor. |
-| See it (AI optional) | studio step 2 | **3D view**: drag-to-turn turnaround with a real back view, front/back/spin. **Try it on**: upload a photo or take a selfie, drag / pinch / tilt the garment onto you, save or share the look as a PNG. The photo never leaves the device in built-in mode. With the backend, "Photoreal 3D render" and "Fit to my body" call the AI service. |
-| Describe it (AI assist) | studio builder bar | Optional: a sentence sets the parts, which the user then adjusts. |
-| Streaks + rewards | `store.js` game, nav chip, My studio | A day counts when you save a design or version. XP for new designs (+20), versions (+10, capped daily), streak days (+15), daily challenge (+50), badges (+25), orders (+100). 7 levels from Apprentice to Couturier, 10 badges, 7-day strip, streak-at-risk pulse in the nav. 14 rotating daily challenges that load a template or open the right tab. |
-| Design saving | Save button, `/designs` | Designing works signed-out; saving asks for a free account. Rename, duplicate, delete (orders keep their design). Unsaved work survives a reload. |
-| Design versions | Stage strip, See it → Versions | Every save is a version with an automatic change list ("Collar → mandarin, Sketch +3 strokes"). Tap any version to keep designing from it. Editing a design that is in production saves a new design. |
-| User measurements | Studio step 3, `/account#measurements` | Named profiles (Me, Dad…), cm/inch with conversion, size presets S–XL, per-field measuring tips, fit preference, notes. Chest + waist required. |
-| Vendor profiles | Quote cards, workshop | Workshop name, city, specialties, bio, rating, orders made, since-year, verification date. Profile sheet from any quote. |
-| Vendor verification | `/tailors#apply` → `/admin#tailors` | Application creates a tailor account + workshop in `pending`. Admin verifies / rejects / suspends. Only verified workshops see requests and can quote. |
-| Quote comparison | Studio step 4 | Production request goes to verified tailors; quotes arrive live (polled), sort by best match / price / fastest / rating, tags, tailor note, profile. |
-| Production request | Studio step 3 | Design version + measurement profile + notes + optional deadline. Re-requesting withdraws old quotes. |
-| Basic order tracking | Studio step 6, `/orders` | Four phases (Design created → Vendor assigned → Tailoring → Delivered) + a dated feed of tailor updates. Customer, tailor and admin all see the same order. |
-| Admin dashboard | `/admin` | KPIs, orders by phase, audit trail, tailor verification, order phase override / cancel, refunds, user suspension, designs, contact messages + applications. |
-| Naira pricing | `api.js` `money()` | Everything is quoted, paid and reported in ₦. The engine prices from garment × fabric × embroidery × workshop factor. |
-| Basic payment flow | Studio step 5 | Pay in full or 50% deposit with the balance on delivery. Card (formatted, Luhn-checked) or bank transfer; Paystack inline when a public key is set. Payment is held and released on delivery. |
+| empty (default) | **Built-in** | The whole product runs inside the browser and keeps its data in that browser. Everything works, but only on that one device. For demos and UI work. |
+| a URL | **Backend** | Every call goes to the Django API. Real accounts, shared between devices. |
 
-Tailor side: `/workshop` lists open requests with the concept, version history, measurements and customer notes, a suggested
-price, and a quote form. Accepted quotes become orders the tailor advances (start tailoring, post updates, mark delivered).
+## Pages
 
-Two tabs in the same browser see each other live (customer in one, tailor in the other) — the built-in data layer
-mirrors itself across tabs.
+    /                 Home
+    /how-it-works     The four production phases, FAQ
+    /studio           Design → See it (3D, try-on) → Measure → Tailors → Pay → Track
+    /discover         Designs people have published: trending, new, following, saved
+    /designers        Designers you can hire or follow
+    /designer?id=     A designer's profile, work and reviews; start a commission
+    /design?id=       The design room: 3D view, versions, spec sheet, publish, share, remix, have it made
+    /designs          My studio: streak, level, daily challenge, badges, every design
+    /commissions      Commissions, for the client and for the designer
+    /messages         Conversations with tailors, designers and clients
+    /orders           Orders with live tracking
+    /account          Profile, measurements, designer profile, password
+    /workshop         The tailor's side: requests, quotes, orders, reviews, profile
+    /admin            Operations: tailors, orders, payments, commissions, reports, users, designs, inbox
+    /tailors          For tailors: rank simulator and application
+    /signin  /about  /404
 
-## Demo accounts (built-in mode)
+## What the product does
 
-Available on `/signin` while `demoAccounts: true` in `assets/js/config.js`. Password for all three: `fashion2026`.
+**Designing.** 19 templates across kaftan, agbada, boubou, dress, suit and shirt; 10 fabrics, 9 patterns, palettes per
+fabric and style, collars, sleeves, lengths, fits, embroidery, details and a freehand sketch layer. Every save is a
+version with an automatic change list. "Describe it" turns a sentence into a starting design (plain text matching, no
+AI service).
 
-- Customer — `customer@demo.fashionteller`
-- Tailor — `tailor@demo.fashionteller` (verified workshop "Bakare Atelier"; its quotes are the ones you write yourself)
-- Admin — `admin@demo.fashionteller` (one tailor application is waiting to be verified)
+**Seeing it.** The 3D view is drawn live in the browser from the design itself: the garment is built from the same
+pattern pieces as the flat drawing and put on a mannequin with real fabric texture, lighting and shadow. Drag to turn,
+front / back / side, skin tones, snapshot. It needs WebGL; without it the flat front/back view is shown instead.
+Try-on places the garment over the customer's own photo by hand; the photo never leaves the device.
 
-The demo customer has a 4-day streak that is "at risk" (save something to keep it), a level and some badges.
+**After a design** (the design room, `/design?id=`): rename, duplicate, restore any version, print a spec sheet for a
+tailor, share a link, publish to Discover with a caption and tags, allow or forbid remixes, have it made.
 
-Sample tailors (Luxe Ankara Hubs, Kano Embroidery Works, …) quote automatically a few seconds after a request and move
-orders through production on a timer (`sample.orderPhaseMs`). Test card: any Luhn-valid number, e.g. `4084 0840 8408 4081`;
-CVV `000` simulates a decline.
+**Discover.** Like, save for later, follow the designer, remix into your own studio (the original designer is credited
+on the remix), report.
 
-To start the built-in data from scratch, run `FTStore.reset()` in the browser console (or clear site data).
+**Designers and commissions.** Anyone can open a designer profile (handle, bio, specialties, starting fee, turnaround).
+A client sends a brief → the designer makes an offer (fee and days) → the client pays and the fee is held → the designer
+delivers a design made in the same studio → the client approves or asks for changes (two rounds) → on approval the
+design lands in the client's studio, credited to the designer, and the fee is released. Either side can message
+throughout; the client can review afterwards.
 
-## Deploy on Vercel
+**Tailors and orders.** A design plus a measurement profile goes out as a request; verified tailors quote; the customer
+compares and pays (in full, or a deposit with the balance before delivery). The tailor posts updates with photos. The
+customer confirms delivery, which releases the payment, or reports a problem, which holds it until an admin refunds or
+releases. Reviews follow.
 
-Drag this folder into vercel.com/new, or from this folder run:
+**Messages and notifications.** One conversation per order, per commission, or direct. A bell in the nav with unread
+counts.
 
-    npx vercel         # preview
-    npx vercel --prod  # production
+**Admin.** Verify tailors, move or cancel orders, resolve reported problems, refunds, commissions, content reports
+(take a design off Discover, suspend an account), users, contact inbox, audit trail.
 
-Framework preset: Other. Build command: none. Output directory: the default (this folder).
-vercel.json turns on clean URLs (/studio serves studio.html); 404.html is picked up automatically.
-.vercelignore keeps _src/ and this README out of the deployment.
+## Demo accounts
 
-Preview locally with clean URLs:  npx serve .
+Shown on `/signin` while `demoAccounts: true` in `assets/js/config.js`. Password for all: `fashion2026`.
 
-## Going live with the backend
+| | Email | Starts with |
+|---|---|---|
+| Customer | `customer@demo.fashionteller` | A design, a 4-day streak, a finished order, a commission ready to review |
+| Designer | `designer@demo.fashionteller` | Published work, a new request to answer and a paid commission to deliver |
+| Tailor | `tailor@demo.fashionteller` | A verified workshop with an order in tailoring; requests arrive when a customer asks for quotes |
+| Admin | `admin@demo.fashionteller` | A tailor application waiting to be verified |
 
-Edit `assets/js/config.js` only.
+Sample tailors and designers act on their own so every flow can be finished alone: they quote, move orders along, make
+offers, deliver designs and reply to messages. Test card: `4084 0840 8408 4081`, any future expiry, any CVV; CVV `000`
+is declined.
 
-- `apiBaseUrl` empty: everything runs in the browser (`assets/js/store.js`). Set it (e.g. `https://api.fashionteller.com`)
-  and every call in `assets/js/api.js` goes to the Django backend with SimpleJWT (bearer token, one refresh on 401).
-  The backend must allow this site's origin in CORS (django-cors-headers, `CORS_ALLOWED_ORIGINS`).
-- `payments.paystackPublicKey`: set a Paystack key to take real payments. The studio opens Paystack inline with the
-  reference from `POST order/{id}/payments/init/`; on success it calls `POST order/{id}/payments/` with that reference
-  and the backend verifies it with Paystack before recording the payment.
-- `formEndpoint`: optional JSON POST endpoint that also receives contact messages and tailor applications.
-- `ai.render3d` / `ai.tryOn`: turn the optional AI buttons on or off once the backend serves those routes.
-- `demoAccounts: false` in production.
+Built-in mode: `FTStore.reset()` in the browser console starts the data from scratch.
 
-### Routes the pages call (prefix `/api/v1`)
+## Run it locally
 
-Wire shapes are snake_case; `api.js` adapts them. Routes from the mobile app's `docs/API_CONTRACT.md` are kept;
-the rest are the additions the MVP needs.
+    npx serve .                          # the site at http://localhost:3000, built-in mode
+
+With the backend:
+
+    cd backend
+    python -m venv .venv && source .venv/bin/activate
+    pip install -r requirements.txt
+    python manage.py migrate
+    python manage.py seed                # demo data and the demo accounts
+    python manage.py runserver 127.0.0.1:8000
+
+then open `http://localhost:3000/?api=http://127.0.0.1:8000`. That switch works on localhost only and lasts for the
+tab (`?api=` with nothing after it switches back). Nothing needs configuring for local work.
+
+## Go live
+
+**Site (Vercel).** Drag the folder into vercel.com/new or run `npx vercel --prod`. Framework preset: Other; no build
+command. `vercel.json` turns on clean URLs and sends the security headers; `.vercelignore` keeps `backend/`, `tests/`,
+`_src/` and the docs out of the deployment.
+
+**Backend.** Any host that runs a container or a Python process (`backend/Dockerfile`, `backend/Procfile`). Set, from
+`backend/.env.example`:
+
+| Variable | |
+|---|---|
+| `DJANGO_SECRET_KEY` | Required. A long random string. |
+| `ALLOWED_HOSTS` | Required. The API's hostname. |
+| `CORS_ORIGINS` | Required. The site's origin(s); only these may call the API from a browser. |
+| `DATABASE_URL` | Postgres. Without it the API uses a SQLite file, which most hosts wipe on redeploy. |
+| `PAYSTACK_SECRET_KEY` | Turns on real payments; every payment is verified with Paystack before it is recorded. |
+
+Then:
+
+    python manage.py migrate
+    python manage.py seed --admin you@example.com      # your admin account; asks for a password
+
+and in `assets/js/config.js` set `apiBaseUrl`, `payments.paystackPublicKey` and `demoAccounts: false`.
+
+On a server the backend is locked down unless you say otherwise: debug is off, the test checkout refuses to take
+"payments" (`ALLOW_TEST_PAYMENTS`), the sample tailors and designers are off (`SAMPLE_MODE`), and `seed` will not load
+the demo accounts without `--demo`.
+
+**Before real customers**, see "Not built yet" below: three of those items (payouts, password reset, the Paystack live
+test) matter on day one.
+
+## Not built yet
+
+- **Payouts.** "Released" is a status. No money is transferred to a tailor or designer; that needs Paystack transfers
+  or subaccounts and a decision on the platform's cut. No platform fee is taken anywhere.
+- **Email.** No password reset, no email verification, no emailed notifications. Notifications are in-app only.
+- **A live Paystack payment has not been run.** The verify path is implemented and tested against a stub. Make one test
+  payment with your keys; if the Paystack window is blocked, the browser console names the origin to add to the
+  content security policy in `vercel.json`.
+- **AI try-on.** `POST /designs/{id}/try-on/` is a marked hook that answers "not connected". The shipped try-on is
+  manual placement.
+- **Live updates** are polled (about every 6 seconds against the backend), not pushed.
+- **Photos** (tailor updates) are stored inline in the database, capped at three small images per update. Move them to
+  object storage before volume grows.
+
+## Backend routes
+
+All under `/api/v1/`. JSON in and out, snake_case on the wire (`api.js` converts). Sign-in is a bearer token
+(`Authorization: Bearer …`), refreshed once on a 401. Errors are `{"detail": "…"}`.
 
 ```
-Accounts
-POST account/register/            {name,email,password,role,phone,city,country} -> {access,refresh,user}
-POST account/login/               {email,password} -> {access,refresh,user}
-POST account/token/refresh/       {refresh} -> {access}
-GET  account/me/   PATCH account/me/   POST account/password/ {current_password,new_password}
-GET/POST account/measurements/    PATCH/DELETE account/measurements/{id}/
-                                  {label,unit,values:{chest,waist,...},fit,notes}
-Designs + versions
-POST design/                      {spec,title,source:'builder'|'ai',prompt?,hints?} -> design (+ reward)
-POST design/{id}/versions/        {spec,label,from_version} -> design at its new version (+ reward)
-GET  account/game/                {xp,level,title,from,to,streak,best,doneToday,atRisk,week[],badges[],challenge{id,title,text,done}}
-POST design/{id}/render-3d/       AI (optional) -> {video_url|image_url} or queued
-POST design/{id}/try-on/          AI (optional) {image: data URL} -> {x,y,width,rotation} (placement, % of frame) or {image_url}
-  spec = {garment,fabric,pattern,color,accent,palette,customColor,collar,sleeves,puff,length,fit,embroidery,density,
-          pockets,buttons,belt,notes[],sketch:[{c,w,p:[x,y,…],m}],sketchClip,template}   (sketch points in a 720×1150 frame)
-  reward = {xp,lines[],streak,streakUp,challenge,badges[],levelUp}   — the server owns XP/streak rules in production
-GET  design/                      list for the signed-in user
-GET  design/{id}/  PATCH design/{id}/ {title}  DELETE design/{id}/
-POST design/{id}/refinements/     {instruction,spec,changes,noted} -> design at its new version
-POST design/{id}/versions/{n}/restore/   POST design/{id}/duplicate/
-  design = {id,user_id,title,prompt,hints,current_version,status,versions:[{n,instruction,spec,changes,noted,from_version,created_at}]}
-  (a design with only `refinements:[{instruction}]` from the v1 contract is rebuilt into versions client-side)
-Requests + quotes
-POST design/{id}/requests/        {measurement_id,notes,deadline} -> request
-GET  design/{id}/requests/latest/
-GET  design/{id}/quotes/          [{id,request_id,design_id,vendor_id,vendor,price,delivery_days,note,includes_fabric,status,valid_until}]
-Vendors
-GET  vendor/  GET vendor/{id}/  GET vendor/me/  PATCH vendor/me/
-POST vendor/apply/                application form (+password when not signed in) -> {vendor,access?,refresh?,user?}
-GET  vendor/requests/             open requests for the signed-in verified tailor (design, customer, measurement, suggested, my_quote)
-POST vendor/requests/{id}/quote/  {price,delivery_days,note,includes_fabric}
-GET  vendor/quotes/   GET vendor/orders/   POST vendor/orders/{id}/events/ {phase?,title,body}
-Orders + payments
-POST order/                       {quote_id,plan:'full'|'deposit'} -> order (status awaiting_payment)
-GET  order/   GET order/{id}/   POST order/{id}/cancel/
-POST order/{id}/payments/init/    {kind} -> {reference,amount}
-POST order/{id}/payments/         {method,kind,reference} -> {payment,order}
-  order = {id,user_id,vendor_id,vendor,design_id,design,version,quote_id,measurement_id,measurement,total,paid,plan,
-           phase: concept_generated|vendor_assigned|tailoring|delivered, status: awaiting_payment|active|balance_due|delivered|cancelled,
-           events:[{created_at,phase,title,body,by}],eta,delivery_days,created_at,paid_at,delivered_at}
-Admin (staff only)
-GET admin/stats/  admin/users/  admin/vendors/  admin/designs/  admin/orders/  admin/payments/  admin/messages/  admin/applications/  admin/audit/
-POST admin/vendors/{id}/status/ {status}   POST admin/users/{id}/status/ {status}
-POST admin/orders/{id}/phase/ {phase|'cancelled',note}   POST admin/payments/{id}/refund/
-Contact
-POST contact/                     {name,email,topic,message}
+Accounts      POST auth/register|login|refresh
+              GET/PATCH me     POST me/password     GET me/game     GET me/unread
+              GET me/notifications     POST me/notifications/read
+              GET/POST me/measurements     PATCH/DELETE me/measurements/{id}
+              GET/PUT me/designer
+Designs       GET/POST designs     GET/PATCH/DELETE designs/{id}
+              POST designs/{id}/versions|restore|duplicate|publish|unpublish|like|save|remix|try-on
+              GET discover?sort=&garment=&q=&by=&limit=&offset=     POST reports
+Designers     GET designers     GET designers/{id or @handle}     POST designers/{id}/follow
+Commissions   GET/POST commissions     GET commissions/{id}
+              POST commissions/{id}/offer|decline|pay|pay/init|deliver|changes|approve|cancel
+Reviews       GET/POST reviews
+Messages      GET/POST threads     GET threads/{id}     POST threads/{id}/messages
+Tailors       GET vendors     GET vendors/{id}     GET/PATCH vendors/me     POST vendors/apply
+              GET vendors/requests     POST vendors/requests/{id}/quote     GET vendors/quotes
+              GET vendors/orders     POST vendors/orders/{number}/events
+Orders        POST designs/{id}/requests     GET designs/{id}/requests/latest     GET designs/{id}/quotes
+              GET/POST orders     GET orders/{number}
+              POST orders/{number}/pay|pay/init|cancel|confirm|problem
+Admin         GET admin/stats|users|vendors|designs|orders|payments|commissions|reports|messages|applications|audit
+              POST admin/users/{id}/status     admin/vendors/{id}/status     admin/orders/{number}/phase
+                   admin/orders/{number}/issue     admin/payments/{id}/refund     admin/reports/{id}/resolve
+Other         POST contact     GET /healthz
 ```
 
-## Display and rendering per device
+The server owns the rules: it cleans every design spec against the catalogue, prices, awards XP and streaks, and
+decides who may see or change what. `backend/core/rules.py` is a port of the site's engine, and a test holds the two to
+identical output on 143 recorded designs. If you change templates, options, pricing or challenges in
+`assets/js/engine.js` or `catalog.js`, run `node backend/tools/export_catalog.js` to refresh what the backend reads.
 
-Every visitor starts on the full experience. Before the first paint, `assets/js/device.js` classes the
-device (phone / tablet / laptop / desktop, from touch and screen size) and sets `html[data-device]`,
-`html[data-quality]` and feature-flag classes. Then `site.js` measures real frame times on that device
-(first seconds, then on every scroll) and steps the quality down one level, once, only if frames are
-being dropped. The result is remembered per device type. There are three levels:
+## Where things are
 
-- full: everything (frosted-glass nav, gold cursor, magnetic buttons, self-drawing thread over the hero, full shadows)
-- balanced: solid nav, thread follows a mouse only, lighter shadows, smaller canvases
-- lite: no cursor/thread/magnetic effects, 480px video, cheapest canvases
+| | |
+|---|---|
+| `assets/js/config.js` | The one file to edit to go live or tune rendering |
+| `assets/js/engine.js`, `catalog.js` | Garment construction and drawing; templates, palettes, options, pricing, challenges |
+| `assets/js/viewer3d.js` | The 3D view (three.js, loaded only when opened) |
+| `assets/js/store.js` | Built-in data layer |
+| `assets/js/api.js` | The single door to data: built-in or backend, same methods |
+| `assets/js/account.js` | Sign-in, nav, shared UI (`FTApp`): cards, sheets, checkout, tabs, 3D mount |
+| `assets/js/site.js`, `device.js` | Motion, page transitions, per-device quality |
+| `assets/js/<page>.js` | One script per page |
+| `assets/css/site.css` | All styles; tokens at the top, the app layer in the second half |
+| `_src/` | Page bodies and the shared nav/footer. After editing: `python3 _src/build.py` |
+| `backend/core/` | `models.py`, `views.py` (endpoints), `api.py` (shared logic), `rules.py`, `tests.py` |
+| `tests/` | Data-layer, backend and browser tests (`tests/README.md`) |
+| `AUDIT.md` | What was tested, what was found and fixed, what is left |
 
-People can override under Graphics (menu on phones, footer everywhere): Auto / Full / Balanced / Lite.
-All of it is tuned in `assets/js/config.js` -> `render` (profiles, quality levels, monitor thresholds).
+## Display per device
 
-Preview any combination in the browser: `?render=phone|tablet|laptop|desktop` and `?quality=full|balanced|lite`
-(each sticks for the tab; `=auto` clears it).
-
-Layout is fitted per screen shape: narrow phones (stepper collapses to numbers, forms go single-column, tables become
-stacked cards), landscape phones (split-screen studio, slim nav), portrait and landscape tablets (two-column studio from
-760px), laptops, and large monitors (bigger type and spacing from 1800px). Concepts are SVG so they stay sharp at any
-pixel density. Touch targets grow on coarse pointers. Videos load only near the viewport and pause off screen.
-
-## Editing
-
-- Styles: `assets/css/site.css` (one file, tokens at the top; product systems in the second half). Type is Jost throughout.
-- Shared motion (loader, page wipe, gold thread, cursor, magnetic buttons, FLIP lists): `assets/js/site.js`.
-- Accounts, route guards, shared sheets and helpers (`FTAccount`, `FTApp`): `assets/js/account.js`.
-- Design engine and builder catalogue (render, templates, palettes, options, sketch, challenges, pricing, optional prompt parsing): `assets/js/engine.js`. Add a template or palette there and it appears in the builder.
-- Built-in data layer: `assets/js/store.js`. API facade: `assets/js/api.js`.
-- Nav, menu and footer are shared partials: edit `_src/partials/`, page bodies in `_src/pages/`,
-  then run `python3 _src/build.py` to regenerate the HTML files.
-- Media: `assets/media/` (kaftan loop at 720px and 480px, poster, pre-blurred studio backdrop, marks, favicons, OG image).
+Every visitor starts on the full experience; `device.js` classes the device before first paint and `site.js` steps the
+quality down one level only if that device is dropping frames. People can override it under Graphics in the footer.
+Preview any combination with `?render=phone|tablet|laptop|desktop` and `?quality=full|balanced|lite`. Layouts are
+fitted for small phones (320px) through large monitors, in both orientations; phones get a bottom tab bar.

@@ -42,7 +42,7 @@ s, t = call('POST', '/threads/', {'commission_id': cid}, A); assert s < 300, (s,
 for meth, path in [('GET', '/me/'), ('GET', '/designs/'), ('GET', f'/designs/{did}/'), ('GET', '/orders/'), ('GET', f'/orders/{num}/'), ('GET', '/commissions/'), ('GET', f'/commissions/{cid}/'), ('GET', '/threads/'), ('GET', f'/threads/{tid}/'),
                    ('GET', '/me/measurements/'), ('GET', '/admin/stats/'), ('GET', '/admin/users/'), ('GET', '/vendors/orders/'), ('POST', f'/orders/{num}/pay/'), ('POST', '/designs/'),
                    ('GET', '/me/earnings/'), ('GET', '/me/payout-account/'), ('PUT', '/me/payout-account/'), ('GET', '/payouts/banks/'), ('GET', '/admin/payouts/'), ('POST', '/admin/payouts/1/'), ('POST', '/me/verify/send/'),
-                   ('POST', f'/designs/{did}/try-on/'), ('GET', '/try-on/1/')]:
+                   ('POST', f'/designs/{did}/try-on/'), ('GET', '/try-on/1/'), ('GET', '/admin/fees/'), ('PUT', '/admin/fees/'), ('POST', f"/admin/users/{ua['id']}/fee/")]:
     expect(f'signed out {meth} {path}', call(meth, path, {} if meth != 'GET' else None), (401, 403, 404))
 
 # 2. another customer: cannot see or touch Alice's things
@@ -61,7 +61,7 @@ s, lists = call('GET', '/orders/', token=B); expect('other customer sees no orde
 
 # 3. a customer is not a tailor, designer or admin
 for meth, path, body in [('GET', '/vendors/me/', None), ('GET', '/vendors/requests/', None), ('GET', '/vendors/orders/', None), ('POST', f'/vendors/orders/{num}/events/', {'title': 'x', 'phase': 'tailoring'}), ('GET', '/vendors/quotes/', None),
-                         ('GET', '/admin/stats/', None), ('GET', '/admin/users/', None), ('GET', '/admin/orders/', None), ('GET', '/admin/payments/', None), ('GET', '/admin/payouts/', None), ('POST', '/admin/payouts/1/', {'action': 'paid'}), ('GET', '/admin/audit/', None), ('GET', '/admin/reports/', None), ('GET', '/admin/messages/', None),
+                         ('GET', '/admin/stats/', None), ('GET', '/admin/users/', None), ('GET', '/admin/orders/', None), ('GET', '/admin/payments/', None), ('GET', '/admin/payouts/', None), ('POST', '/admin/payouts/1/', {'action': 'paid'}), ('GET', '/admin/fees/', None), ('PUT', '/admin/fees/', {'order': 0}), ('POST', f"/admin/users/{ua['id']}/fee/", {'fee_percent': 0}), ('GET', '/admin/audit/', None), ('GET', '/admin/reports/', None), ('GET', '/admin/messages/', None),
                          ('POST', f"/admin/users/{ua['id']}/status/", {'status': 'suspended'}), ('POST', f'/admin/orders/{num}/phase/', {'phase': 'delivered'}), ('POST', f'/admin/orders/{num}/issue/', {'action': 'refund'}),
                          ('PATCH', '/me/', {'role': 'admin'})]:
     got = call(meth, path, body, B)
@@ -81,7 +81,9 @@ if str(me_d.get('id')) != str(des['id']):
     expect('other designer offers on the commission', call('POST', f'/commissions/{cid}/offer/', {'fee': 1000, 'days': 3}, D), (403, 404))
     expect('other designer reads the commission', call('GET', f'/commissions/{cid}/', token=D), (403, 404))
 expect('tailor on admin route', call('GET', '/admin/users/', token=T), (403, 404))
-expect('tailor cannot mark own payout as sent', call('POST', '/admin/payouts/1/', {'action': 'paid'}, T), (403, 404)); expect('designer cannot list payouts', call('GET', '/admin/payouts/', token=D), (403, 404))
+expect('tailor cannot mark own payout as sent', call('POST', '/admin/payouts/1/', {'action': 'paid'}, T), (403, 404)); expect('tailor cannot lower the fee', call('PUT', '/admin/fees/', {'order': 0}, T), (403, 404))
+s0, tme = call('GET', '/me/', token=T); expect('tailor cannot give themselves a rate', call('POST', f"/admin/users/{tme['id']}/fee/", {'fee_percent': 0}, T), (403, 404)); expect('designer cannot lower the fee', call('PUT', '/admin/fees/', {'commission': 0}, D), (403, 404))
+s0, tme2 = call('PATCH', '/me/', {'fee_percent': 0, 'own_fee': 0, 'fees': {'order': 0}}, T); expect('a tailor cannot set their own fee through their profile', (200 if call('GET', '/me/', token=T)[1].get('fees', {}).get('order') not in (0, 0.0) else 500, tme2), (200,)); expect('designer cannot list payouts', call('GET', '/admin/payouts/', token=D), (403, 404))
 
 # 4b. money and email: no bank details before the address is confirmed, no forged links, no way to learn who has an account, no unsigned webhooks
 expect('bank details before the email is confirmed', call('PUT', '/me/payout-account/', {'bank_code': '058', 'number': '0123456789'}, B), (400,))

@@ -69,5 +69,10 @@ with sync_playwright() as p:
         s.page.fill('#bk-num', '0123456789'); s.page.click('#bankForm button[type=submit]'); s.page.wait_for_selector('.bankcard', timeout=10000); check('payouts: saved account')
     except Exception as e: print('  (bank form skipped)', str(e)[:80])
     s.js("await FTApi.logout()"); s.login('admin'); s.go('/admin#payouts', 1200); check('admin: payouts')
+    try:
+        s.page.fill('#fee-order', '70'); s.page.click('#feeForm button[type=submit]'); s.page.wait_for_timeout(600); check('admin: fee form with an error')
+        s.page.click('.feebox [data-addfee]'); s.page.wait_for_selector('.app-sheet select'); check('admin: choose an account for its own rate'); s.page.click('.app-sheet button[type=submit]')
+        s.page.wait_for_selector('.app-sheet #ask-fee'); check('admin: own rate sheet'); esc()
+    except Exception as e: print('  (fee states skipped)', str(e)[:100])
     s.close()
 print('violations in open states:', total)

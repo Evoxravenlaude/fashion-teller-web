@@ -19,6 +19,8 @@ line "email and payouts, phone"    "$(python3 flow_extras.py phone 2>&1 | last)"
 for size in desktop phone landscape; do
   line "try-on, $size"             "$(python3 tryon.py $size 2>&1 | last)"
 done
+line "wardrobe, desktop"           "$(python3 wardrobe.py desktop 2>&1 | last)"
+line "wardrobe, phone"             "$(python3 wardrobe.py phone 2>&1 | last)"
 line "3D speed handling"           "$(python3 speed.py phone 2>&1 | last)"
 for size in phone small-phone landscape tablet laptop desktop wide; do
   line "every page, $size"         "$(python3 matrix.py $size 2>&1 | last)"

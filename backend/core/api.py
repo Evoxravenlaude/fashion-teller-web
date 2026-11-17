@@ -141,8 +141,12 @@ def vendor_of(u):
 
 def pub(u):
     p, v = profile_of(u), vendor_of(u)
-    return {'id': str(u.id), 'email': u.email, 'name': u.name, 'role': u.role, 'phone': u.phone, 'city': u.city, 'country': u.country, 'vendor_id': str(v.id) if v else None,
+    out = {'id': str(u.id), 'email': u.email, 'name': u.name, 'role': u.role, 'phone': u.phone, 'city': u.city, 'country': u.country, 'vendor_id': str(v.id) if v else None,
             'status': u.status, 'created_at': iso(u.created_at), 'demo': u.demo, 'email_verified': u.email_verified, 'email_prefs': {'orders': True, 'messages': True, **(u.email_prefs or {})}, 'designer': bool(p), 'handle': p.handle if p else None, 'hue': hue(u.id)}
+    if p or v:                                       # tailors and designers: the platform fee on their next quote or offer
+        from .extras import FEE_KINDS, fee_rate, platform_fees
+        fees = platform_fees(); out['fees'] = {k: fee_rate(u, k, fees) for k in FEE_KINDS}; out['own_fee'] = u.fee_percent
+    return out
 
 
 def person(u):
@@ -548,7 +552,8 @@ def simulate_quotes(req):
             continue
         p = R.price(spec, v.price_factor, v.speed_factor, v.lead_min)
         amount = int(R.jsround((p['price'] * (1 + ((h % 9) - 4) / 100)) / 500) * 500)
-        Quote.objects.create(request=req, design=design, vendor=v, price=amount, delivery_days=p['delivery_days'], note=QUOTE_NOTES[h % len(QUOTE_NOTES)], valid_until=now() + timedelta(days=7), created_at=due)
+        from .extras import fee_rate
+        Quote.objects.create(request=req, design=design, vendor=v, price=amount, fee_percent=fee_rate(v.user, 'order'), delivery_days=p['delivery_days'], note=QUOTE_NOTES[h % len(QUOTE_NOTES)], valid_until=now() + timedelta(days=7), created_at=due)
         n = req.quotes.filter(status='offered').count()
         notify(req.user, 'quote', f'{n} quotes for "{design.title}"' if n > 1 else f'{v.name} sent a quote', f"Latest: {v.name}, {money(amount)}, {p['delivery_days']} days." if n > 1 else f"{money(amount)}, {p['delivery_days']} days for \"{design.title}\".", f'/studio?design={design.id}&step=4', f'quote:{req.id}')
 
@@ -589,7 +594,8 @@ def simulate_commission(c):
         else:
             fee = max(p.fee_from, int(round(min(c.budget or p.fee_from, p.fee_from * 2) / 1000) * 1000))
             c.offer = {'fee': fee, 'days': p.turnaround_days, 'note': 'One design, built for your measurements and the occasion. Two rounds of changes included.', 'at': iso(now())}
-            c.status = 'offered'
+            from .extras import fee_rate
+            c.status, c.fee_percent = 'offered', fee_rate(d, 'commission')
             say(c.thread, d, 'Thank you for the brief. I would love to do this. I have sent my offer; once it is paid I start straight away.'); say(c.thread, None, f'{first(d)} offered {money(fee)}, {p.turnaround_days} days.')
             notify(c.client, 'commission', f'{first(d)} sent an offer', f'{money(fee)}, {p.turnaround_days} days for "{c.title}".', href)
         c.updated_at = now(); c.save()

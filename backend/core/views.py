@@ -467,7 +467,8 @@ def commission_offer(request, pk):
     u, c = request.me, my_commission(request, pk, 'designer')
     if c.status not in ('requested', 'offered'): raise Fail('This request is no longer open for an offer.')
     fee, days = whole(request.data.get('fee'), 1000, 5000000, 'a fee of at least ₦1,000'), whole(request.data.get('days'), 1, 60, 'a delivery time between 1 and 60 days')
-    c.offer, c.status, c.updated_at = {'fee': fee, 'days': days, 'note': txt(request.data.get('note'), 400), 'at': iso(now())}, 'offered', now(); c.save()
+    c.offer, c.status, c.updated_at = {'fee': fee, 'days': days, 'note': txt(request.data.get('note'), 400), 'at': iso(now())}, 'offered', now()
+    c.fee_percent = extras.fee_rate(u, 'commission'); c.save()                 # the rate the designer saw while writing the offer
     say(c.thread, None, f"{first(u)} offered {money(fee)}, {days} day{'' if days == 1 else 's'}.")
     notify(c.client, 'commission', f'{first(u)} sent an offer', f'{money(fee)}, {days} days for "{c.title}".', f'/commissions?id={c.id}')
     return commission_out(c, u)
@@ -553,7 +554,7 @@ def commission_approve(request, pk):
     if p: p.completed += 1; p.save(update_fields=['completed'])
     po = extras.payout(c.designer, 'commission', c.title, c.paid, commission=c)
     say(c.thread, None, f'{first(u)} approved the design. {money(c.paid)} released to {first(c.designer)}.')
-    notify(c.designer, 'commission', 'Design approved, payment released', f'{money(po.net if po else c.paid)} for "{c.title}"' + (f', after the {settings.PLATFORM_FEE_PERCENT:g}% platform fee.' if po and po.fee else '.'), f'/commissions?id={c.id}')
+    notify(c.designer, 'commission', 'Design approved, payment released', f'{money(po.net if po else c.paid)} for "{c.title}"' + (f', after the {po.fee_percent:g}% platform fee.' if po and po.fee else '.'), f'/commissions?id={c.id}')
     if not c.designer.sample: play(c.designer, 'collab')
     return {'commission': commission_out(c, u), 'design': design_out(DESIGNS().get(id=nd.id), u), 'reward': play(u, 'collab')}
 
@@ -740,6 +741,7 @@ def vendor_quote(request, pk):
     price, days = whole(request.data.get('price'), 1000, 50000000, 'a price of at least ₦1,000'), whole(request.data.get('delivery_days'), 1, 90, 'a delivery time between 1 and 90 days')
     q, fresh = Quote.objects.get_or_create(request=r, vendor=v, defaults={'design': r.design, 'price': price, 'delivery_days': days})
     q.price, q.delivery_days, q.note, q.includes_fabric = price, days, txt(request.data.get('note'), 400), bool(request.data.get('includes_fabric', True))
+    q.fee_percent = extras.fee_rate(request.me, 'order')                         # the rate the tailor saw while quoting
     q.status, q.valid_until, q.updated_at = 'offered', now() + timedelta(days=7), now(); q.save()
     notify(r.user, 'quote', f"{v.name} {'sent' if fresh else 'updated'} a quote", f'{money(price)}, {days} days for "{r.design.title}".', f'/studio?design={r.design_id}&step=4')
     return quote_out(q, False)
@@ -849,7 +851,7 @@ def orders(request):
         return order_out(ORDERS().get(id=o.id), u)
     import secrets
     number = next(n for n in (f'FT-{secrets.randbelow(900000) + 100000}' for _ in range(50)) if not Order.objects.filter(number=n).exists())
-    o = Order(number=number, user=u, vendor=q.vendor, design=q.design, version_n=q.request.version_n, quote=q, request=q.request, measurement=q.request.measurement, total=q.price, plan=plan, delivery_days=q.delivery_days)
+    o = Order(number=number, user=u, vendor=q.vendor, design=q.design, version_n=q.request.version_n, quote=q, request=q.request, measurement=q.request.measurement, total=q.price, fee_percent=q.fee_percent if q.fee_percent is not None else extras.fee_rate(q.vendor.user, 'order'), plan=plan, delivery_days=q.delivery_days)
     event(o, 'Design approved', f'Version {q.request.version_n} of "{q.design.title}" approved. {q.vendor.name} quoted {money(q.price)}.')
     o.save()
     return Response(order_out(ORDERS().get(id=o.id), u), status=201)
@@ -940,7 +942,7 @@ def order_confirm(request, number):
     o.save(); o.payments.filter(status='paid').update(status='released')
     Vendor.objects.filter(id=o.vendor_id).update(orders_done=o.vendor.orders_done + 1)
     po = extras.payout(o.vendor.user, 'order', f'Order {o.number}', o.paid, order=o)
-    notify(o.vendor.user, 'order', f'Order {o.number} confirmed', f'{first(u)} has the garment. {money(po.net if po else o.paid)} released to you' + (f', after the {settings.PLATFORM_FEE_PERCENT:g}% platform fee.' if po and po.fee else '.'), '/workshop')
+    notify(o.vendor.user, 'order', f'Order {o.number} confirmed', f'{first(u)} has the garment. {money(po.net if po else o.paid)} released to you' + (f', after the {po.fee_percent:g}% platform fee.' if po and po.fee else '.'), '/workshop')
     return order_out(ORDERS().get(id=o.id), u)
 
 

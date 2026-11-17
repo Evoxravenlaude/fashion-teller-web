@@ -11,6 +11,7 @@ urlpatterns = [
     path('config/', x.config), path('dev/mail/', x.dev_mail), path('webhooks/paystack/', x.paystack_webhook),
     path('payouts/banks/', x.banks), path('me/payout-account/', x.payout_account), path('me/earnings/', x.my_earnings),
     path('admin/payouts/', x.admin_payouts), path('admin/payouts/<str:pk>/', x.admin_payout),
+    path('admin/fees/', x.admin_fees), path('admin/users/<str:pk>/fee/', x.admin_user_fee),
     path('me/', v.me), path('me/password/', v.password), path('me/game/', v.game), path('me/unread/', v.unread),
     path('me/notifications/', v.notifications), path('me/notifications/read/', v.notifications_read),
     path('me/measurements/', v.measurements), path('me/measurements/<str:pk>/', v.measurement), path('me/designer/', v.my_designer),

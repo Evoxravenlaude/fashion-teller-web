@@ -16,7 +16,7 @@ from rest_framework.throttling import SimpleRateThrottle
 
 from . import extras as X, rules as R
 from .api import notify
-from .models import Commission, Mail, Notification, Order, Payment, Payout, PayoutAccount, User
+from .models import Audit, Commission, Mail, Notification, Order, Payment, Payout, PayoutAccount, Quote, User
 
 DATA = Path(__file__).parent / 'data'
 CARD = {'number': '4084 0840 8408 4081', 'expiry': '12/30', 'cvv': '123'}
@@ -252,7 +252,7 @@ class SeedGuardTest(TestCase):
 
 
 @override_settings(SAMPLE_MODE=True, SAMPLE_QUOTE_DELAY=(0, 0), SAMPLE_PHASE_SECONDS=0.0, PAYSTACK_SECRET_KEY='', PAYMENTS_LIVE=False, ALLOW_TEST_PAYMENTS=True, PAYOUTS='test', TEST_PAYOUT_SECONDS=0,
-                   PLATFORM_FEE_PERCENT=10.0, MAIL_ASYNC=False, MAIL_MODE='console', MAIL_DEBUG=True, EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend', SITE_URL='https://site.test',
+                   PLATFORM_FEE_PERCENT=20.0, MAIL_ASYNC=False, MAIL_MODE='console', MAIL_DEBUG=True, EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend', SITE_URL='https://site.test',
                    AI_TRYON_PROVIDER='', FASHN_API_KEY='')
 class ExtrasTest(TestCase):
     """Email, payouts and photoreal try-on. Other services (SMTP, Paystack, the AI) are replaced by stand-ins."""
@@ -323,32 +323,72 @@ class ExtrasTest(TestCase):
         with self.settings(MAIL_MODE='off'): notify(u, 'order', 'Another', 'x', '/orders'); self.assertEqual(Mail.objects.filter(user=u).first().status, 'failed')
 
     def test_payout_on_release_less_the_fee(self):
-        self.assertEqual({k: self.ok('get', '/config/')[k] for k in ('fee_percent', 'payouts', 'mail', 'try_on_ai')}, {'fee_percent': 10.0, 'payouts': 'test', 'mail': 'console', 'try_on_ai': False})
+        self.assertEqual({k: self.ok('get', '/config/')[k] for k in ('fee_percent', 'payouts', 'mail', 'try_on_ai')}, {'fee_percent': 20.0, 'payouts': 'test', 'mail': 'console', 'try_on_ai': False})
         num = self.order_from_demo_tailor(60000)
-        e = self.ok('get', '/me/earnings/'); self.assertGreaterEqual(e['held'], 60000); self.assertEqual(e['held_net'], e['held'] - round(e['held'] * 0.1)); self.assertIsNone(e['account'])
+        e = self.ok('get', '/me/earnings/'); self.assertGreaterEqual(e['held'], 60000); self.assertAlmostEqual(e['held_net'], e['held'] * 0.8, delta=3); self.assertEqual((e['fee_percent'], e['own_fee']), (20.0, None)); self.assertIsNone(e['account'])
         self.login('customer'); self.assertEqual(self.ok('post', f'/orders/{num}/confirm/', {})['status'], 'completed')
-        p = Payout.objects.get(order__number=num); self.assertEqual((p.gross, p.fee, p.net, p.status), (60000, 6000, 54000, 'pending'))
+        p = Payout.objects.get(order__number=num); self.assertEqual((p.gross, p.fee_percent, p.fee, p.net, p.status), (60000, 20.0, 12000, 48000, 'pending'))
         self.assertTrue(Notification.objects.filter(user=p.user, kind='payout', title__contains='bank details').exists())
-        self.assertIn('54,000', Notification.objects.filter(user=p.user, kind='order').first().body)        # the tailor is told what actually reaches them
+        self.assertIn('48,000', Notification.objects.filter(user=p.user, kind='order').first().body); self.assertIn('20% platform fee', Notification.objects.filter(user=p.user, kind='order').first().body)        # the tailor is told what actually reaches them
         self.assertIs(X.payout(p.user, 'order', 'again', 60000, order=p.order).id, p.id)                    # releasing twice cannot pay twice
         self.login('tailor'); self.fails('put', '/me/payout-account/', {'bank_code': '058', 'number': '123'}, 400, '10-digit'); self.fails('put', '/me/payout-account/', {'bank_code': 'nope', 'number': '0123456789'}, 400, 'bank')
         acc = self.ok('put', '/me/payout-account/', self.BANK); self.assertEqual((acc['bank_name'], acc['last4']), ('GTBank', '6789')); self.assertNotIn('number', acc)
         self.assertEqual(PayoutAccount.objects.get(user=p.user).number, '')                                 # the full number is kept only where payouts are made by hand
-        e = self.ok('get', '/me/earnings/'); self.assertEqual((e['paid'], e['pending'], e['processing'], e['payouts'][0]['status']), (54000, 0, 0, 'paid'))
+        e = self.ok('get', '/me/earnings/'); self.assertEqual((e['paid'], e['pending'], e['processing'], e['payouts'][0]['status']), (48000, 0, 0, 'paid'))
         self.assertTrue(Notification.objects.filter(user=p.user, kind='payout', title__contains='sent to your bank').exists())
-        self.login('admin'); row = next(x for x in self.ok('get', '/admin/payouts/') if x['ref_id'] == num); self.assertEqual((row['net'], row['status'], row['account']['last4']), (54000, 'paid', '6789'))
-        self.assertGreaterEqual(self.ok('get', '/admin/stats/')['fees'], 6000)
+        self.login('admin'); row = next(x for x in self.ok('get', '/admin/payouts/') if x['ref_id'] == num); self.assertEqual((row['net'], row['fee_percent'], row['status'], row['account']['last4']), (48000, 20.0, 'paid', '6789'))
+        self.assertGreaterEqual(self.ok('get', '/admin/stats/')['fees'], 12000)
         self.login('customer'); self.fails('get', '/admin/payouts/', None, 403, 'admin'); self.assertIsNone(self.call('get', '/me/payout-account/', expect=200))
         # an account whose address is not confirmed cannot add bank details
         self.c.credentials(); d = self.ok('post', '/auth/register/', {'name': 'New Tailor', 'email': 'new@example.com', 'password': 'a-good-pass-1', 'role': 'tailor'})
         self.c.credentials(HTTP_AUTHORIZATION='Bearer ' + d['access']); self.fails('put', '/me/payout-account/', self.BANK, 400, 'Confirm your email')
 
+    def test_an_admin_sets_the_fee_and_agreed_work_keeps_its_rate(self):
+        self.assertEqual(self.ok('get', '/config/')['fees'], {'order': 20.0, 'commission': 20.0})
+        self.login('admin'); f = self.ok('get', '/admin/fees/'); self.assertEqual((f['order'], f['commission'], f['default'], f['accounts']), (20.0, 20.0, 20.0, []))
+        for bad in ({'order': 51}, {'order': -1}, {'order': 'twenty'}, {'commission': True}, {}, {'order': None}):
+            self.fails('put', '/admin/fees/', bad, 400, 'between 0% and 50%')
+        self.login('tailor'); self.fails('put', '/admin/fees/', {'order': 5}, 403, 'admin'); self.fails('get', '/admin/fees/', None, 403, 'admin')
+        me = self.ok('get', '/me/'); self.assertEqual((me['fees'], me['own_fee']), ({'order': 20.0, 'commission': 20.0}, None))
+        self.login('customer'); self.assertNotIn('fees', self.ok('get', '/me/'))                         # customers pay no platform fee and are not shown one
+        # the tailor quotes at 20%; then the rate changes before the customer accepts
+        d = self.ok('post', '/designs/', {'spec': self.template('senator')}); m = self.ok('post', '/me/measurements/', {'values': {'chest': 96, 'waist': 80}})
+        self.ok('post', f"/designs/{d['id']}/requests/", {'measurement_id': m['id']})
+        tailor = self.login('tailor'); r = next(x for x in self.ok('get', '/vendors/requests/') if x['design']['id'] == d['id'])
+        self.ok('post', f"/vendors/requests/{r['id']}/quote/", {'price': 60000, 'delivery_days': 7})
+        self.login('admin'); f = self.ok('put', '/admin/fees/', {'order': 15, 'commission': '25.5'}); self.assertEqual((f['order'], f['commission']), (15.0, 25.5))
+        self.assertEqual(self.ok('get', '/config/')['fees'], {'order': 15.0, 'commission': 25.5})
+        self.assertEqual(list(Audit.objects.filter(action__startswith='fee:').values_list('action', 'target').order_by('id')), [('fee:order', '20% to 15%'), ('fee:commission', '20% to 25.5%')])
+        self.login('customer'); q = next(x for x in self.ok('get', f"/designs/{d['id']}/quotes/") if x['vendor']['id'] == tailor['vendor_id'])
+        o = self.ok('post', '/orders/', {'quote_id': q['id']}); self.ok('post', f"/orders/{o['id']}/pay/", {'method': 'card', 'card': CARD})
+        self.login('tailor')
+        for phase in ('tailoring', 'delivered'): self.ok('post', f"/vendors/orders/{o['id']}/events/", {'phase': phase, 'title': phase.title(), 'body': 'Update.'})
+        self.login('customer'); self.ok('post', f"/orders/{o['id']}/confirm/", {})
+        p = Payout.objects.get(order__number=o['id']); self.assertEqual((p.fee_percent, p.fee, p.net), (20.0, 12000, 48000))   # quoted at 20%, paid at 20%
+        # new work is at the new rate; an account with its own rate pays that
+        tu = User.objects.get(email='tailor@demo.fashionteller'); self.login('admin')
+        for bad, code, text in (({'fee_percent': 60}, 400, 'between 0% and 50%'), ({'fee_percent': 'x'}, 400, 'between 0% and 50%')):
+            self.fails('post', f'/admin/users/{tu.id}/fee/', bad, code, text)
+        self.fails('post', f"/admin/users/{User.objects.get(email='customer@demo.fashionteller').id}/fee/", {'fee_percent': 5}, 400, 'Only tailors and designers'); self.fails('post', '/admin/users/999999/fee/', {'fee_percent': 5}, 404, 'not found')
+        acc = self.ok('post', f'/admin/users/{tu.id}/fee/', {'fee_percent': 12.5}); self.assertEqual((acc['own_fee'], acc['fees']['order']), (12.5, 12.5))
+        self.assertEqual([(a['email'], a['fee_percent']) for a in self.ok('get', '/admin/fees/')['accounts']], [('tailor@demo.fashionteller', 12.5)])
+        self.assertTrue(Notification.objects.filter(user=tu, kind='payout', title='Your platform fee is now 12.5%').exists())
+        self.login('tailor'); e = self.ok('get', '/me/earnings/'); self.assertEqual((e['fee_percent'], e['own_fee']), (12.5, 12.5))
+        self.login('customer'); d2 = self.ok('post', '/designs/', {'spec': self.template('classic-shirt')}); self.ok('post', f"/designs/{d2['id']}/requests/", {'measurement_id': m['id']})
+        self.login('tailor'); r2 = next(x for x in self.ok('get', '/vendors/requests/') if x['design']['id'] == d2['id']); self.ok('post', f"/vendors/requests/{r2['id']}/quote/", {'price': 40000, 'delivery_days': 5})
+        self.assertEqual(Quote.objects.filter(request_id=r2['id'], vendor__user=tu).first().fee_percent, 12.5)
+        self.assertEqual(Quote.objects.filter(request__design_id=d['id'], vendor__user=tu).first().fee_percent, 20.0)
+        # a designer's offer takes the commission rate at the time of the offer
+        des = User.objects.get(email='designer@demo.fashionteller'); c = Commission.objects.filter(designer=des, status__in=['requested', 'offered']).first()
+        self.login('designer'); self.ok('post', f'/commissions/{c.id}/offer/', {'fee': 30000, 'days': 4}); c.refresh_from_db(); self.assertEqual(c.fee_percent, 25.5)
+        self.login('admin'); self.assertIsNone(self.ok('post', f'/admin/users/{tu.id}/fee/', {'fee_percent': ''})['own_fee']); tu.refresh_from_db(); self.assertIsNone(tu.fee_percent)
+
     @override_settings(PAYOUTS='manual')
     def test_payouts_by_hand_wait_for_an_admin(self):
         designer = self.login('designer'); self.ok('put', '/me/payout-account/', self.BANK); u = User.objects.get(id=designer['id'])
         self.assertEqual(PayoutAccount.objects.get(user=u).number, '0123456789')
-        p = X.payout(u, 'commission', 'A brief', 20000, commission=Commission.objects.filter(designer=u).first()); p.refresh_from_db(); self.assertEqual((p.status, p.net), ('pending', 18000))
-        self.assertEqual(self.ok('get', '/me/earnings/')['pending'], 18000)
+        p = X.payout(u, 'commission', 'A brief', 20000, commission=Commission.objects.filter(designer=u).first()); p.refresh_from_db(); self.assertEqual((p.status, p.net), ('pending', 16000))
+        self.assertEqual(self.ok('get', '/me/earnings/')['pending'], 16000)
         self.login('admin'); row = next(x for x in self.ok('get', '/admin/payouts/') if x['id'] == str(p.id)); self.assertEqual(row['account']['number'], '0123456789')
         self.fails('post', f'/admin/payouts/{p.id}/', {'action': 'nope'}, 400, 'paid or retry')
         self.assertEqual(self.ok('post', f'/admin/payouts/{p.id}/', {'action': 'paid', 'reference': 'GTB-778899'})['status'], 'paid'); self.fails('post', f'/admin/payouts/{p.id}/', {'action': 'paid'}, 400, 'already')
@@ -377,7 +417,7 @@ class ExtrasTest(TestCase):
             acc = self.ok('put', '/me/payout-account/', self.BANK); self.assertEqual((acc['account_name'], acc['bank_name']), ('KEMI LAWAL', 'Guaranty Trust Bank'))
             a = PayoutAccount.objects.get(user=u); self.assertEqual((a.recipient_code, a.number), ('RCP_abc', ''))          # Paystack holds the number; we keep the recipient code
             with self.captureOnCommitCallbacks(execute=True): p = X.payout(u, 'commission', 'A brief', 20000, commission=Commission.objects.filter(designer=u).first())
-            p.refresh_from_db(); sent = calls[-1][2]; self.assertEqual((p.status, sent['amount'], sent['recipient'], sent['source']), ('processing', 1800000, 'RCP_abc', 'balance'))
+            p.refresh_from_db(); sent = calls[-1][2]; self.assertEqual((p.status, sent['amount'], sent['recipient'], sent['source']), ('processing', 1600000, 'RCP_abc', 'balance'))
             self.assertRegex(sent['reference'], r'^[a-z0-9_-]{16,50}$'); code = p.transfer_code; self.assertTrue(code)
             self.assertEqual(hook('transfer.success', {'reference': p.reference, 'transfer_code': code}, sig='forged'), 401); p.refresh_from_db(); self.assertEqual(p.status, 'processing')
             self.assertEqual(hook('transfer.failed', {'reference': p.reference, 'transfer_code': code, 'reason': 'Account closed'}), 200); p.refresh_from_db(); self.assertEqual((p.status, p.note), ('failed', 'Account closed'))

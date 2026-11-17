@@ -15,8 +15,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from . import extras as X
-from .api import Fail, access, audit, now, person, route, txt
-from .models import Design, Mail, Payment, Payout, PayoutAccount, TryOnJob, User
+from .api import Fail, access, audit, now, notify, person, profile_of, pub, route, txt, vendor_of
+from .models import Design, Mail, Payment, Payout, PayoutAccount, Setting, TryOnJob, User
 
 PICTURE = re.compile(r'^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$')
 
@@ -24,7 +24,8 @@ PICTURE = re.compile(r'^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$')
 # ───────── what is switched on ─────────
 @route(['GET'], auth=False)
 def config(request):
-    return {'fee_percent': settings.PLATFORM_FEE_PERCENT, 'payouts': settings.PAYOUTS, 'mail': settings.MAIL_MODE, 'try_on_ai': bool(settings.AI_TRYON_PROVIDER and settings.FASHN_API_KEY),
+    fees = X.platform_fees()
+    return {'fee_percent': fees['order'], 'fees': fees, 'payouts': settings.PAYOUTS, 'mail': settings.MAIL_MODE, 'try_on_ai': bool(settings.AI_TRYON_PROVIDER and settings.FASHN_API_KEY),
             'payments_live': settings.PAYMENTS_LIVE, 'sample_mode': settings.SAMPLE_MODE}
 
 
@@ -125,6 +126,51 @@ def admin_payout(request, pk):
         raise Fail('Choose paid or retry.')
     audit('payout:' + action, p.id, request.me)
     return X.payout_out(Payout.objects.select_related('order').get(id=p.id))
+
+
+# ───────── the platform fee: an admin sets it ─────────
+def fees_out():
+    f = X.platform_fees()
+    own = User.objects.filter(fee_percent__isnull=False, sample=False).order_by('name')
+    return {'order': f['order'], 'commission': f['commission'], 'default': settings.PLATFORM_FEE_PERCENT,
+            'accounts': [{**person(u), 'email': u.email, 'role': u.role, 'fee_percent': u.fee_percent} for u in own]}
+
+
+@route(['GET', 'PUT'], role='admin')
+def admin_fees(request):
+    """GET the rates. PUT {order, commission}: new platform rates, 0 to 50 percent. They apply to quotes and offers made
+    from now on; every job already quoted or offered keeps its rate."""
+    if request.method == 'PUT':
+        if not isinstance(request.data, dict): raise Fail('Enter a fee between 0% and 50%.')
+        new = {}
+        for k in X.FEE_KINDS:
+            if request.data.get(k) not in (None, ''):
+                v = X.clean_pct(request.data.get(k))
+                if v is None: raise Fail(f'Enter a fee between 0% and 50% for {"tailor orders" if k == "order" else "designer commissions"}.')
+                new[k] = v
+        if not new: raise Fail('Enter a fee between 0% and 50%.')
+        was = X.platform_fees()
+        for k, v in new.items():
+            Setting.objects.update_or_create(key=f'fee_{k}', defaults={'value': v, 'updated_at': now(), 'updated_by': request.me})
+            if v != was[k]: audit(f'fee:{k}', f'{X.pct(was[k])} to {X.pct(v)}', request.me)
+    return fees_out()
+
+
+@route(['POST'], role='admin')
+def admin_user_fee(request, pk):
+    """{fee_percent}: this account's own rate, or empty to put it back on the platform rate."""
+    u = User.objects.filter(id=pk if str(pk).isdigit() else 0, sample=False).first()
+    if u is None: raise Fail('Account not found.', 404)
+    if not (vendor_of(u) or profile_of(u)): raise Fail('Only tailors and designers pay a platform fee.')
+    raw = request.data.get('fee_percent') if isinstance(request.data, dict) else None
+    v = None if raw in (None, '') else X.clean_pct(raw)
+    if raw not in (None, '') and v is None: raise Fail('Enter a fee between 0% and 50%, or leave it empty for the platform rate.')
+    if v != u.fee_percent:
+        u.fee_percent = v; u.save(update_fields=['fee_percent']); audit('fee:account', f'{u.email} {X.pct(v) if v is not None else "platform rate"}', request.me)
+        rates = {k: X.fee_rate(u, k) for k in X.FEE_KINDS}
+        now_pays = X.pct(rates['order' if vendor_of(u) else 'commission'])
+        notify(u, 'payout', f'Your platform fee is now {now_pays}', 'It applies to quotes and offers you make from now on. Work you have already quoted or offered keeps the rate it was agreed at.', '/account#payouts')
+    return pub(u)
 
 
 @csrf_exempt

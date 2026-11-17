@@ -28,6 +28,7 @@ class User(AbstractBaseUser):
     demo = models.BooleanField(default=False)
     email_verified = models.BooleanField(default=False)
     email_prefs = models.JSONField(default=dict, blank=True)             # {orders: bool, messages: bool}; missing means yes
+    fee_percent = models.FloatField(null=True, blank=True)               # a platform fee agreed with this tailor or designer; empty = the platform rate
     created_at = models.DateTimeField(default=now)
     objects = UserManager()
     USERNAME_FIELD = 'email'
@@ -188,6 +189,7 @@ class Quote(models.Model):
     delivery_days = models.PositiveSmallIntegerField()
     note = models.CharField(max_length=400, blank=True)
     includes_fabric = models.BooleanField(default=True)
+    fee_percent = models.FloatField(null=True, blank=True)             # the platform fee when the tailor quoted: the rate this job is paid at
     status = models.CharField(max_length=10, default='offered')       # offered | accepted | declined | withdrawn
     valid_until = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=now)
@@ -208,6 +210,7 @@ class Order(models.Model):
     measurement = NFK(Measurement)
     total = models.PositiveIntegerField()
     paid = models.PositiveIntegerField(default=0)
+    fee_percent = models.FloatField(null=True, blank=True)             # copied from the quote: a later change of rate never alters an agreed job
     plan = models.CharField(max_length=8, default='full')
     phase = models.CharField(max_length=20, default='concept_generated')
     status = models.CharField(max_length=20, default='awaiting_payment', db_index=True)   # awaiting_payment | active | balance_due | delivered | completed | cancelled
@@ -233,6 +236,7 @@ class Commission(models.Model):
     ref_design = NFK(Design, related_name='+')
     status = models.CharField(max_length=10, default='requested', db_index=True)   # requested | offered | active | delivered | changes | approved | declined | cancelled
     offer = models.JSONField(null=True, blank=True)
+    fee_percent = models.FloatField(null=True, blank=True)             # the platform fee when the designer made the offer
     paid = models.PositiveIntegerField(default=0)
     paid_at = models.DateTimeField(null=True, blank=True)
     revisions = models.PositiveSmallIntegerField(default=0)
@@ -395,6 +399,7 @@ class Payout(models.Model):
     commission = NFK(Commission, related_name='payouts')
     title = models.CharField(max_length=120)
     gross = models.PositiveIntegerField()
+    fee_percent = models.FloatField(default=0)
     fee = models.PositiveIntegerField()
     net = models.PositiveIntegerField()
     status = models.CharField(max_length=12, default='pending', db_index=True)   # pending | processing | paid | failed | reversed
@@ -419,3 +424,11 @@ class TryOnJob(models.Model):
     error = models.CharField(max_length=200, blank=True)
     image = models.TextField(blank=True)                                # the finished picture, as a data URL or an https URL
     created_at = models.DateTimeField(default=now)
+
+
+class Setting(models.Model):
+    """Platform settings an admin changes from the dashboard: fee_order and fee_commission (percent)."""
+    key = models.CharField(max_length=40, unique=True)
+    value = models.JSONField()
+    updated_at = models.DateTimeField(default=now)
+    updated_by = NFK(User, related_name='+')

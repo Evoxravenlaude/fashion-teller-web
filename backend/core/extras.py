@@ -19,10 +19,10 @@ from django.core import signing
 from django.core.cache import cache
 from django.core.mail import EmailMultiAlternatives
 from django.db import connection, transaction
-from django.db.models import Sum
+from django.db.models import Q, Sum
 
 from .api import Fail, money, notify, now, txt
-from .models import Mail, Payment, Payout, PayoutAccount, User
+from .models import Mail, Payment, Payout, PayoutAccount, Setting, User
 
 log = logging.getLogger('fashionteller')
 
@@ -214,12 +214,53 @@ def account_out(a, full=False):
 
 
 def payout_out(p):
-    return {'id': str(p.id), 'user_id': str(p.user_id), 'kind': p.kind, 'ref_id': p.order.number if p.order_id else str(p.commission_id or ''), 'title': p.title, 'gross': p.gross, 'fee': p.fee, 'net': p.net,
+    return {'id': str(p.id), 'user_id': str(p.user_id), 'kind': p.kind, 'ref_id': p.order.number if p.order_id else str(p.commission_id or ''), 'title': p.title, 'gross': p.gross, 'fee_percent': p.fee_percent, 'fee': p.fee, 'net': p.net,
             'status': p.status, 'reference': p.reference, 'note': p.note, 'created_at': p.created_at.isoformat(), 'sent_at': p.sent_at.isoformat() if p.sent_at else None, 'paid_at': p.paid_at.isoformat() if p.paid_at else None}
 
 
-def fee_of(gross):
-    return int(round(gross * settings.PLATFORM_FEE_PERCENT / 100))
+# ───────── the platform fee ─────────
+FEE_KINDS = ('order', 'commission')          # tailor orders, designer commissions
+
+
+def clean_pct(v):
+    """A fee as typed by an admin: a number from 0 to 50, to two decimals. None if it is not one."""
+    if isinstance(v, bool) or v is None or v == '':
+        return None
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return None
+    return round(v, 2) if 0 <= v <= 50 else None
+
+
+def platform_fees():
+    """The platform rates now: what an admin set, else PLATFORM_FEE_PERCENT."""
+    s = dict(Setting.objects.filter(key__in=[f'fee_{k}' for k in FEE_KINDS]).values_list('key', 'value'))
+    return {k: clean_pct(s.get(f'fee_{k}')) if clean_pct(s.get(f'fee_{k}')) is not None else settings.PLATFORM_FEE_PERCENT for k in FEE_KINDS}
+
+
+def fee_rate(user, kind, fees=None):
+    """The rate this person pays on new work of this kind: their own agreed rate, else the platform's."""
+    if user is not None and getattr(user, 'fee_percent', None) is not None:
+        return user.fee_percent
+    return (fees or platform_fees())[kind]
+
+
+def locked_rate(user, kind, order=None, commission=None):
+    """The rate a job is paid at: the one recorded when it was quoted or offered. Jobs from before rates were recorded
+    fall back to today's rate."""
+    for x in (order, commission):
+        if x is not None and x.fee_percent is not None:
+            return x.fee_percent
+    return fee_rate(user, kind)
+
+
+def fee_of(gross, rate):
+    return int(round(gross * rate / 100))
+
+
+def pct(v):
+    return f'{v:g}%'
 
 
 def payout(user, kind, title, gross, order=None, commission=None):
@@ -230,8 +271,8 @@ def payout(user, kind, title, gross, order=None, commission=None):
     if had is not None:
         return had
     ref = f'ftp-{"o" if order else "c"}{(order or commission).id:08d}-u{user.id:08d}'      # Paystack wants 16-50 lowercase letters, digits, - or _
-    fee = fee_of(gross)
-    p = Payout.objects.create(user=user, kind=kind, order=order, commission=commission, title=txt(title, 120), gross=gross, fee=fee, net=gross - fee, reference=ref,
+    rate = locked_rate(user, kind, order, commission); fee = fee_of(gross, rate)
+    p = Payout.objects.create(user=user, kind=kind, order=order, commission=commission, title=txt(title, 120), gross=gross, fee_percent=rate, fee=fee, net=gross - fee, reference=ref,
                               status='paid' if user.sample else 'pending', sent_at=now() if user.sample else None, paid_at=now() if user.sample else None)
     if not user.sample:
         settle(user)
@@ -324,9 +365,16 @@ def earnings(user):
     from .api import vendor_of
     mine = Payout.objects.filter(user=user)
     total = lambda st: mine.filter(status=st).aggregate(s=Sum('net'))['s'] or 0
-    v = vendor_of(user)
-    held = (Payment.objects.filter(status='paid', commission__designer=user).aggregate(s=Sum('amount'))['s'] or 0) + ((Payment.objects.filter(status='paid', order__vendor=v).aggregate(s=Sum('amount'))['s'] or 0) if v else 0)
-    return {'fee_percent': settings.PLATFORM_FEE_PERCENT, 'held': held, 'held_net': held - fee_of(held), 'pending': total('pending'), 'processing': total('processing'), 'paid': total('paid'), 'failed': total('failed'),
+    v, fees = vendor_of(user), platform_fees()
+    jobs = {}                                       # money held per job, so each job's fee is worked out at its own rate
+    for p in Payment.objects.filter(status='paid').filter(Q(commission__designer=user) | Q(order__vendor=v) if v else Q(commission__designer=user)).select_related('order', 'commission'):
+        key = ('o', p.order_id) if p.order_id else ('c', p.commission_id)
+        jobs.setdefault(key, [0, p.order, p.commission])[0] += p.amount
+    held = sum(j[0] for j in jobs.values())
+    held_net = sum(j[0] - fee_of(j[0], locked_rate(user, 'order' if j[1] else 'commission', j[1], j[2])) for j in jobs.values())
+    mine_fees = {k: fee_rate(user, k, fees) for k in FEE_KINDS}
+    return {'fee_percent': mine_fees['order' if v else 'commission'], 'fees': mine_fees, 'own_fee': user.fee_percent, 'held': held, 'held_net': held_net,
+            'pending': total('pending'), 'processing': total('processing'), 'paid': total('paid'), 'failed': total('failed'),
             'account': account_out(PayoutAccount.objects.filter(user=user).first()), 'payouts': [payout_out(p) for p in mine.select_related('order')[:60]]}
 
 

@@ -116,8 +116,10 @@ PASSWORD_RESET_TIMEOUT = 3600                      # a reset link works for one 
 VERIFY_LINK_DAYS = 3
 
 # ───────── payouts ─────────
-# What Fashion Teller keeps when a payment is released to a tailor or designer.
-PLATFORM_FEE_PERCENT = max(0.0, min(50.0, float(env('PLATFORM_FEE_PERCENT', '10'))))
+# What Fashion Teller keeps when a payment is released to a tailor or designer: the starting rate. An admin can change it
+# in the dashboard (Admin → Payouts), separately for tailor orders and designer commissions, and give one account its own
+# rate; those choices are kept in the database and win over this. Each job keeps the rate it was quoted or offered at.
+PLATFORM_FEE_PERCENT = max(0.0, min(50.0, float(env('PLATFORM_FEE_PERCENT', '20'))))
 # paystack: sent automatically with Paystack Transfers.  manual: you pay from your bank and mark each one as sent.
 # test: nothing moves; payouts complete by themselves (only where the test checkout is allowed).
 PAYOUTS = 'paystack' if PAYSTACK_SECRET_KEY and flag('PAYSTACK_TRANSFERS', '1') else 'test' if ALLOW_TEST_PAYMENTS else 'manual'

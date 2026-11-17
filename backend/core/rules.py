@@ -20,7 +20,9 @@ W, H = 720, 1150
 HEX = re.compile(r'^#[0-9a-f]{6}$', re.I)
 SLUG40, SLUG30 = re.compile(r'^[a-z0-9-]{1,40}$'), re.compile(r'^[a-z0-9-]{1,30}$')
 EMB_COST = {'none': 0, 'neck': 6000, 'chest': 14000, 'chest-hem': 24000, 'full': 36000}
-SPECIALTY = {'kaftan': 'Kaftans', 'agbada': 'Agbada', 'boubou': 'Dresses', 'dress': 'Dresses', 'suit': 'Suits', 'shirt': 'Shirts'}
+SPECIALTY = {'kaftan': 'Kaftans', 'agbada': 'Agbada', 'boubou': 'Dresses', 'dress': 'Dresses', 'suit': 'Suits', 'shirt': 'Shirts', 'tee': 'Streetwear', 'hoodie': 'Streetwear', 'bomber': 'Streetwear',
+             'joggers': 'Streetwear', 'trousers': 'Streetwear', 'skirt': 'Dresses', 'kimono': 'Dresses'}
+FORMS = ('woman', 'man')
 
 jsround = lambda x: math.floor(x + 0.5)                      # JavaScript's Math.round
 clamp = lambda n, lo, hi: max(lo, min(hi, n))
@@ -63,8 +65,8 @@ def blank(garment='kaftan'):
     g = garment if isinstance(garment, str) and garment in GARMENTS else 'kaftan'
     G = GARMENTS[g]
     return {'garment': g, 'fabric': G['fabric'], 'color': G['color'], 'accent': 'gold', 'length': G['length'], 'sleeves': G['sleeves'], 'collar': G['collar'], 'fit': G['fit'],
-            'embroidery': G['emb'], 'density': 2, 'buttons': g in ('shirt', 'suit'), 'pockets': g == 'suit', 'puff': False, 'belt': False,
-            'pattern': 'ankara' if G['fabric'] == 'ankara' else 'stripe' if G['fabric'] == 'aso-oke' else 'plain', 'notes': [], 'sketch': [], 'sketchClip': True, 'customColor': False, 'template': None, 'palette': None}
+            'embroidery': G['emb'], 'density': 2, 'buttons': 'buttons' in G.get('on', ()), 'pockets': 'pockets' in G.get('on', ()), 'puff': False, 'belt': 'belt' in G.get('on', ()),
+            'pattern': 'ankara' if G['fabric'] == 'ankara' else 'stripe' if G['fabric'] == 'aso-oke' else 'plain', 'notes': [], 'sketch': [], 'sketchClip': True, 'customColor': False, 'template': None, 'palette': None, 'form': None}
 
 
 def clean_sketch(sk):
@@ -98,12 +100,15 @@ def normalize(raw):
     out['density'] = int(clamp(jsround(num(s.get('density'), 2)), 1, 3))
     for k in ('buttons', 'pockets', 'puff', 'belt', 'customColor'):
         out[k] = truthy(s.get(k))
-    if g in ('shirt', 'suit'): out['buttons'] = True
+    for k in GARMENTS[g].get('lock', ()): out[k] = True
+    if GARMENTS[g].get('kind') == 'bottom':                    # trousers and skirts: nothing above the waist to set
+        out['embroidery'], out['sleeves'], out['puff'] = 'none', 'sleeveless', False
     out['sketchClip'] = s.get('sketchClip') is not False
     out['notes'] = [n.strip()[:160] for n in [n for n in (s.get('notes') if isinstance(s.get('notes'), list) else []) if isinstance(n, str) and n.strip()][:12]]
     out['sketch'] = clean_sketch(s.get('sketch'))
     out['template'] = s['template'] if isinstance(s.get('template'), str) and SLUG40.match(s['template']) else None
     out['palette'] = s['palette'] if isinstance(s.get('palette'), str) and SLUG30.match(s['palette']) else None
+    out['form'] = s['form'] if isinstance(s.get('form'), str) and s['form'] in FORMS else None      # the mannequin it is shown on
     return out
 
 
@@ -116,7 +121,7 @@ def price(spec, price_factor=1.0, speed_factor=1.0, lead_min=5):
     extras = (min(15000, 3000 + len(s['sketch']) * 400) if s['sketch'] else 0) + (2500 if has('pockets') else 0) + (3000 if has('belt') else 0) + (2000 if s['puff'] else 0) + (4000 if s['length'] == 'full' else 0)
     labour = jsround(base * 0.12)
     total = jsround(((base + emb + extras + labour) * (price_factor or 1)) / 500) * 500
-    complexity = 1 + (0 if s['embroidery'] == 'none' else s['density'] * 0.6) + (1.5 if g in ('agbada', 'suit') else 0) + (0.6 if s['sketch'] else 0)
+    complexity = 1 + (0 if s['embroidery'] == 'none' else s['density'] * 0.6) + GARMENTS[g].get('complex', 0) + (0.6 if s['sketch'] else 0)
     days = max(3, jsround((lead_min or 5) + complexity * (speed_factor or 1)))
     return {'price': int(total), 'delivery_days': int(days), 'breakdown': {'fabric': int(base), 'embroidery': int(emb), 'extras': int(extras), 'labour': int(labour), 'factor': price_factor or 1}}
 

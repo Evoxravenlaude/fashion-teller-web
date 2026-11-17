@@ -13,6 +13,7 @@
  */
 (() => {
   const E = window.FTEngine, { GARMENTS, FABRICS, COLORS, ACCENTS, LENGTHS, SLEEVES, PATTERNS, COLLAR_LABEL, EMB_LABEL, COLLAR_FOR, DETAILS_FOR } = E.vocab;
+  const isBottom = g => GARMENTS[g] && GARMENTS[g].kind === 'bottom';
   const cap = s => String(s).charAt(0).toUpperCase() + String(s).slice(1);
   const clone = o => JSON.parse(JSON.stringify(o));
 
@@ -38,6 +39,38 @@
     T('classic-shirt', 'Classic shirt', 'Office', 'shirt', { fabric: 'cotton', color: 'white', collar: 'classic', pockets: true }, 'Point collar, placket, barrel cuffs, shirt-tail hem.'),
     T('ankara-shirt', 'Ankara short-sleeve shirt', 'Weekend', 'shirt', { fabric: 'ankara', color: 'orange', accent: 'navy', pattern: 'ankara', sleeves: 'short', collar: 'classic', pockets: true, fit: 'relaxed' }, 'Relaxed print shirt for the weekend.'),
     T('band-shirt', 'Band-collar linen shirt', 'Weekend', 'shirt', { fabric: 'linen', color: 'sage', collar: 'mandarin', sleeves: 'long' }, 'Collarless linen shirt.'),
+    /* street */
+    T('classic-tee', 'Classic tee', 'Street', 'tee', { fabric: 'jersey', color: 'white' }, 'Crew neck, short sleeves, straight hem.'),
+    T('motif-tee', 'Embroidered tee', 'Street', 'tee', { fabric: 'jersey', color: 'black', accent: 'gold', embroidery: 'chest', density: 1, fit: 'relaxed' }, 'Boxy black tee with a gold chest motif.'),
+    T('ankara-polo', 'Ankara polo', 'Weekend', 'tee', { fabric: 'ankara', pattern: 'ankara', color: 'teal', accent: 'gold', collar: 'polo' }, 'Polo collar and three buttons in wax print.'),
+    T('tank', 'Tank top', 'Gym', 'tee', { fabric: 'jersey', color: 'charcoal', sleeves: 'sleeveless', fit: 'fitted' }, 'Sleeveless and close to the body.'),
+    T('grey-hoodie', 'Pullover hoodie', 'Street', 'hoodie', { fabric: 'jersey', color: 'grey' }, 'Hood, drawcords, pouch pocket, ribbed cuffs and hem.'),
+    T('adire-hoodie', 'Adire hoodie', 'Street', 'hoodie', { fabric: 'jersey', color: '#2f3e8f', accent: 'white', pattern: 'adire' }, 'Indigo tie-dye rings on a heavyweight hoodie.'),
+    T('crew-sweat', 'Crewneck sweatshirt', 'Street', 'hoodie', { fabric: 'jersey', color: 'forest', accent: 'ivory', collar: 'round', pockets: false, embroidery: 'chest', density: 1 }, 'No hood. Stitched chest motif.'),
+    T('olive-bomber', 'Bomber jacket', 'Street', 'bomber', { fabric: 'nylon', color: 'olive', accent: 'orange' }, 'Zip front, ribbed collar, cuffs and hem, slant pockets.'),
+    T('kente-bomber', 'Kente bomber', 'Street', 'bomber', { fabric: 'cotton', color: '#d9a520', accent: 'emerald', pattern: 'kente' }, 'The bomber cut in woven kente.'),
+    T('denim-jacket', 'Denim jacket', 'Weekend', 'bomber', { fabric: 'denim', color: 'indigo', accent: 'bronze', collar: 'classic' }, 'Trucker jacket: shirt collar, button front, chest pockets.'),
+    T('grey-joggers', 'Joggers', 'Street', 'joggers', { fabric: 'jersey', color: 'grey' }, 'Drawstring waist, tapered leg, ribbed cuffs.'),
+    T('sweat-shorts', 'Jogger shorts', 'Gym', 'joggers', { fabric: 'jersey', color: 'black', length: 'knee' }, 'Above the knee, drawstring waist.'),
+    T('chinos', 'Chinos', 'Everyday', 'trousers', { fabric: 'cotton', color: 'khaki' }, 'Flat front, straight leg, slant pockets.'),
+    T('jeans', 'Straight jeans', 'Everyday', 'trousers', { fabric: 'denim', color: 'indigo' }, 'Five-pocket denim.'),
+    T('wide-leg', 'Wide-leg trousers', 'Office', 'trousers', { fabric: 'linen', color: 'ivory', fit: 'relaxed', collar: 'pleated', length: 'full' }, 'Pleated front, full leg to the floor.'),
+    T('ankara-shorts', 'Ankara shorts', 'Weekend', 'trousers', { fabric: 'ankara', pattern: 'ankara', color: 'orange', accent: 'navy', length: 'knee' }, 'Tailored shorts in wax print.'),
+    T('pencil-skirt', 'Pencil skirt', 'Office', 'skirt', { fabric: 'wool', color: 'charcoal', fit: 'fitted', length: 'knee' }, 'Close through the hip, to the knee.'),
+    /* around the world */
+    T('iro-wrapper', 'Iro wrapper', 'West Africa', 'skirt', { fabric: 'aso-oke', pattern: 'stripe', color: 'wine', accent: 'gold', collar: 'tie', length: 'ankle' }, 'A wrapped and tied skirt in aso-oke.'),
+    T('kurta', 'Kurta set', 'South Asia', 'kaftan', { fabric: 'cotton', color: 'cream', accent: 'gold', collar: 'mandarin', length: 'knee', buttons: true, embroidery: 'neck', density: 1 }, 'Knee-length tunic with a band collar, over slim trousers.'),
+    T('sherwani', 'Sherwani', 'South Asia', 'kaftan', { fabric: 'brocade', pattern: 'brocade', color: 'ivory', accent: 'gold', collar: 'mandarin', length: 'midi', fit: 'fitted', buttons: true, embroidery: 'chest', density: 2 }, 'Long, close-cut wedding coat in brocade.'),
+    T('thobe', 'Thobe', 'Gulf', 'kaftan', { fabric: 'cotton', color: 'white', accent: 'silver', collar: 'classic', length: 'full', buttons: true, pockets: true, embroidery: 'none' }, 'Full-length robe with a shirt collar.'),
+    T('abaya', 'Abaya', 'Gulf', 'kaftan', { fabric: 'chiffon', color: 'black', accent: 'gold', collar: 'round', length: 'full', fit: 'relaxed', embroidery: 'full', density: 1 }, 'Flowing full-length robe, gold at the neck, cuffs and hem.'),
+    T('qipao', 'Qipao', 'China', 'dress', { fabric: 'silk', color: 'crimson', accent: 'gold', collar: 'mandarin', sleeves: 'short', length: 'midi', fit: 'fitted', pattern: 'floral', embroidery: 'none' }, 'Band collar, diagonal front with knot buttons, side slit.'),
+    T('silk-kimono', 'Silk kimono', 'Japan', 'kimono', { fabric: 'silk', color: 'crimson', accent: 'gold', pattern: 'floral' }, 'Wrap front, wide sleeves, obi sash.'),
+    T('yukata', 'Indigo yukata', 'Japan', 'kimono', { fabric: 'cotton', color: '#2f3e8f', accent: 'white' }, 'The cotton summer kimono.'),
+    T('haori', 'Haori jacket', 'Japan', 'kimono', { fabric: 'linen', color: 'charcoal', accent: 'silver', length: 'knee', belt: false }, 'Open, knee-length kimono jacket.'),
+    T('kilt', 'Tartan kilt', 'Scotland', 'skirt', { fabric: 'wool', color: 'forest', accent: 'crimson', pattern: 'check', fit: 'relaxed', length: 'knee', belt: true }, 'Pleated wool tartan to the knee.'),
+    T('sarong', 'Batik sarong', 'Southeast Asia', 'skirt', { fabric: 'cotton', color: 'teal', accent: 'gold', pattern: 'floral', collar: 'tie', length: 'ankle' }, 'Wrapped and tied at the hip.'),
+    T('guayabera', 'Guayabera', 'Caribbean', 'shirt', { fabric: 'linen', color: 'white', sleeves: 'short', pockets: true, fit: 'relaxed' }, 'The linen shirt of Havana and Veracruz.'),
+    T('aloha-shirt', 'Aloha shirt', 'Hawaii', 'shirt', { fabric: 'cotton', color: 'sky', accent: 'coral', pattern: 'floral', sleeves: 'short', fit: 'relaxed' }, 'Short sleeves, floral print.'),
   ];
   E.template = id => E.TEMPLATES.find(t => t.id === id);
 
@@ -53,6 +86,9 @@
     lace: [P('bridal', 'Bridal Lace', ['#F6F6F2', '#F1EAD6', '#F2C6CF', '#E9D7A7', '#C4B2E6', '#A9C8E8'], ['#EDEAE0', '#D4AF37', '#C9CDD2', '#E9D7A7'])],
     velvet: [P('evening', 'Evening Velvet', ['#5E1A2A', '#1E4D33', '#101B3F', '#5B2E91', '#16181C', '#B0338A'], ['#D4AF37', '#C9CDD2', '#E9D7A7', '#16181C'])],
     brocade: [P('damask', 'Damask Court', ['#6B1F3A', '#1F6F78', '#D4AF37', '#101B3F', '#F1EAD6', '#4A2C1A'], ['#E9D7A7', '#D4AF37', '#C9CDD2', '#16181C'])],
+    jersey: [P('street', 'Street Basics', ['#F6F6F2', '#8A8F98', '#16181C', '#1B2A4A', '#1E4D33', '#B3261E'], ['#F6F6F2', '#16181C', '#D4AF37', '#D97A1F']), P('washed', 'Washed Out', ['#C9A27A', '#9AAB8A', '#A9C8E8', '#F2C6CF', '#C4B2E6', '#EDE3C8'], ['#FFFFFF', '#16181C', '#B0803C', '#1B2A4A'])],
+    denim: [P('denim', 'Denim Washes', ['#2F4A7A', '#1B2A4A', '#7FB2E5', '#16181C', '#A9C8E8', '#F6F6F2'], ['#B0803C', '#D4AF37', '#F6F6F2', '#B3261E'])],
+    nylon: [P('flight', 'Flight Deck', ['#6B7B3A', '#16181C', '#1B2A4A', '#5E1A2A', '#C0C4C8', '#D97A1F'], ['#D97A1F', '#C9CDD2', '#16181C', '#F6F6F2'])],
     chiffon: [P('pastel', 'Soft Chiffon', ['#F2C6CF', '#A9C8E8', '#C4B2E6', '#9FD8C0', '#F3C1A3', '#F6F6F2'], ['#D4AF37', '#C9CDD2', '#FFFFFF', '#5A2A4F'])],
   };
   const GARMENT_PALETTES = {
@@ -61,20 +97,30 @@
     boubou: P('dakar', 'Dakar Breeze', ['#2546A8', '#2AA8A8', '#E8C547', '#F6F6F2', '#C7308F', '#D97A1F'], ['#D4AF37', '#FFFFFF', '#16181C', '#C9CDD2']),
     dress: P('party', 'Party Night', ['#1F6B4E', '#B0338A', '#16181C', '#E8705E', '#5B2E91', '#D4AF37'], ['#D4AF37', '#FFFFFF', '#16181C', '#C9CDD2']),
     suit: P('boardroom', 'Boardroom', ['#3A3E45', '#1B2A4A', '#16181C', '#8A8F98', '#4A2C1A', '#5E1A2A'], ['#C9CDD2', '#D4AF37', '#8E1F2B', '#16181C']),
+    tee: P('tees', 'Tee Drawer', ['#F6F6F2', '#16181C', '#8A8F98', '#B3261E', '#2546A8', '#E8C547'], ['#16181C', '#FFFFFF', '#D4AF37', '#B3261E']),
+    hoodie: P('campus', 'Campus', ['#8A8F98', '#16181C', '#1E4D33', '#5E1A2A', '#1B2A4A', '#EDE3C8'], ['#F6F6F2', '#16181C', '#D4AF37', '#D97A1F']),
+    bomber: P('varsity', 'Varsity', ['#6B7B3A', '#16181C', '#1B2A4A', '#5E1A2A', '#D9A520', '#2F4A7A'], ['#D97A1F', '#F6F6F2', '#D4AF37', '#16181C']),
+    kimono: P('kyoto', 'Kyoto Seasons', ['#8E1F2B', '#2F3E8F', '#16181C', '#F1EAD6', '#1F6B4E', '#F2C6CF'], ['#D4AF37', '#F6F6F2', '#8E1F2B', '#16181C']),
+    joggers: P('track', 'Track Day', ['#3A3E45', '#8A8F98', '#16181C', '#1B2A4A', '#1E4D33', '#EDE3C8'], ['#F6F6F2', '#16181C', '#B3261E', '#D4AF37']),
+    trousers: P('trouser', 'Trouser Rail', ['#1B2A4A', '#C9A27A', '#3A3E45', '#F1EAD6', '#2F4A7A', '#6B7B3A'], ['#6B4423', '#16181C', '#D4AF37', '#C9CDD2']),
+    skirt: P('market', 'Market Day', ['#1F6B4E', '#6B1F3A', '#D9A520', '#2546A8', '#16181C', '#E8705E'], ['#D4AF37', '#FFFFFF', '#16181C', '#8E1F2B']),
     shirt: P('crisp', 'Crisp Shirts', ['#F6F6F2', '#A9C8E8', '#F2C6CF', '#1B2A4A', '#9AAB8A', '#16181C'], ['#16181C', '#FFFFFF', '#D4AF37', '#1B2A4A']),
   };
   E.palettes = (garment, fabric) => [...(FABRIC_PALETTES[fabric] || FABRIC_PALETTES.cotton), GARMENT_PALETTES[garment] || GARMENT_PALETTES.kaftan];
 
   /* ───────── option groups for each builder tab ───────── */
   E.OPTIONS = {
-    collar: [['round', 'Round'], ['v', 'V-neck'], ['mandarin', 'Band collar'], ['classic', 'Shirt collar'], ['square', 'Square'], ['sweetheart', 'Sweetheart'], ['off-shoulder', 'Off-shoulder'], ['notch', 'Notch lapel'], ['shawl', 'Shawl lapel']],
+    collar: [['round', 'Round'], ['v', 'V-neck'], ['mandarin', 'Band collar'], ['classic', 'Shirt collar'], ['square', 'Square'], ['sweetheart', 'Sweetheart'], ['off-shoulder', 'Off-shoulder'], ['notch', 'Notch lapel'], ['shawl', 'Shawl lapel'], ['polo', 'Polo'], ['hood', 'Hood'], ['rib', 'Ribbed'], ['wrap', 'Wrap'], ['drawstring', 'Drawstring'], ['elastic', 'Elastic'], ['waistband', 'Flat front'], ['pleated', 'Pleated'], ['tie', 'Wrap and tie']],
     collarFor: COLLAR_FOR, detailsFor: DETAILS_FOR,
     sleeves: [['sleeveless', 'Sleeveless'], ['short', 'Short'], ['three-quarter', '¾'], ['long', 'Long']],
     length: [['hip', 'Hip'], ['knee', 'Knee'], ['midi', 'Midi'], ['ankle', 'Ankle'], ['full', 'Floor']],
-    lengthFor: { kaftan: LENGTHS, agbada: ['midi', 'ankle', 'full'], boubou: ['midi', 'ankle', 'full'], dress: LENGTHS, suit: [], shirt: [] },
-    sleevesFor: { kaftan: SLEEVES, agbada: [], boubou: [], dress: SLEEVES, suit: [], shirt: ['short', 'three-quarter', 'long'] },
+    lengthFor: { kaftan: LENGTHS, agbada: ['midi', 'ankle', 'full'], boubou: ['midi', 'ankle', 'full'], dress: LENGTHS, suit: [], shirt: [], tee: [], hoodie: [], bomber: [], kimono: ['knee', 'midi', 'ankle', 'full'], joggers: ['knee', 'midi', 'ankle'], trousers: ['knee', 'midi', 'ankle', 'full'], skirt: ['knee', 'midi', 'ankle', 'full'] },
+    sleevesFor: { kaftan: SLEEVES, agbada: [], boubou: [], dress: SLEEVES, suit: [], shirt: ['short', 'three-quarter', 'long'], tee: SLEEVES, hoodie: ['short', 'long'], bomber: [], kimono: [], joggers: [], trousers: [], skirt: [] },
     fit: [['fitted', 'Fitted'], ['regular', 'Regular'], ['relaxed', 'Relaxed']],
-    fitFor: { kaftan: true, agbada: false, boubou: false, dress: true, suit: true, shirt: true },
+    fitFor: { kaftan: true, agbada: false, boubou: false, dress: true, suit: true, shirt: true, tee: true, hoodie: true, bomber: true, kimono: false, joggers: true, trousers: true, skirt: true },
+    /* what the collar tab is called (the waist, for trousers and skirts), and which styles take embroidery */
+    collarTitle: g => (isBottom(g) ? 'Waist' : 'Collar'), embFor: g => !isBottom(g),
+    form: [['woman', 'Woman'], ['man', 'Man']],
     embroidery: [['none', 'None'], ['neck', 'Neckline'], ['chest', 'Chest'], ['chest-hem', 'Chest + hem'], ['full', 'All over']],
     fabric: Object.keys(FABRICS).map(k => [k, cap(FABRICS[k].label)]),
     pattern: [['plain', 'Plain'], ['ankara', 'Ankara'], ['kente', 'Kente'], ['adire', 'Adire'], ['stripe', 'Aso-oke stripe'], ['lace', 'Lace'], ['brocade', 'Brocade'], ['check', 'Check'], ['floral', 'Floral']],
@@ -83,12 +129,12 @@
   /* Switch garment while keeping the user's colours, fabric, pattern and sketch. */
   E.switchGarment = (spec, garment) => {
     const b = E.blank(garment);
-    return E.normalize({ ...b, color: spec.color, accent: spec.accent, fabric: spec.fabric, pattern: spec.pattern, embroidery: garment === 'suit' || garment === 'shirt' ? 'none' : spec.embroidery, density: spec.density, sketch: spec.sketch, sketchClip: spec.sketchClip, notes: spec.notes, palette: spec.palette, customColor: spec.customColor, collar: COLLAR_FOR[garment].includes(spec.collar) ? spec.collar : b.collar, template: null });
+    return E.normalize({ ...b, color: spec.color, accent: spec.accent, fabric: spec.fabric, pattern: spec.pattern, embroidery: GARMENTS[garment] && GARMENTS[garment].noEmb ? 'none' : spec.embroidery, density: spec.density, form: spec.form, sketch: spec.sketch, sketchClip: spec.sketchClip, notes: spec.notes, palette: spec.palette, customColor: spec.customColor, collar: COLLAR_FOR[garment].includes(spec.collar) ? spec.collar : b.collar, template: null });
   };
   E.shuffle = (spec, rnd = Math.random) => {
     const pick = a => a[Math.floor(rnd() * a.length)], g = spec.garment;
     const pal = pick(E.palettes(g, spec.fabric));
-    const next = { ...spec, color: pick(pal.base), accent: pick(pal.accents), collar: pick(COLLAR_FOR[g]), embroidery: g === 'suit' || g === 'shirt' ? 'none' : pick(E.OPTIONS.embroidery)[0], density: 1 + Math.floor(rnd() * 3), pattern: pick(PATTERNS), palette: pal.id, customColor: false, template: null };
+    const next = { ...spec, color: pick(pal.base), accent: pick(pal.accents), collar: pick(COLLAR_FOR[g]), embroidery: GARMENTS[g].noEmb ? 'none' : pick(E.OPTIONS.embroidery)[0], density: 1 + Math.floor(rnd() * 3), pattern: pick(PATTERNS), palette: pal.id, customColor: false, template: null };
     if (E.OPTIONS.sleevesFor[g].length) next.sleeves = pick(E.OPTIONS.sleevesFor[g]);
     if (E.OPTIONS.lengthFor[g].length) next.length = pick(E.OPTIONS.lengthFor[g].filter(l => l !== 'hip'));
     return E.normalize(next);
@@ -104,7 +150,15 @@
     for (const [k, v] of Object.entries(COLORS)) { if (k === 'gray') continue; const m = parseInt(v.slice(1), 16), d = (r - (m >> 16)) ** 2 * 2 + (g - ((m >> 8) & 255)) ** 2 * 4 + (b - (m & 255)) ** 2 * 3; if (d < bd) { bd = d; best = k; } }
     return best;
   };
-  const garmentWord = s => { const t = s.template && E.template(s.template); if (t && t.garment === s.garment && ['senator', 'dashiki', 'jalabiya'].includes(t.id)) return t.id === 'senator' ? 'senator set' : t.id; return GARMENTS[s.garment].label.toLowerCase(); };
+  const TPL_WORD = { senator: 'senator set', dashiki: 'dashiki', jalabiya: 'jalabiya', kurta: 'kurta', sherwani: 'sherwani', thobe: 'thobe', abaya: 'abaya', qipao: 'qipao', kilt: 'kilt', sarong: 'sarong', 'iro-wrapper': 'wrapper', guayabera: 'guayabera', 'aloha-shirt': 'aloha shirt', haori: 'haori', yukata: 'yukata', jeans: 'jeans', chinos: 'chinos', 'denim-jacket': 'jacket' };
+  const garmentWord = s => {
+    const t = s.template && E.template(s.template), g = s.garment; if (t && t.garment === g && TPL_WORD[t.id]) return TPL_WORD[t.id];
+    if (g === 'tee') return s.collar === 'polo' ? 'polo shirt' : s.sleeves === 'sleeveless' ? 'tank top' : 'T-shirt';
+    if (g === 'hoodie' && s.collar !== 'hood') return 'sweatshirt';
+    if (g === 'bomber' && s.collar !== 'rib') return 'jacket';
+    if ((g === 'trousers' || g === 'joggers') && s.length === 'knee') return g === 'joggers' ? 'jogger shorts' : 'shorts';
+    return GARMENTS[g].label.toLowerCase();
+  };
   E.title = spec => {
     const s = E.normalize(spec), F = FABRICS[s.fabric];
     const pat = s.pattern && !['plain', 'ankara', 'stripe', 'lace', 'brocade'].includes(s.pattern) ? ' ' + s.pattern : '';
@@ -125,12 +179,13 @@
     ].filter(Boolean);
   };
   const D_SET = { kaftan: 'With trousers', agbada: 'Three-piece set', suit: 'Jacket and trousers' };
+  E.isBottom = isBottom;
 
   /* Readable change list between two specs, for the version history ("Collar → mandarin"). */
   E.diff = (a0, b0) => {
     if (!a0) return [];
-    const a = E.normalize(a0), b = E.normalize(b0), out = [], L = { garment: 'Style', fabric: 'Fabric', color: 'Colour', accent: 'Accent', length: 'Length', sleeves: 'Sleeves', collar: 'Collar', fit: 'Fit', embroidery: 'Embroidery', density: 'Embroidery weight', pattern: 'Pattern' };
-    for (const k of Object.keys(L)) if (a[k] !== b[k]) out.push(`${L[k]} → ${k === 'color' || k === 'accent' ? E.colorName(b[k]) : k === 'embroidery' ? EMB_LABEL[b[k]].replace('embroidery ', '').replace('no embroidery', 'none') : k === 'density' ? ['', 'light', 'medium', 'heavy'][b[k]] : String(b[k]).replace('-', ' ')}`);
+    const a = E.normalize(a0), b = E.normalize(b0), out = [], L = { garment: 'Style', form: 'Mannequin', fabric: 'Fabric', color: 'Colour', accent: 'Accent', length: 'Length', sleeves: 'Sleeves', collar: 'Collar', fit: 'Fit', embroidery: 'Embroidery', density: 'Embroidery weight', pattern: 'Pattern' };
+    for (const k of Object.keys(L)) if (a[k] !== b[k]) out.push(`${L[k]} → ${k === 'color' || k === 'accent' ? E.colorName(b[k]) : k === 'embroidery' ? EMB_LABEL[b[k]].replace('embroidery ', '').replace('no embroidery', 'none') : k === 'density' ? ['', 'light', 'medium', 'heavy'][b[k]] : k === 'form' ? E.formOf(b) : String(b[k]).replace('-', ' ')}`);
     for (const k of ['puff', 'pockets', 'buttons', 'belt']) if (a[k] !== b[k]) out.push(`${cap(k === 'puff' ? 'puff sleeves' : k)} ${b[k] ? 'added' : 'removed'}`);
     const sa = a.sketch.length, sb = b.sketch.length;
     if (sb > sa) out.push(`Sketch +${sb - sa} stroke${sb - sa === 1 ? '' : 's'}`); else if (sb < sa) out.push(sb ? `Sketch −${sa - sb}` : 'Sketch cleared'); else if (sb && JSON.stringify(a.sketch) !== JSON.stringify(b.sketch)) out.push('Sketch edited');
@@ -149,7 +204,7 @@
     const extras = (s.sketch.length ? Math.min(15000, 3000 + s.sketch.length * 400) : 0) + (has('pockets') ? 2500 : 0) + (has('belt') ? 3000 : 0) + (s.puff ? 2000 : 0) + (s.length === 'full' ? 4000 : 0);
     const labour = Math.round(base * 0.12), factor = vendor.priceFactor || 1;
     const price = Math.round(((base + emb + extras + labour) * factor) / 500) * 500;
-    const complexity = 1 + (s.embroidery === 'none' ? 0 : s.density * 0.6) + (s.garment === 'agbada' || s.garment === 'suit' ? 1.5 : 0) + (s.sketch.length ? 0.6 : 0);
+    const complexity = 1 + (s.embroidery === 'none' ? 0 : s.density * 0.6) + (G.complex || 0) + (s.sketch.length ? 0.6 : 0);
     const deliveryDays = Math.max(3, Math.round((vendor.leadMin || 5) + complexity * (vendor.speedFactor || 1)));
     return { price, deliveryDays, breakdown: { fabric: base, embroidery: emb, extras, labour, factor } };
   };
@@ -181,7 +236,7 @@
 
   /* ───────── "Describe it" (optional): a sentence sets the parts ───────── */
   const has = (t, w) => new RegExp('(^|[^a-z])' + w.replace(/[-\s]/g, '[-\\s]?') + '(s|es)?([^a-z]|$)', 'i').test(t);
-  const findKey = (t, table) => { for (const [k, v] of Object.entries(table)) for (const w of v.words) if (has(t, w)) return k; return null; };
+  const findKey = (t, table) => { let best = null, n = 0; for (const [k, v] of Object.entries(table)) for (const w of v.words) if (w.length > n && has(t, w)) { best = k; n = w.length; } return best; };
   const COLOR_NAMES = Object.keys(COLORS).sort((a, b) => b.length - a.length), ACCENT_NAMES = Object.keys(ACCENTS).sort((a, b) => b.length - a.length);
   E.parse = (prompt = '', hints = {}) => {
     const t = ' ' + String(prompt).toLowerCase().slice(0, 600) + ' ';
@@ -199,6 +254,11 @@
     for (const a of ACCENT_NAMES) if (has(t, a + ' (embroider|thread|trim|piping|accent|button|beading|stitch)')) s.accent = a;
     if (/sleeveless|no sleeves|without sleeves/.test(t)) s.sleeves = 'sleeveless'; else if (/three[-\s]?quarter|3\/4|elbow[-\s]length/.test(t)) s.sleeves = 'three-quarter'; else if (/short sleeve|cap sleeve/.test(t)) s.sleeves = 'short'; else if (/long sleeve|full sleeve|to the wrist|wrist[-\s]length/.test(t)) s.sleeves = 'long';
     if (/puff(ed|y)? sleeve|balloon sleeve|bishop sleeve/.test(t)) s.puff = true;
+    if (garment === 'tee') { if (/polo/.test(t)) s.collar = 'polo'; if (/tank|singlet|vest top/.test(t)) s.sleeves = 'sleeveless'; }
+    if (garment === 'hoodie' && /sweatshirt|crew ?neck|no hood|without a hood/.test(t)) { s.collar = 'round'; s.pockets = false; }
+    if (garment === 'bomber' && /denim|coach|trucker/.test(t)) s.collar = 'classic';
+    if (isBottom(garment)) { if (/shorts/.test(t)) s.length = 'knee'; if (/wide[-\s]?leg|palazzo|culottes/.test(t)) s.fit = 'relaxed'; if (/pleat/.test(t) && garment === 'trousers') s.collar = 'pleated'; if (/elastic/.test(t) && garment === 'joggers') s.collar = 'elastic'; if (/wrapper|iro|sarong|lungi|wrap/.test(t) && garment === 'skirt') s.collar = 'tie'; if (/kilt|tartan/.test(t)) { s.pattern = 'check'; s.fit = 'relaxed'; s.length = 'knee'; } if (/pencil/.test(t)) s.fit = 'fitted'; }
+    if (/\b(women'?s|woman|ladies|female|for her)\b/.test(t)) s.form = 'woman'; else if (/\b(men'?s|man|gents|male|for him)\b/.test(t)) s.form = 'man';
     if (/floor[-\s]length|full[-\s]length|to the floor|maxi/.test(t)) s.length = 'full'; else if (/ankle/.test(t)) s.length = 'ankle'; else if (/midi|mid[-\s]calf|tea[-\s]length/.test(t)) s.length = 'midi'; else if (/knee/.test(t)) s.length = 'knee'; else if (/hip[-\s]length|cropped|mini/.test(t)) s.length = 'hip';
     if (/mandarin|band collar|standing collar|nehru/.test(t)) s.collar = 'mandarin'; else if (/shawl/.test(t)) s.collar = 'shawl'; else if (/notch/.test(t)) s.collar = 'notch'; else if (/v[-\s]?neck|deep neck/.test(t)) s.collar = 'v'; else if (/sweetheart/.test(t)) s.collar = 'sweetheart'; else if (/square neck/.test(t)) s.collar = 'square'; else if (/off[-\s](the[-\s])?shoulder|bardot/.test(t)) s.collar = 'off-shoulder'; else if (/round neck|crew neck|scoop/.test(t)) s.collar = 'round'; else if (/shirt collar|classic collar|point collar/.test(t)) s.collar = 'classic';
     if (/fitted|slim|body[-\s]?con|snug|tight/.test(t)) s.fit = 'fitted'; else if (/relaxed|loose|flowing|oversized|roomy/.test(t)) s.fit = 'relaxed';

@@ -37,22 +37,35 @@
     dress: { words: ['dress', 'gown', 'frock'], base: 58000, label: 'Dress', color: 'emerald', fabric: 'ankara', length: 'knee', sleeves: 'short', collar: 'round', fit: 'regular', emb: 'none' },
     suit: { words: ['suit', 'tuxedo', 'blazer', 'jacket'], base: 135000, label: 'Suit', color: 'charcoal', fabric: 'wool', length: 'full', sleeves: 'long', collar: 'notch', fit: 'regular', emb: 'none' },
     shirt: { words: ['shirt', 'blouse', 'top'], base: 30000, label: 'Shirt', color: 'white', fabric: 'cotton', length: 'hip', sleeves: 'long', collar: 'classic', fit: 'regular', emb: 'none' },
+    tee: { words: ['t-shirt', 'tee', 'polo', 'tank top', 'singlet', 'vest top'], base: 14000, label: 'T-shirt', color: 'white', fabric: 'jersey', length: 'hip', sleeves: 'short', collar: 'round', fit: 'regular', emb: 'none' },
+    hoodie: { words: ['hoodie', 'hoody', 'hooded top', 'sweatshirt', 'pullover', 'crewneck'], base: 26000, label: 'Hoodie', color: 'grey', fabric: 'jersey', length: 'hip', sleeves: 'long', collar: 'hood', fit: 'relaxed', emb: 'none', on: ['pockets'] },
+    bomber: { words: ['bomber', 'bomber jacket', 'varsity jacket', 'track jacket', 'denim jacket', 'coach jacket', 'windbreaker'], base: 44000, label: 'Bomber jacket', color: 'olive', fabric: 'nylon', length: 'hip', sleeves: 'long', collar: 'rib', fit: 'regular', emb: 'none', on: ['pockets'], noEmb: true, complex: 0.8 },
+    kimono: { words: ['kimono', 'yukata', 'haori'], base: 52000, label: 'Kimono', color: 'crimson', fabric: 'silk', length: 'ankle', sleeves: 'long', collar: 'wrap', fit: 'relaxed', emb: 'none', on: ['belt'], complex: 1 },
+    joggers: { words: ['joggers', 'jogger', 'sweatpants', 'track pants', 'tracksuit bottoms'], base: 18000, label: 'Joggers', kind: 'bottom', color: 'charcoal', fabric: 'jersey', length: 'ankle', sleeves: 'sleeveless', collar: 'drawstring', fit: 'regular', emb: 'none', on: ['pockets'], noEmb: true },
+    trousers: { words: ['trousers', 'pants', 'chinos', 'slacks', 'shorts', 'jeans', 'palazzo', 'culottes'], base: 24000, label: 'Trousers', kind: 'bottom', color: 'navy', fabric: 'cotton', length: 'ankle', sleeves: 'sleeveless', collar: 'waistband', fit: 'regular', emb: 'none', on: ['pockets'], noEmb: true },
+    skirt: { words: ['skirt', 'wrapper', 'iro', 'kilt', 'sarong', 'lungi'], base: 20000, label: 'Skirt', kind: 'bottom', color: 'emerald', fabric: 'ankara', length: 'midi', sleeves: 'sleeveless', collar: 'waistband', fit: 'regular', emb: 'none', noEmb: true },
   };
+  /* on: details a style starts with; lock: details it always has; noEmb: no embroidery; kind 'bottom': worn from the waist down */
+  Object.assign(GARMENTS.suit, { on: ['buttons', 'pockets'], lock: ['buttons'], noEmb: true, complex: 1.5 }); Object.assign(GARMENTS.shirt, { on: ['buttons'], lock: ['buttons'], noEmb: true }); GARMENTS.agbada.complex = 1.5;
   const FABRICS = {
     silk: { words: ['silk', 'satin', 'charmeuse'], x: 1.5, label: 'silk' },
     ankara: { words: ['ankara', 'wax print', 'african print', 'kitenge'], x: 1.0, label: 'Ankara' },
     'aso-oke': { words: ['aso-oke', 'aso oke', 'asooke', 'aso ofi'], x: 1.9, label: 'aso-oke' },
     linen: { words: ['linen'], x: 1.2, label: 'linen' },
     wool: { words: ['wool', 'tweed', 'cashmere', 'flannel'], x: 1.7, label: 'wool' },
-    cotton: { words: ['cotton', 'poplin', 'chambray', 'denim'], x: 1.0, label: 'cotton' },
+    cotton: { words: ['cotton', 'poplin', 'chambray', 'twill'], x: 1.0, label: 'cotton' },
     lace: { words: ['lace', 'guipure', 'cord lace'], x: 1.45, label: 'lace' },
     velvet: { words: ['velvet', 'velour'], x: 1.55, label: 'velvet' },
     brocade: { words: ['brocade', 'damask', 'jacquard'], x: 1.35, label: 'brocade' },
     chiffon: { words: ['chiffon', 'organza', 'tulle'], x: 1.25, label: 'chiffon' },
+    jersey: { words: ['jersey', 'fleece', 'french terry', 'terry', 'knit'], x: 0.85, label: 'jersey' },
+    denim: { words: ['denim', 'jean'], x: 1.15, label: 'denim' },
+    nylon: { words: ['nylon', 'polyester', 'shell', 'satin bomber'], x: 1.1, label: 'nylon' },
   };
   const COLORS = {
     midnight: '#101B3F', navy: '#1B2A4A', 'royal blue': '#2546A8', blue: '#2F5DA8', sky: '#7FB2E5', 'powder blue': '#A9C8E8', teal: '#1F6F78', turquoise: '#2AA8A8',
     black: '#16181C', charcoal: '#3A3E45', grey: '#8A8F98', gray: '#8A8F98', silver: '#C0C4C8', white: '#F6F6F2', ivory: '#F1EAD6', cream: '#EDE3C8', beige: '#D9C9A8', sand: '#D6C39A', tan: '#C9A27A', camel: '#B98B5A', brown: '#6B4423', chocolate: '#4A2C1A',
+    indigo: '#2F4A7A', khaki: '#B9A27A',
     emerald: '#1F6B4E', green: '#2E7D4F', forest: '#1E4D33', olive: '#6B7B3A', sage: '#9AAB8A', mint: '#9FD8C0', lime: '#9BC53D',
     crimson: '#8E1F2B', red: '#B3261E', burgundy: '#5E1A2A', wine: '#6B1F3A', maroon: '#5A1A1A', coral: '#E8705E', orange: '#D97A1F', rust: '#A9512A', terracotta: '#B5593A', mustard: '#D9A520', yellow: '#E8C547', gold: '#D4AF37', champagne: '#E9D7A7', bronze: '#B0803C', copper: '#B87333',
     purple: '#5B2E91', violet: '#6F3FA3', lilac: '#B59BD6', lavender: '#C4B2E6', plum: '#5A2A4F', magenta: '#B0338A', fuchsia: '#C7308F', pink: '#E08BA8', blush: '#F2C6CF', rose: '#D9748A', peach: '#F3C1A3',
@@ -61,13 +74,17 @@
   const LENGTHS = ['hip', 'knee', 'midi', 'ankle', 'full'];
   const SLEEVES = ['sleeveless', 'short', 'three-quarter', 'long'];
   const FITS = ['fitted', 'regular', 'relaxed'];
+  const FORMS = ['woman', 'man'];                                   // the mannequin a design is shown on
+  const FORM_FOR = { dress: 'woman', boubou: 'woman', skirt: 'woman', kimono: 'woman' };
   const PATTERNS = ['plain', 'ankara', 'kente', 'adire', 'stripe', 'lace', 'brocade', 'check', 'floral'];
-  const COLLAR_LABEL = { round: 'round neck', v: 'V-neck', mandarin: 'mandarin collar', classic: 'classic collar', notch: 'notch lapel', shawl: 'shawl lapel', square: 'square neck', sweetheart: 'sweetheart neckline', 'off-shoulder': 'off-the-shoulder' };
+  const COLLAR_LABEL = { round: 'round neck', v: 'V-neck', mandarin: 'mandarin collar', classic: 'classic collar', notch: 'notch lapel', shawl: 'shawl lapel', square: 'square neck', sweetheart: 'sweetheart neckline', 'off-shoulder': 'off-the-shoulder', polo: 'polo collar', hood: 'hood', rib: 'ribbed collar', wrap: 'wrap collar', drawstring: 'drawstring waist', elastic: 'elastic waist', waistband: 'flat-front waistband', pleated: 'pleated front', tie: 'wrap and tie' };
   const EMB_LABEL = { none: 'no embroidery', neck: 'embroidery at the neckline', chest: 'embroidery across the chest', 'chest-hem': 'embroidery on the chest and hem', full: 'embroidery on chest, cuffs and hem' };
-  const COLLAR_FOR = { kaftan: ['round', 'v', 'mandarin', 'classic'], agbada: ['round', 'v'], boubou: ['round', 'v', 'square'], dress: ['round', 'v', 'square', 'sweetheart', 'off-shoulder', 'mandarin'], suit: ['notch', 'shawl'], shirt: ['classic', 'mandarin', 'round', 'v'] };
+  const COLLAR_FOR = { kaftan: ['round', 'v', 'mandarin', 'classic'], agbada: ['round', 'v'], boubou: ['round', 'v', 'square'], dress: ['round', 'v', 'square', 'sweetheart', 'off-shoulder', 'mandarin'], suit: ['notch', 'shawl'], shirt: ['classic', 'mandarin', 'round', 'v'], tee: ['round', 'v', 'polo'], hoodie: ['hood', 'round'], bomber: ['rib', 'classic'], kimono: ['wrap'], joggers: ['drawstring', 'elastic'], trousers: ['waistband', 'pleated'], skirt: ['waistband', 'tie'] };
   /* which detail toggles make sense on which garment */
-  const DETAILS_FOR = { kaftan: ['pockets', 'buttons', 'belt'], agbada: [], boubou: ['belt'], dress: ['pockets', 'buttons', 'belt'], suit: ['pockets'], shirt: ['pockets'] };
-  E.vocab = { GARMENTS, FABRICS, COLORS, ACCENTS, LENGTHS, SLEEVES, FITS, PATTERNS, COLLAR_LABEL, EMB_LABEL, COLLAR_FOR, DETAILS_FOR };
+  const DETAILS_FOR = { kaftan: ['pockets', 'buttons', 'belt'], agbada: [], boubou: ['belt'], dress: ['pockets', 'buttons', 'belt'], suit: ['pockets'], shirt: ['pockets'], tee: ['pockets'], hoodie: ['pockets'], bomber: ['pockets'], kimono: ['belt'], joggers: ['pockets'], trousers: ['pockets', 'belt'], skirt: ['pockets', 'belt'] };
+  E.vocab = { GARMENTS, FABRICS, COLORS, ACCENTS, LENGTHS, SLEEVES, FITS, FORMS, FORM_FOR, PATTERNS, COLLAR_LABEL, EMB_LABEL, COLLAR_FOR, DETAILS_FOR };
+  /** the mannequin for a design: the one saved with it, else the usual one for that style */
+  E.formOf = spec => (spec && FORMS.includes(spec.form) ? spec.form : FORM_FOR[spec && spec.garment] || 'man');
 
   /* ───────── small helpers ───────── */
   const f1 = n => Math.round(n * 10) / 10;
@@ -97,12 +114,12 @@
     return { c: hex(cleanColor(k.c, '#d4af37', ACCENTS), ACCENTS), w: clamp(Math.round(Number(k.w) || 8), 1, 40), m: !!k.m, p };
   }).filter(Boolean);
   E.blank = (garment = 'kaftan') => {
-    const g = GARMENTS[garment] ? garment : 'kaftan', G = GARMENTS[g];
-    return { garment: g, fabric: G.fabric, color: G.color, accent: 'gold', length: G.length, sleeves: G.sleeves, collar: G.collar, fit: G.fit, embroidery: G.emb, density: 2, buttons: g === 'shirt' || g === 'suit', pockets: g === 'suit', puff: false, belt: false, pattern: G.fabric === 'ankara' ? 'ankara' : G.fabric === 'aso-oke' ? 'stripe' : 'plain', notes: [], sketch: [], sketchClip: true, customColor: false, template: null, palette: null };
+    const g = GARMENTS[garment] ? garment : 'kaftan', G = GARMENTS[g], on = k => (G.on || []).includes(k);
+    return { garment: g, fabric: G.fabric, color: G.color, accent: 'gold', length: G.length, sleeves: G.sleeves, collar: G.collar, fit: G.fit, embroidery: G.emb, density: 2, buttons: on('buttons'), pockets: on('pockets'), puff: false, belt: on('belt'), pattern: G.fabric === 'ankara' ? 'ankara' : G.fabric === 'aso-oke' ? 'stripe' : 'plain', notes: [], sketch: [], sketchClip: true, customColor: false, template: null, palette: null, form: null };
   };
   E.normalize = raw => {
     const s = raw && typeof raw === 'object' ? raw : {};
-    const out = E.blank(s.garment), g = out.garment;
+    const out = E.blank(s.garment), g = out.garment, G = GARMENTS[g];
     if (FABRICS[s.fabric]) out.fabric = s.fabric;
     if (LENGTHS.includes(s.length)) out.length = s.length;
     if (SLEEVES.includes(s.sleeves)) out.sleeves = s.sleeves;
@@ -114,12 +131,14 @@
     out.accent = cleanColor(s.accent, 'gold', ACCENTS);
     out.density = clamp(Math.round(Number(s.density) || 2), 1, 3);
     for (const k of ['buttons', 'pockets', 'puff', 'belt', 'customColor']) out[k] = !!s[k];
-    if (g === 'shirt' || g === 'suit') out.buttons = true;
+    for (const k of G.lock || []) out[k] = true;
+    if (G.kind === 'bottom') { out.embroidery = 'none'; out.sleeves = 'sleeveless'; out.puff = false; }
     out.sketchClip = s.sketchClip !== false;
     out.notes = (Array.isArray(s.notes) ? s.notes : []).filter(n => typeof n === 'string' && n.trim()).slice(0, 12).map(n => n.trim().slice(0, 160));
     out.sketch = cleanSketch(s.sketch);
     out.template = typeof s.template === 'string' && /^[a-z0-9-]{1,40}$/.test(s.template) ? s.template : null;
     out.palette = typeof s.palette === 'string' && /^[a-z0-9-]{1,30}$/.test(s.palette) ? s.palette : null;
+    out.form = FORMS.includes(s.form) ? s.form : null;
     return out;
   };
 
@@ -154,6 +173,11 @@
       D.sw = [36 + f * 3, 25 + f * 2];
     } else if (g === 'suit') D = { nw: 48, sh: 138, slope: 27, ch: 120 + f * 6, wa: 108 + f * 8, hi: 116 + f * 6, flare: 0, hemY: 706, legs: 'tailored', hemDrop: 5, sw: [45 + f * 3, 31 + f * 2], jacket: true };
     else if (g === 'shirt') D = { nw: 48, sh: 130 + f * 5, ch: 114 + f * 9, wa: 108 + f * 11, hi: 112 + f * 9, flare: 0, hemY: 642, hemDrop: 30, sw: [43 + f * 5, 28 + f * 3], styleLegs: 'tailored' };
+    else if (g === 'tee') D = { nw: 52, sh: 128 + f * 5, ch: 112 + f * 10, wa: 107 + f * 12, hi: 110 + f * 10, flare: 0, hemY: 648, hemDrop: 5, sw: [46 + f * 5, 31 + f * 3], styleLegs: 'slim' };
+    else if (g === 'hoodie') D = { nw: 56, sh: 136 + f * 5, slope: 30, ch: 126 + f * 9, wa: 124 + f * 11, hi: 122 + f * 8, flare: -0.24, hemY: 662, hemDrop: 3, sw: [54 + f * 5, 35 + f * 3], styleLegs: 'slim', rib: 34 };
+    else if (g === 'bomber') D = { nw: 50, sh: 138, slope: 28, ch: 126 + f * 7, wa: 120 + f * 9, hi: 116 + f * 6, flare: s.collar === 'rib' ? -0.3 : -0.08, hemY: 652, hemDrop: 2, sw: [52 + f * 4, 34 + f * 2], jacket: true, styleLegs: 'slim', rib: s.collar === 'rib' ? 30 : 0 };
+    else if (g === 'kimono') D = { nw: 54, sh: 134, ch: 126, wa: 118, hi: 122, flare: 0.02, hemY: HEM[HEM[s.length] >= HEM.knee ? s.length : 'ankle'], wings: 'kimono', hemDrop: 4 };
+    else if (GARMENTS[g].kind === 'bottom') D = { nw: 40, sh: 110, ch: 104, wa: 90, hi: 104 + f * 5, flare: 0, hemY: B.ankle, hemDrop: 0, bottom: true };
     else D = { nw: 52, sh: 130 + f * 6, ch: 114 + f * 10, wa: 108 + f * 13, hi: 116 + f * 11, flare: 0.05 + (f > 0 ? 0.035 : 0), hemY: HEM[s.length], legs: 'slim', hemDrop: 8, slit: s.length !== 'hip', sw: [43 + f * 6, 29 + f * 4] };
     if (s.collar === 'square') D.nw = 62; else if (s.collar === 'sweetheart') D.nw = 66;
     D.slope = D.slope || 32; D.sp = B.hps + D.slope;
@@ -175,6 +199,10 @@
   function neckKind(s) {
     const c = s.collar, g = s.garment;
     if (g === 'suit') return { type: 'round', dp: 26 };
+    if (g === 'kimono') return { type: 'v', dp: 150 };
+    if (c === 'hood') return { type: 'round', dp: 58 };
+    if (c === 'polo') return { type: 'v', dp: 58 };
+    if (c === 'rib') return { type: 'round', dp: 30 };
     if (c === 'v') return { type: 'v', dp: g === 'shirt' ? 112 : g === 'boubou' || g === 'agbada' ? 164 : 144 };
     if (c === 'square') return { type: 'square', dp: 98 };
     if (c === 'sweetheart') return { type: 'sweet', dp: 104 };
@@ -200,6 +228,8 @@
     const M = { s, D, view, fill, acc, line, soft, lite, under: [], behind: [], cuts: [], cutBehind: false, deco: [], flatOnly: [], emb: [], p3: [] };
     const ln = (d, w = 1.8, col = line, extra = '') => `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"${extra}/>`;
     const sh = (d, col, extra = '') => `<path d="${d}" fill="${col}" stroke="${line}" stroke-width="1.6" stroke-linejoin="round"${extra}/>`;
+    const ribFill = shade(fill, lite ? -0.08 : 0.09), col = s.collar === 'polo' ? 'classic' : s.collar === 'rib' ? 'mandarin' : s.collar;
+    if (D.bottom) return bottom();
 
     /* sleeves first: where the sleeve leaves the body decides the armhole depth */
     const SL = sleeveGeo(s, D); M.SL = SL;
@@ -229,7 +259,8 @@
       const leg = new Pen(CX + 2, top).L(CX + hw, top).C(CX + hw + 2, top + 110, CX + ao + 10, B.knee - 90, CX + ao + 4, B.knee).L(CX + ao, B.ankle).L(CX + ai, B.ankle).C(CX + ai + 2, B.knee, CX + 12, B.crotch + 70, CX + 3, B.crotch).L(CX + 2, B.crotch - 12);
       if (own) M.under.push({ id: 'lr', d: leg.closed() }, { id: 'll', d: leg.closed(true) });
       const lp = leg.poly(8), rows = []; for (let y = B.crotch - 24; y <= B.ankle; y += 8) { const r = scanAt(lp, Math.min(y, B.ankle - 0.5)); if (r) rows.push([y, r[0], r[1]]); }
-      M.p3.push({ id: 'pelvis', type: 'rows', depth: 'round', styling: !own, rows: [[top, CX - hw, CX + hw], [B.crotch - 60, CX - hw - 1, CX + hw + 1], [B.crotch - 14, CX - hw + 2, CX + hw - 2], [B.crotch + 6, CX - hw + 10, CX + hw - 10], [B.crotch + 28, CX - hw + 26, CX + hw - 26]] });
+      const seatW = y => { const r = scanAt(lp, y); return r ? r[1] - CX : hw; };
+      M.p3.push({ id: 'pelvis', type: 'rows', depth: 'round', fork: true, styling: !own, rows: [top, top + 5, B.crotch - 60, B.crotch - 40, B.crotch - 22, B.crotch - 8, B.crotch + 8].map(y => { const w = f1(y <= top + 5 ? hw : seatW(y)); return [y, CX - w, CX + w]; }) });
       M.p3.push({ id: 'legR', type: 'rows', depth: 'leg', styling: !own, rows }, { id: 'legL', type: 'rows', depth: 'leg', styling: !own, rows: rows.map(r => [r[0], 2 * CX - r[2], 2 * CX - r[1]]) });
       const below = own && hemLow < B.ankle - 6;
       if (below) {
@@ -240,14 +271,14 @@
 
     /* the big draped panels of an agbada, or the batwing of a boubou */
     if (D.wings) {
-      const wp = D.wings === 'agbada'
+      const wp = D.wings === 'kimono' ? new Pen(CX + D.nw + 30, B.hps + 12).L(CX + D.sh, D.sp).C(CX + D.sh + 44, D.sp + 26, CX + 236, 430, CX + 262, 558).L(CX + 250, 704).C(CX + 222, 722, CX + 180, 718, CX + 152, 700).L(CX + 128, 540).L(CX + 96, 500).L(CX + 96, D.sp + 60) : D.wings === 'agbada'
         ? new Pen(CX + D.nw + 30, B.hps + 12).L(CX + D.sh, D.sp).C(CX + D.sh + 64, D.sp + 20, CX + 296, D.sp + 96, CX + 318, D.sp + 212).C(CX + 331, D.sp + 330, CX + 323, 720, CX + 304, 792).C(CX + 270, 814, CX + 200, 802, CX + 150, 772).L(CX + 96, 742).L(CX + 96, D.sp + 60)
         : new Pen(CX + D.nw + 30, B.hps + 12).L(CX + D.sh, D.sp).C(CX + D.sh + 56, D.sp + 18, CX + 262, 372, CX + 300, 470).L(CX + 283, 513).C(CX + 238, 540, CX + 186, 612, CX + 168, 704).L(CX + 96, 704).L(CX + 96, D.sp + 60);
       M.behind.push({ id: 'wr', d: wp.closed(), vol: 'p' }, { id: 'wl', d: wp.closed(true), vol: 'p' });
       const poly = wp.poly(10), top = Math.min(...poly.map(p => p[1])), bot = Math.max(...poly.map(p => p[1])), rows = [];
       for (let y = top + 2; y < bot; y += 8) { const r = scanAt(poly, y); if (r) rows.push([y, r[0], r[1]]); }
       M.p3.push({ id: 'wingR', type: 'rows', depth: 'panel', rows }, { id: 'wingL', type: 'rows', depth: 'panel', rows: rows.map(r => [r[0], 2 * CX - r[2], 2 * CX - r[1]]) });
-      const folds = D.wings === 'agbada'
+      const folds = D.wings === 'kimono' ? [[250, 480, 246, 696], [214, 452, 196, 706]] : D.wings === 'agbada'
         ? [[306, 520, 300, 786], [262, 470, 262, 804], [222, 440, 214, 800], [188, 430, 172, 778]]
         : [[272, 452, 278, 506], [236, 420, 232, 540], [202, 400, 192, 610]];
       for (const side of [1, -1]) for (const [x1, y1, x2, y2] of folds) M.flatOnly.push(ln(`M${CX + side * (D.sh - 8)} ${D.sp + 12}Q${CX + side * x1} ${y1 - 60} ${CX + side * x2} ${y2}`, 1.3, soft));
@@ -274,7 +305,8 @@
       } else if (g === 'shirt' && s.sleeves === 'long') {
         M.deco.push(band(L - 30, L, shade(fill, lite ? -0.05 : 0.08)));
         const p = O(L - 15); M.deco.push([1, -1].map(m => `<circle cx="${f1(CX + m * (p[0] - CX - 9))}" cy="${f1(p[1] + 3)}" r="3.4" fill="${lite ? shade(fill, -0.3) : shade(fill, 0.6)}" stroke="${line}" stroke-width=".8"/>`).join(''));
-      } else if (SL.puff) M.deco.push(band(L - 16, L, shade(fill, -0.12)), across(L - 24, soft, 1.2, ' stroke-dasharray="2 5"'));
+      } else if (D.rib && s.sleeves === 'long') { M.deco.push(band(L - 27, L, ribFill), across(L - 20, soft, 1), across(L - 13, soft, 1), across(L - 6, soft, 1)); }
+      else if (SL.puff) M.deco.push(band(L - 16, L, shade(fill, -0.12)), across(L - 24, soft, 1.2, ' stroke-dasharray="2 5"'));
       else M.deco.push(across(L - (s.sleeves === 'long' ? 16 : 11)), s.sleeves === 'long' && g === 'kaftan' ? across(L - 22) : '');
     }
 
@@ -289,26 +321,26 @@
     const collarFill = shade(fill, lite ? -0.06 : 0.1), inside = shade(fill, -0.42);
     if (g === 'suit') suitFront();
     else if (back) {
-      if (s.collar === 'mandarin') M.deco.push(sh(`M${CX - D.nw - 3} ${B.hps - 20}Q${CX} ${B.hps - 28} ${CX + D.nw + 3} ${B.hps - 20}L${CX + D.nw} ${B.hps + 5}Q${CX} ${B.hps + 15} ${CX - D.nw} ${B.hps + 5}Z`, collarFill));
-      else if (s.collar === 'classic') M.deco.push(sh(`M${CX - D.nw - 4} ${B.hps - 22}Q${CX} ${B.hps - 31} ${CX + D.nw + 4} ${B.hps - 22}L${CX + D.nw + 12} ${B.hps + 14}Q${CX} ${B.hps + 30} ${CX - D.nw - 12} ${B.hps + 14}Z`, collarFill));
+      if (col === 'mandarin') M.deco.push(sh(`M${CX - D.nw - 3} ${B.hps - 20}Q${CX} ${B.hps - 28} ${CX + D.nw + 3} ${B.hps - 20}L${CX + D.nw} ${B.hps + 5}Q${CX} ${B.hps + 15} ${CX - D.nw} ${B.hps + 5}Z`, collarFill));
+      else if (col === 'classic') M.deco.push(sh(`M${CX - D.nw - 4} ${B.hps - 22}Q${CX} ${B.hps - 31} ${CX + D.nw + 4} ${B.hps - 22}L${CX + D.nw + 12} ${B.hps + 14}Q${CX} ${B.hps + 30} ${CX - D.nw - 12} ${B.hps + 14}Z`, collarFill));
       else if (nk.type === 'off') M.deco.push(ln(nc.d, 9, shade(fill, -0.1)), ln(nc.d, 1.2, soft, ' stroke-dasharray="2 5"'));
       else M.deco.push(ln(`M${CX - D.nw} ${B.hps}Q${CX} ${B.hps + 2 * backDip} ${CX + D.nw} ${B.hps}`, 7, shade(fill, -0.1)));
-    } else if (s.collar === 'mandarin') {
+    } else if (col === 'mandarin') {
       M.deco.push(`<path d="M${CX - D.nw - 3} ${B.hps - 20}Q${CX} ${B.hps - 28} ${CX + D.nw + 3} ${B.hps - 20}L${CX + D.nw} ${B.hps + 4}Q${CX} ${B.hps + 14} ${CX - D.nw} ${B.hps + 4}Z" fill="${inside}"/>`);
       for (const m of [1, -1]) M.deco.push(sh(`M${CX + m * (D.nw + 3)} ${B.hps - 20}L${CX + m * (D.nw + 5)} ${B.hps + 6}C${CX + m * (D.nw - 2)} ${B.hps + 36} ${CX + m * 24} ${B.hps + 49} ${CX + m * 4} ${B.hps + 48}L${CX + m * 4} ${B.hps + 23}C${CX + m * 22} ${B.hps + 24} ${CX + m * (D.nw - 10)} ${B.hps + 12} ${CX + m * (D.nw + 3)} ${B.hps - 20}Z`, collarFill));
-    } else if (s.collar === 'classic') {
+    } else if (col === 'classic') {
       M.deco.push(`<path d="M${CX - D.nw - 4} ${B.hps - 22}Q${CX} ${B.hps - 30} ${CX + D.nw + 4} ${B.hps - 22}L${CX + D.nw} ${B.hps + 4}Q${CX} ${B.hps + 14} ${CX - D.nw} ${B.hps + 4}Z" fill="${inside}"/>`);
       for (const m of [1, -1]) M.deco.push(sh(`M${CX + m * (D.nw + 4)} ${B.hps - 22}L${CX + m * (D.nw + 13)} ${B.hps + 8}L${CX + m * 47} ${B.hps + 76}L${CX + m * 3} ${B.hps + 42}Q${CX + m * (D.nw - 12)} ${B.hps + 22} ${CX + m * (D.nw + 4)} ${B.hps - 22}Z`, collarFill));
     } else if (nk.type === 'off') M.deco.push(ln(nc.d, 13, shade(fill, -0.1)), ln(nc.d, 1.2, soft, ' stroke-dasharray="2 5"'));
     else M.deco.push(ln(nc.d, 8, shade(fill, -0.12)), ln(neckCurve(nk, D, 5).d, 1, soft));
-    if (['mandarin', 'classic'].includes(s.collar) || g === 'suit') M.p3.push({ id: 'collar', type: 'band', y0: B.hps - 24, y1: B.hps + 6, r: D.nw - 8, tone: g === 'suit' ? 'white' : 'main' });
+    if (['mandarin', 'classic'].includes(col) || g === 'suit') M.p3.push({ id: 'collar', type: 'band', y0: B.hps - 24, y1: B.hps + 6, r: D.nw - 8, tone: g === 'suit' ? 'white' : 'main' });
 
     /* seams that every garment has */
     if (SL && nk.type !== 'off') M.deco.push([1, -1].map(m => ln(`M${CX + m * D.sh} ${D.sp}C${CX + m * (D.sh - 5)} ${D.sp + 46} ${CX + m * (D.ch - 13)} ${f1(D.uaY - 38)} ${CX + m * D.ch} ${f1(D.uaY)}`, 1.5, soft)).join(''));
-    if (!D.jacket && g !== 'shirt') M.deco.push(ln(hemCurve(9), 1.2, soft, ' stroke-dasharray="5 4"'));
+    if (!D.jacket && !D.rib && g !== 'shirt') M.deco.push(ln(hemCurve(9), 1.2, soft, ' stroke-dasharray="5 4"'));
 
-    if (g === 'kaftan') kaftanDetails(); else if (g === 'shirt') shirtDetails(); else if (g === 'dress') dressDetails();
-    if (s.belt && DETAILS_FOR[g].includes('belt')) {
+    if (g === 'kaftan') kaftanDetails(); else if (g === 'shirt') shirtDetails(); else if (g === 'dress') dressDetails(); else if (g === 'tee') teeDetails(); else if (g === 'hoodie') hoodieDetails(); else if (g === 'bomber') bomberDetails(); else if (g === 'kimono') kimonoDetails();
+    if (s.belt && g !== 'kimono' && DETAILS_FOR[g].includes('belt')) {
       const wa = widthAt(M.prof, B.waist) + 2;
       M.deco.push(`<path d="M${f1(CX - wa)} ${B.waist - 13}Q${CX} ${B.waist - 7} ${f1(CX + wa)} ${B.waist - 13}V${B.waist + 13}Q${CX} ${B.waist + 19} ${f1(CX - wa)} ${B.waist + 13}Z" fill="${shade(acc, -0.22)}" stroke="${line}" stroke-width="1.2"/>`);
       if (!back) M.deco.push(`<rect x="${CX - 17}" y="${B.waist - 17}" width="34" height="40" rx="6" fill="none" stroke="${acc}" stroke-width="4.5"/><path d="M${CX - 4} ${B.waist + 3}H${CX + 17}" stroke="${acc}" stroke-width="3" stroke-linecap="round"/>`);
@@ -317,6 +349,113 @@
     return M;
 
     /* ── garment-specific details ── */
+    function ribHem(h) {
+      const y0 = hemSideY - h; let d = '';
+      for (let x = CX - D.hi - 12; x <= CX + D.hi + 12; x += 7) d += `M${x} ${f1(y0 + 3)}V${f1(hemLow + 6)}`;
+      M.deco.push(`<g clip-path="url(#${E._id}-bc)"><rect x="${CX - D.hi - 20}" y="${f1(y0)}" width="${2 * D.hi + 40}" height="${h + 40}" fill="${ribFill}"/>${ln(d, 1, soft)}${ln(`M${CX - D.hi - 20} ${f1(y0)}H${CX + D.hi + 20}`, 1.5, line)}</g>`);
+    }
+    function teeDetails() {
+      if (back) { M.deco.push(ln(`M${CX - D.nw + 6} ${B.hps + 17}Q${CX} ${B.hps + 27} ${CX + D.nw - 6} ${B.hps + 17}`, 1.1, soft)); return; }
+      if (s.collar === 'polo') { const y0 = B.hps + 46, y1 = y0 + 92; M.deco.push(ln(`M${CX - 13} ${y0}V${y1}H${CX + 13}V${y0}`, 1.4, line)); for (let i = 0; i < 3; i++) M.deco.push(button(CX, y0 + 14 + i * 30, 4.2)); }
+      if (s.pockets) M.deco.push(sh(`M${CX + 44} 376H${CX + 90}V418Q${CX + 67} 430 ${CX + 44} 418Z`, 'none'), ln(`M${CX + 44} 385H${CX + 90}`, 1, soft));
+    }
+    function hoodieDetails() {
+      ribHem(D.rib);
+      const hooded = s.collar === 'hood';
+      if (back) {
+        if (hooded) M.deco.push(sh(`M${CX - D.nw - 20} ${B.hps - 4}Q${CX - 92} ${B.hps + 62} ${CX - 44} ${B.hps + 124}Q${CX} ${B.hps + 148} ${CX + 44} ${B.hps + 124}Q${CX + 92} ${B.hps + 62} ${CX + D.nw + 20} ${B.hps - 4}Q${CX} ${B.hps - 44} ${CX - D.nw - 20} ${B.hps - 4}Z`, collarFill), ln(`M${CX} ${B.hps - 22}V${B.hps + 132}`, 1.2, soft));
+        return;
+      }
+      if (hooded) {
+        const y = nc.bottom, x = D.nw + 2, cord = lite ? shade(fill, -0.5) : shade(fill, 0.72);
+        M.behind.push({ id: 'hd', d: `M${CX - D.nw - 22} ${B.hps + 14}C${CX - D.nw - 26} ${B.hps - 30} ${CX - 40} ${B.hps - 62} ${CX} ${B.hps - 62}C${CX + 40} ${B.hps - 62} ${CX + D.nw + 26} ${B.hps - 30} ${CX + D.nw + 22} ${B.hps + 14}Z`, vol: 'p' });
+        M.p3.push({ id: 'hood', type: 'hood', nw: D.nw });
+        for (const m of [1, -1]) M.deco.push(sh(`M${CX + m * x} ${B.hps - 6}C${CX + m * (x + 16)} ${B.hps + 34} ${CX + m * 34} ${f1(y + 10)} ${CX - m * 10} ${f1(y + 26)}L${CX - m * 4} ${f1(y + 6)}C${CX + m * 20} ${f1(y - 8)} ${CX + m * (x - 14)} ${B.hps + 26} ${CX + m * (x - 10)} ${B.hps - 2}Z`, collarFill));
+        for (const m of [1, -1]) M.deco.push(`<circle cx="${CX + m * 20}" cy="${f1(y + 22)}" r="3.4" fill="none" stroke="${cord}" stroke-width="1.6"/>`, ln(`M${CX + m * 20} ${f1(y + 25)}q${m * 3} 34 ${-m * 2} ${78 + m * 8}`, 2.6, cord), ln(`M${CX + m * 18} ${f1(y + 103 + m * 8)}v9`, 4.2, cord));
+      } else M.deco.push(ln(`M${CX - 16} ${f1(nc.bottom + 6)}L${CX} ${f1(nc.bottom + 30)}L${CX + 16} ${f1(nc.bottom + 6)}`, 1.2, soft));
+      if (s.pockets) M.deco.push(sh(`M${CX - 86} 618L${CX - 70} 534Q${CX} 524 ${CX + 70} 534L${CX + 86} 618Z`, 'none'), ln(`M${CX - 84} 604L${CX - 60} 546M${CX + 84} 604L${CX + 60} 546`, 1.3, soft));
+    }
+    function bomberDetails() {
+      if (D.rib) ribHem(D.rib); else M.deco.push(`<g clip-path="url(#${E._id}-bc)">${ln(`M${CX - D.hi - 20} ${f1(hemSideY - 26)}H${CX + D.hi + 20}`, 1.5, line)}</g>`);
+      if (back) { M.deco.push(ln(`M${CX - D.sh + 10} ${D.sp + 40}Q${CX} ${D.sp + 58} ${CX + D.sh - 10} ${D.sp + 40}`, 1.3, soft)); return; }
+      const y0 = col === 'classic' ? B.hps + 44 : nc.bottom - 2, y1 = hemLow + 2, zip = lite ? shade(fill, -0.5) : shade(fill, 0.55);
+      M.deco.push(ln(`M${CX - 8} ${f1(y0)}V${f1(y1)}M${CX + 8} ${f1(y0)}V${f1(y1)}`, 1.2, soft));
+      if (D.rib) M.deco.push(ln(`M${CX} ${f1(y0)}V${f1(y1)}`, 2.2, zip, ' stroke-dasharray="2 3"'), `<rect x="${CX - 4}" y="${f1(y0 + 6)}" width="8" height="15" rx="2.5" fill="${zip}"/>`);
+      else { for (let i = 0; i < 5; i++) M.deco.push(button(CX, y0 + 20 + i * ((y1 - y0 - 44) / 4), 5)); for (const m of [1, -1]) M.deco.push(ln(`M${CX + m * 40} ${D.sp + 96}H${CX + m * 96}`, 1.4, line), sh(`M${CX + m * 44} ${D.sp + 96}H${CX + m * 92}V${D.sp + 128}L${CX + m * 68} ${D.sp + 140}L${CX + m * 44} ${D.sp + 128}Z`, 'none')); }
+      if (s.pockets) for (const m of [1, -1]) M.deco.push(ln(`M${CX + m * 50} 520L${CX + m * 78} 592`, 4.5, shade(fill, lite ? -0.2 : -0.36)), ln(`M${CX + m * 45} 518L${CX + m * 73} 594`, 1, soft));
+    }
+    function kimonoDetails() {
+      const cf = shade(fill, lite ? -0.1 : 0.13), y1 = B.waist + 6;
+      if (back) M.deco.push(sh(`M${CX - D.nw - 6} ${B.hps - 10}Q${CX} ${B.hps + 4} ${CX + D.nw + 6} ${B.hps - 10}L${CX + D.nw + 2} ${B.hps + 12}Q${CX} ${B.hps + 30} ${CX - D.nw - 2} ${B.hps + 12}Z`, cf), ln(`M${CX} ${B.hps + 26}V${f1(hemSideY)}`, 1.2, soft));
+      else {
+        /* the right panel lies under; the left panel (on the viewer's right) crosses over it */
+        M.deco.push(sh(`M${CX - D.nw - 8} ${B.hps - 6}L${CX + 30} ${y1}L${CX + 8} ${y1}L${CX - D.nw + 12} ${B.hps + 2}Z`, cf));
+        M.deco.push(sh(`M${CX + D.nw + 8} ${B.hps - 6}L${CX - 44} ${y1}L${CX - 20} ${y1}L${CX + D.nw - 12} ${B.hps + 2}Z`, cf), ln(`M${CX - 32} ${y1}L${CX - 40} ${f1(hemSideY)}`, 1.4, line));
+      }
+      if (s.belt) {
+        const wa = widthAt(M.prof, B.waist) + 2, a = shade(acc, -0.12);
+        M.deco.push(`<path d="M${f1(CX - wa)} ${B.waist - 30}Q${CX} ${B.waist - 24} ${f1(CX + wa)} ${B.waist - 30}V${B.waist + 30}Q${CX} ${B.waist + 36} ${f1(CX - wa)} ${B.waist + 30}Z" fill="${a}" stroke="${line}" stroke-width="1.4"/>`, ln(`M${f1(CX - wa)} ${B.waist}Q${CX} ${B.waist + 6} ${f1(CX + wa)} ${B.waist}`, 3, shade(acc, lum(acc) > 0.6 ? -0.35 : 0.4)));
+        if (back) M.deco.push(sh(`M${CX - 42} ${B.waist - 44}H${CX + 42}V${B.waist + 44}H${CX - 42}Z`, a));
+      }
+    }
+
+    /* ── trousers, joggers and skirts: the garment starts at the waist ── */
+    function bottom() {
+      const f = D.f, top = 538, wbH = 22, wTop = 87 + f * 2, len = s.length, yb = top + wbH;
+      M.SL = null; M.nk = { type: 'none', dp: 0 }; M.neckBottom = top; D.uaY = top;
+      const beltOn = () => { if (!s.belt || !DETAILS_FOR[g].includes('belt')) return; const w = widthAt(M.prof, top + wbH / 2) + 2, y = top + wbH / 2; M.deco.push(`<path d="M${f1(CX - w)} ${y - 11}H${f1(CX + w)}V${y + 11}H${f1(CX - w)}Z" fill="${shade(acc, -0.22)}" stroke="${line}" stroke-width="1.4"/>`); if (!back) M.deco.push(`<rect x="${CX - 15}" y="${y - 15}" width="30" height="30" rx="5" fill="none" stroke="${acc}" stroke-width="4"/>`); };
+      const pockets = o => { if (!s.pockets) return; if (back) { for (const m of [1, -1]) M.deco.push(g === 'trousers' && s.fabric !== 'denim' ? ln(`M${CX + m * 34} ${yb + 44}H${CX + m * 78}`, 2.6, line) : sh(`M${CX + m * 32} ${yb + 30}H${CX + m * 80}V${yb + 74}L${CX + m * 56} ${yb + 86}L${CX + m * 32} ${yb + 74}Z`, 'none')); return; } for (const m of [1, -1]) M.deco.push(ln(`M${f1(CX + m * (o(yb) - 3))} ${yb + 3}Q${f1(CX + m * (o(yb) - 30))} ${yb + 22} ${f1(CX + m * (o(yb + 76) - 1))} ${yb + 76}`, 1.6, line)); };
+      if (g === 'skirt') {
+        const hemY = HEM[HEM[len] >= HEM.knee ? len : 'midi'], hipW = 104 + f * 4, fl = f < 0 ? -0.04 : f > 0 ? 0.5 : 0.24, hh = hemY - B.hip;
+        Object.assign(D, { hi: hipW, flare: fl, hemY, he: hipW + hh * fl, hemDrop: f > 0 ? 18 : 8 });
+        const P = new Pen(CX + wTop, top).C(CX + wTop + 2, top + 30, CX + hipW, B.hip - 40, CX + hipW, B.hip).C(CX + hipW, B.hip + hh * 0.4, CX + D.he - (D.he - hipW) * 0.3, hemY - hh * 0.3, CX + D.he, hemY);
+        M.body = `M${f1(CX + wTop)} ${top}${P.fwd()}Q${CX} ${f1(hemY + 2 * D.hemDrop)} ${f1(CX - D.he)} ${f1(hemY)}${P.rev()}Z`;
+        M.prof = P.poly(12); M.hemSideY = hemY; M.hemLow = hemY + D.hemDrop;
+        M.p3.push({ id: 'body', type: 'rows', depth: 'dress', rows: rowsFrom(M.prof, top, hemY), hemDrop: D.hemDrop, flare: fl, fit: f });
+        const o = y => widthAt(M.prof, y);
+        M.deco.push(ln(`M${f1(CX - o(yb))} ${yb}H${f1(CX + o(yb))}`, 1.6, line), ln(`M${f1(CX - D.he + 3)} ${f1(hemY - 9)}Q${CX} ${f1(hemY + 2 * D.hemDrop - 9)} ${f1(CX + D.he - 3)} ${f1(hemY - 9)}`, 1.2, soft, ' stroke-dasharray="5 4"'));
+        if (f > 0) for (const k of [-0.74, -0.45, -0.15, 0.15, 0.45, 0.74]) M.deco.push(ln(`M${f1(CX + k * o(yb))} ${yb + 3}L${f1(CX + k * D.he)} ${f1(hemY + D.hemDrop * (1 - k * k) - 4)}`, 1.1, soft));
+        if (back) M.deco.push(ln(`M${CX} ${yb}V${yb + 130}`, 1.5, line), ln(`M${CX - 4} ${yb + 130}h8`, 2.4, line));
+        else if (s.collar === 'tie') M.deco.push(ln(`M${f1(CX + o(yb) - 14)} ${yb}Q${CX + 30} ${f1((yb + hemY) / 2)} ${f1(CX + D.he * 0.42)} ${f1(hemY + D.hemDrop * 0.8)}`, 1.7, line), ln(`M${f1(CX - o(top + 8) + 6)} ${top + 8}q-22 12 -30 44M${f1(CX - o(top + 8) + 8)} ${top + 10}q-6 22 2 50`, 4.4, shade(fill, lite ? -0.14 : 0.16)), `<circle cx="${f1(CX - o(top + 8) + 7)}" cy="${top + 9}" r="7.5" fill="${shade(fill, lite ? -0.14 : 0.16)}" stroke="${line}" stroke-width="1.2"/>`);
+        pockets(o); beltOn();
+        M.stitch = [[[CX - wTop, top], [CX + wTop, top]], [[CX - wTop, top], [CX - hipW, B.hip], [CX - D.he, hemY]], [[CX + wTop, top], [CX + hipW, B.hip], [CX + D.he, hemY]], [[CX - D.he, hemY], [CX, M.hemLow], [CX + D.he, hemY]]];
+        return M;
+      }
+      const jog = g === 'joggers', hemY = jog ? ({ knee: 806, midi: 956 }[len] || 1064) : ({ knee: 800, midi: 950, full: 1096 }[len] || 1072);
+      const hipW = D.hi + (jog ? 2 : 0), [oK, iK, oA, iA] = jog ? [94 + f * 8, 12 - f * 3, 79 + f * 5, 24 - f * 3] : f < 0 ? [88, 14, 80, 24] : f > 0 ? [112, 6, 124, 4] : [96, 10, 94, 12];
+      const sm = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); }, mix = (a, b, t) => a + (b - a) * t;
+      const o = y => (y <= B.hip ? mix(wTop, hipW, sm((y - top) / (B.hip - top))) : y <= B.knee ? mix(hipW, oK, sm((y - B.hip) / (B.knee - B.hip))) : mix(oK, oA, clamp((y - B.knee) / (B.ankle - B.knee), 0, 1.1)));
+      const inn = y => (y <= B.crotch ? 3 : y <= B.knee ? mix(3, iK, Math.pow((y - B.crotch) / (B.knee - B.crotch), 0.6)) : mix(iK, iA, clamp((y - B.knee) / (B.ankle - B.knee), 0, 1.1)));
+      const ys = []; for (let y = top; y < hemY; y += 10) ys.push(y); ys.push(hemY);
+      const R = ys.map(y => [CX + o(y), y]), I = ys.filter(y => y > B.crotch).map(y => [CX + inn(y), y]).reverse(), mir = a => a.map(([x, y]) => [2 * CX - x, y]);
+      const path = pts => pts.map(([x, y]) => `L${f1(x)} ${f1(y)}`).join('');
+      M.body = `M${f1(CX + wTop)} ${top}${path(R.slice(1))}${path(I)}L${CX} ${B.crotch}${path(mir(I).reverse())}${path(mir(R).reverse())}Z`;
+      Object.assign(D, { hi: hipW, he: o(hemY), hemY, legs: 'own' }); M.prof = R; M.hemSideY = hemY; M.hemLow = hemY;
+      const w2 = y => f1(o(y));
+      M.p3.push({ id: 'pelvis', type: 'rows', depth: 'round', fork: true, rows: [top, top + 5, top + 34, B.crotch - 60, B.crotch - 40, B.crotch - 22, B.crotch - 8, B.crotch + 8].map(y => [y, f1(CX - o(y)), f1(CX + o(y))]) });
+      const rows = []; for (let y = B.crotch - 24; y < hemY; y += 8) rows.push([y, f1(CX + inn(y)), f1(CX + o(y))]); rows.push([hemY, f1(CX + inn(hemY)), f1(CX + o(hemY))]);
+      M.p3.push({ id: 'legR', type: 'rows', depth: 'leg', rows }, { id: 'legL', type: 'rows', depth: 'leg', rows: rows.map(r => [r[0], f1(2 * CX - r[2]), f1(2 * CX - r[1])]) });
+      /* details */
+      M.deco.push(ln(`M${f1(CX - o(yb))} ${yb}H${f1(CX + o(yb))}`, 1.6, line));
+      const cuffed = jog && hemY > 900;
+      if (cuffed) for (const m of [1, -1]) { const y0 = hemY - 26; let d = ''; for (let x = inn(hemY) + 4; x < o(hemY) - 2; x += 7) d += `M${f1(CX + m * x)} ${y0 + 3}V${hemY - 2}`; M.deco.push(`<path d="M${f1(CX + m * o(y0))} ${y0}L${f1(CX + m * o(hemY))} ${hemY}H${f1(CX + m * inn(hemY))}L${f1(CX + m * inn(y0))} ${y0}Z" fill="${ribFill}" stroke="${line}" stroke-width="1.3"/>`, ln(d, 1, soft)); }
+      else for (const m of [1, -1]) M.deco.push(ln(`M${f1(CX + m * (inn(hemY - 10) + 2))} ${hemY - 10}H${f1(CX + m * (o(hemY - 10) - 2))}`, 1.2, soft, ' stroke-dasharray="5 4"'));
+      if (back) M.deco.push(ln(`M${CX} ${yb}V${B.crotch - 6}`, 1.4, soft));
+      else if (jog) {
+        const cord = lite ? shade(fill, -0.5) : shade(fill, 0.72);
+        if (s.collar === 'drawstring') M.deco.push(`<circle cx="${CX - 9}" cy="${top + 11}" r="2.6" fill="none" stroke="${cord}" stroke-width="1.4"/><circle cx="${CX + 9}" cy="${top + 11}" r="2.6" fill="none" stroke="${cord}" stroke-width="1.4"/>`, ln(`M${CX - 9} ${top + 13}q-5 30 -11 52M${CX + 9} ${top + 13}q4 26 9 44`, 2.4, cord));
+        let d = ''; for (let x = -o(top + 4) + 8; x < o(top + 4) - 6; x += 9) d += `M${f1(CX + x)} ${top + 4}v${wbH - 8}`; M.deco.push(ln(d, 1, soft));
+      } else {
+        M.deco.push(ln(`M${CX} ${yb}V${yb + 62}q-1 16 -15 20`, 1.4, soft), button(CX, top + wbH / 2, 4.4));
+        for (const x of [34, 74]) for (const m of [1, -1]) M.deco.push(`<rect x="${CX + m * x - 3}" y="${top - 2}" width="6" height="${wbH + 4}" rx="1.5" fill="${shade(fill, lite ? -0.1 : 0.12)}" stroke="${line}" stroke-width=".9"/>`);
+        if (s.collar === 'pleated') for (const m of [1, -1]) M.deco.push(ln(`M${CX + m * 30} ${yb + 2}v62M${CX + m * 48} ${yb + 2}v46`, 1.2, soft));
+        if (hemY > 900) for (const m of [1, -1]) M.deco.push(ln(`M${f1(CX + m * (o(B.crotch + 40) + inn(B.crotch + 40)) / 2)} ${B.crotch + 40}L${f1(CX + m * (o(hemY) + inn(hemY)) / 2)} ${hemY - 6}`, 1.2, soft));
+      }
+      if (jog && s.accent && s.pattern === 'stripe') for (const m of [1, -1]) M.deco.push(ln(`M${f1(CX + m * (o(yb) - 7))} ${yb}L${f1(CX + m * (o(hemY - 30) - 7))} ${hemY - 30}`, 5, acc));
+      pockets(o); beltOn();
+      M.stitch = [[[CX - wTop, top], [CX + wTop, top]], [[CX - wTop, top], [CX - hipW, B.hip], [CX - w2(hemY), hemY]], [[CX + wTop, top], [CX + hipW, B.hip], [CX + +w2(hemY), hemY]], [[CX - 3, B.crotch], [CX - inn(hemY), hemY]], [[CX + 3, B.crotch], [CX + inn(hemY), hemY]]];
+      return M;
+    }
     function kaftanDetails() {
       if (back) { M.deco.push(ln(`M${CX - D.sh + 10} ${D.sp + 34}Q${CX} ${D.sp + 50} ${CX + D.sh - 10} ${D.sp + 34}`, 1.3, soft)); if (D.slit) slits(); return; }
       if (nk.type !== 'v') {
@@ -342,6 +481,11 @@
       if (D.f >= 0) M.deco.push(ln(`M${f1(CX - wa)} ${B.waist}Q${CX} ${B.waist + 9} ${f1(CX + wa)} ${B.waist}`, 1.5, soft));
       if (back) { M.deco.push(ln(`M${CX} ${B.hps + 2 * backDip - 2}V${B.hip}`, 1.5, line), ln(`M${CX - 4} ${B.hip - 2}h8`, 2.4, line)); return; }
       if (D.f <= 0) for (const m of [1, -1]) M.deco.push(ln(`M${CX + m * 44} ${B.waist - 4}Q${CX + m * 48} ${B.waist - 70} ${CX + m * 50} ${B.bust + 34}`, 1.2, soft));
+      if (s.collar === 'mandarin') { /* qipao: the front closes on a diagonal from the collar to the underarm, with knot buttons, and a slit at the hem */
+        const x1 = -widthAt(M.prof, D.uaY + 8) + 3, y0 = B.hps + 46, knot = (x, y) => `<circle cx="${f1(x)}" cy="${f1(y)}" r="4.2" fill="${acc}" stroke="${line}" stroke-width=".8"/>` + ln(`M${f1(x - 13)} ${f1(y + 4)}L${f1(x + 13)} ${f1(y - 4)}`, 2.2, acc);
+        M.deco.push(ln(`M${CX} ${y0}C${CX - 30} ${y0 + 26} ${f1(CX + x1 + 40)} ${f1(D.uaY - 40)} ${f1(CX + x1)} ${f1(D.uaY + 8)}`, 1.7, line), knot(CX - 3, y0 + 3), knot(CX - 46, y0 + 40), knot(CX + x1 + 16, D.uaY - 6));
+        if (D.f < 0 && hemSideY >= HEM.knee) { const m = -1; M.deco.push(ln(`M${f1(CX + m * (widthAt(M.prof, hemSideY - 150) - 1))} ${f1(hemSideY - 150)}L${f1(CX + m * (D.he - 9))} ${f1(hemSideY + 1)}`, 1.6, line)); }
+      }
       if (s.buttons && nk.type !== 'off') { const y0 = nc.bottom + 16; M.deco.push(ln(`M${CX} ${f1(nc.bottom + 4)}V${B.waist - 4}`, 1.3, soft)); for (let y = y0; y < B.waist - 12; y += 34) M.deco.push(button(CX, y, 5)); }
       if (s.pockets) for (const m of [1, -1]) { const x = widthAt(M.prof, B.hip - 50); M.deco.push(ln(`M${f1(CX + m * (x - 2))} ${B.hip - 52}Q${f1(CX + m * (x - 34))} ${B.hip - 34} ${f1(CX + m * (x - 30))} ${B.hip + 26}`, 1.6, line)); }
     }
@@ -433,6 +577,8 @@
       case 'stripe': case 'aso-oke': return { w: 40, h: 34, body: `<rect width="40" height="6" fill="${ink}"/><rect y="14" width="40" height="2" fill="${acc}" opacity=".5"/><rect y="22" width="40" height="3" fill="${ink2}"/>` };
       case 'lace': return { w: 26, h: 26, body: `<circle cx="13" cy="13" r="7" fill="none" stroke="${ink}" stroke-width="1.6"/><circle cx="13" cy="13" r="2" fill="${ink2}"/><circle cx="0" cy="0" r="3" fill="${ink2}"/><circle cx="26" cy="26" r="3" fill="${ink2}"/><circle cx="26" cy="0" r="3" fill="${ink2}"/><circle cx="0" cy="26" r="3" fill="${ink2}"/>` };
       case 'wool': return { w: 12, h: 12, body: `<path d="M-3 3L3 -3M0 12L12 0M9 15L15 9" stroke="${ink2}" stroke-width="2.2"/>` };
+      case 'jersey': return { w: 5, h: 8, body: `<rect width="1" height="8" fill="${ink2}"/><rect x="2.5" y="0" width=".8" height="8" fill="${ink2}" opacity=".5"/>` };
+      case 'denim': return { w: 8, h: 8, body: `<path d="M-2 2L2 -2M0 8L8 0M6 10L10 6" stroke="${ink}" stroke-width="1.5"/><path d="M-2 6L6 -2M2 10L10 2" stroke="${ink2}" stroke-width="1"/>` };
       case 'linen': case 'cotton': return { w: 6, h: 6, body: `<rect width="6" height="1" fill="${ink2}"/><rect width="1" height="6" fill="${ink2}"/>` };
       case 'brocade': return { w: 60, h: 60, body: `<path d="M30 6Q44 30 30 54Q16 30 30 6Z" fill="none" stroke="${acc}" stroke-width="1.6" opacity=".5"/><path d="M6 30Q30 44 54 30Q30 16 6 30Z" fill="none" stroke="${ink}" stroke-width="1.4"/><circle cx="0" cy="0" r="4" fill="${ink2}"/><circle cx="60" cy="60" r="4" fill="${ink2}"/><circle cx="60" cy="0" r="4" fill="${ink2}"/><circle cx="0" cy="60" r="4" fill="${ink2}"/>` };
       case 'kente': return { w: 48, h: 48, body: `<rect width="24" height="10" fill="${acc}" opacity=".55"/><rect x="24" y="24" width="24" height="10" fill="${acc}" opacity=".55"/><rect y="12" width="24" height="4" fill="${ink}"/><rect x="24" y="36" width="24" height="4" fill="${ink}"/><rect x="24" width="4" height="24" fill="${ink2}"/><rect y="24" width="4" height="24" fill="${ink2}"/><rect x="34" y="4" width="10" height="10" fill="${ink}"/><rect x="8" y="30" width="10" height="10" fill="${ink}"/>` };
@@ -511,12 +657,13 @@ ${showSketch ? `<g class="sketch"${clipAttr}>${E.sketchPaths(s.sketch)}</g>` : '
   /** Everything the 3D viewer needs to build this garment on the mannequin. */
   E.build3d = spec => {
     const F = build(spec, 'front'), Bk = build(spec, 'back'), s = F.s;
-    return { spec: s, parts: F.p3, cuts: { front: F.cuts, back: Bk.cuts }, cutSleeves: F.cutBehind, color: F.fill, accent: F.acc, fabric: s.fabric, pattern: s.pattern, hemLow: F.hemLow, hasLegs: !!F.D.legs, sleeveless: !F.SL && !F.D.wings, frame: E.FRAME };
+    return { spec: s, parts: F.p3, cuts: { front: F.cuts, back: Bk.cuts }, cutSleeves: F.cutBehind, color: F.fill, accent: F.acc, fabric: s.fabric, pattern: s.pattern, hemLow: F.hemLow, hasLegs: !!F.D.legs, bottom: !!F.D.bottom, form: E.formOf(s), sleeveless: !F.SL && !F.D.wings, frame: E.FRAME };
   };
 
   /* Normalised (0..1) paths for the gold-thread animation drawn over the stage. */
   E.stitches = spec => {
     const M = build(spec, 'front'), D = M.D, n = (x, y) => [x / W, y / H], p = [];
+    if (M.stitch) return M.stitch.map(l => l.map(([x, y]) => n(x, y)));
     const nb = M.neckBottom;
     p.push([n(CX - D.nw - 8, B.hps), n(CX, nb + 10), n(CX + D.nw + 8, B.hps)]);
     p.push([n(CX - D.sh, D.sp), n(CX - D.ch, D.uaY), n(CX - D.wa, B.waist), n(CX - D.he, M.hemSideY)]);

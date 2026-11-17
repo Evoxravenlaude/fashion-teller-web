@@ -153,7 +153,12 @@
       <div class="slider"><div class="top"><label for="adjLength">Length</label><output id="adjLengthO">100%</output></div><input class="range" id="adjLength" data-adj="length" type="range" min="80" max="120" value="100"></div>
       <div class="slider"><div class="top"><label for="adjDy">Up and down</label><output id="adjDyO">0</output></div><input class="range" id="adjDy" data-adj="dy" type="range" min="-30" max="30" value="0"></div>
       <div class="slider"><div class="top"><label for="adjDx">Left and right</label><output id="adjDxO">0</output></div><input class="range" id="adjDx" data-adj="dx" type="range" min="-30" max="30" value="0"></div>
-      <label class="to-check" id="toSwayL"><input type="checkbox" id="toSway" checked> Let loose cloth sway as you move</label>
+      <div class="to-opts">
+        <div class="to-row"><span id="toFormT">Cut for</span><div class="seg sm" id="toForm" role="group" aria-labelledby="toFormT"><button type="button" data-form="woman" aria-pressed="false">Woman</button><button type="button" data-form="man" aria-pressed="false">Man</button></div></div>
+        <label class="to-check" id="toSwayL"><input type="checkbox" id="toSway" checked> Let loose cloth sway as you move</label>
+        <label class="to-check"><input type="checkbox" id="toHolo"> Hologram view</label>
+      </div>
+      <p class="to-fitnote" id="toFitNote" aria-live="polite"></p>
       <label class="to-check" id="toMirrorL" hidden><input type="checkbox" id="toMirror" checked> Show me as in a mirror</label>
     </aside>
   </div>

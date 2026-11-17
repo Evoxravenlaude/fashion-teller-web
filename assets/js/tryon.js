@@ -15,7 +15,8 @@
     const qs = new URLSearchParams(location.search);
     const view = $('#toView'), ctx = view.getContext('2d'), video = $('#toVideo'), pts = $('#toPts');
     const S = { src: null, spec: null, design: null, fit: null, track: null, mirror: true, facing: 'user', raf: 0, stream: null, img: null, url: null, w: 0, h: 0, rec: null, chunks: [], recT: 0,
-      detectMs: 50, lastFrame: 0, miss: 0, points: false, paused: false, gl: 1, slow: 0, ticking: false, lightT: 0, exporting: false, booting: null };
+      detectMs: 50, lastFrame: 0, miss: 0, points: false, paused: false, gl: 1, slow: 0, ticking: false, lightT: 0, exporting: false, booting: null,
+      mask: null, scan: null, scanned: false, holo: false, known: -1, bodyPx: 0, formPick: null, vsync: 16.7, every: 1, vs: 0, up: 0, down: 0, all: 0 };
     const NAMES = { ls: 'Left shoulder', rs: 'Right shoulder', le: 'Left elbow', re: 'Right elbow', lw: 'Left wrist', rw: 'Right wrist', lh: 'Left hip', rh: 'Right hip', lk: 'Left knee', rk: 'Right knee', la: 'Left ankle', ra: 'Right ankle' };
     const BONES = [['ls', 'rs'], ['ls', 'le'], ['le', 'lw'], ['rs', 're'], ['re', 'rw'], ['ls', 'lh'], ['rs', 'rh'], ['lh', 'rh'], ['lh', 'lk'], ['lk', 'la'], ['rh', 'rk'], ['rk', 'ra']];
     const canRecord = !!(window.MediaRecorder && view.captureStream);
@@ -48,8 +49,8 @@
       const b = e.target.closest('[data-g]'); if (!b || !S.fit) return; const w = ward[+b.dataset.g]; if (!w) return;
       $$('#toWard .to-g').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
       S.spec = w.spec; $('#toName').textContent = w.title; b.classList.add('wait');
-      try { await S.fit.setSpec(w.spec); } finally { b.classList.remove('wait'); }
-      if (S.src === 'photo') still();
+      try { await S.fit.setSpec(w.spec, S.formPick ? { form: S.formPick } : {}); } finally { b.classList.remove('wait'); }
+      formUi(); scanStart('swap'); if (S.src === 'photo') glide();
     });
 
     /* ───── the engine: body tracker + garment, loaded the first time a source is picked ───── */
@@ -61,7 +62,7 @@
       S.booting = (async () => {
         try {
           const [track, fit] = await Promise.all([Fit.tracker({ onProgress: p => { $('#toProg').style.width = Math.round(p * 100) + '%'; }, delegate: qs.get('delegate') === 'cpu' ? 'CPU' : undefined, model: qs.get('model') || undefined }), Fit.create({})]);
-          S.track = track; S.fit = fit; fit.sway = $('#toSway').checked; await fit.setSpec(S.spec); return true;
+          S.track = track; S.fit = fit; fit.sway = $('#toSway').checked; await fit.setSpec(S.spec); formUi(); return true;
         } catch (e) { console.warn('Fashion Teller try-on:', e); msg('The fitting room could not start on this device. ' + (navigator.onLine === false ? 'You seem to be offline.' : 'Try again, or use a different browser.')); return false; }
         finally { loading(false); S.booting = null; }
       })();
@@ -74,20 +75,91 @@
       view.width = S.w; view.height = S.h; S.fit.setSize(S.w, S.h, S.gl);
       pts.setAttribute('viewBox', `0 0 ${S.w} ${S.h}`);
     }
-    const draw = (media, garment) => {
-      ctx.save(); if (S.mirror && S.src === 'camera') { ctx.translate(S.w, 0); ctx.scale(-1, 1); }
-      ctx.drawImage(media, 0, 0, S.w, S.h); if (garment) ctx.drawImage(S.fit.canvas, 0, 0, S.w, S.h); ctx.restore();
-    };
+    /* ───── putting the picture together ─────
+       the picture; a soft shadow where the garment meets the body (kept to the person's outline, so it never falls on the wall
+       behind them); the garment; and, while it is scanning, the scan. Everything is drawn into one canvas, so a saved picture
+       or recording has exactly what is on screen. */
+    const fxC = document.createElement('canvas'), fx = fxC.getContext('2d'), shC = document.createElement('canvas'), shx = shC.getContext('2d');
+    const maskC = document.createElement('canvas'), mctx = maskC.getContext('2d'), still_ = matchMedia('(prefers-reduced-motion: reduce)');
+    const linesC = document.createElement('canvas'); linesC.width = 4; linesC.height = 6; { const l = linesC.getContext('2d'); l.fillStyle = 'rgba(120,235,255,1)'; l.fillRect(0, 0, 4, 1.4); }
+    let lines = null;
+    function setMask(m) {
+      S.mask = m || null; if (!m) return;
+      if (maskC.width !== m.w || maskC.height !== m.h) { maskC.width = m.w; maskC.height = m.h; S.maskIm = mctx.createImageData(m.w, m.h); S.maskIm.data.fill(255); }
+      const d = S.maskIm.data, a = m.a; for (let i = 0, j = 3; i < a.length; i++, j += 4) d[j] = a[i]; mctx.putImageData(S.maskIm, 0, 0);
+    }
+    /* The scan: a line of light travels down the body, the outline is read, and the garment forms behind the line.
+       'swap' is the short version, when only the garment changes. */
+    function scanStart(mode = 'scan') { if (!S.fit || !S.src) return; S.scan = still_.matches ? null : { mode, t0: 0, dur: mode === 'scan' ? 1500 : 650 }; S.scanned = true; S.scans = (S.scans || 0) + 1; }
+    function scanY(now) {
+      const sc = S.scan; if (!sc) return S.h + 1; if (!sc.t0) sc.t0 = now;
+      const J = S.fit.joints(), p = Math.min(1, (now - sc.t0) / sc.dur), e = p * p * (3 - 2 * p); let y0 = 0, y1 = S.h;
+      if (J) { const sw = Math.hypot(J.ls[0] - J.rs[0], J.ls[1] - J.rs[1]); y0 = Math.max(0, Math.min(J.head[1], J.ls[1], J.rs[1]) - sw * 0.75); y1 = Math.min(S.h, Math.max(J.la[1], J.ra[1], J.lh[1], J.rh[1]) + sw * 0.5); }
+      if (p >= 1) { S.scan = null; return S.h + 1; }
+      return y0 + (y1 - y0) * e;
+    }
+    function compose(media, garment, now = performance.now()) {
+      const w = S.w, h = S.h, g = S.fit.canvas, y = scanY(now), body = Math.max(40, S.bodyPx || w * 0.25);
+      if (fxC.width !== w || fxC.height !== h) { fxC.width = w; fxC.height = h; shC.width = Math.max(2, w >> 1); shC.height = Math.max(2, h >> 1); lines = null; }
+      ctx.save(); if (S.mirror && S.src === 'camera') { ctx.translate(w, 0); ctx.scale(-1, 1); }
+      ctx.drawImage(media, 0, 0, w, h);
+      if (garment) {
+        ctx.save(); if (y <= h) { ctx.beginPath(); ctx.rect(0, 0, w, y); ctx.clip(); }
+        if (!S.holo && S.gl >= 0.75) {                    // the contact shadow, at half size (it is blurred anyway)
+          const r = Math.max(2, body * 0.03), ox = shC.width + 40;
+          shx.globalCompositeOperation = 'source-over'; shx.clearRect(0, 0, shC.width, shC.height); shx.save(); shx.shadowColor = '#000'; shx.shadowBlur = r; shx.shadowOffsetX = ox; shx.shadowOffsetY = r * 0.35; shx.drawImage(g, -ox, 0, shC.width, shC.height); shx.restore();
+          if (S.mask) { shx.globalCompositeOperation = 'destination-in'; shx.drawImage(maskC, 0, 0, shC.width, shC.height); }
+          ctx.globalAlpha = S.mask ? 0.34 : 0.16; ctx.drawImage(shC, 0, 0, w, h); ctx.globalAlpha = 1;
+        }
+        if (S.holo) {                                     // hologram view: the garment as light, so the body shows through it
+          lines ||= fx.createPattern(linesC, 'repeat'); const sw = shC.width, sh = shC.height, r = Math.max(1.5, body * 0.02), ox = sw + 40;
+          ctx.globalAlpha = 0.58; ctx.drawImage(g, 0, 0, w, h); ctx.globalAlpha = 1;
+          /* light on the cloth: a faint tint and lines that travel down it, only where the garment is */
+          fx.globalCompositeOperation = 'source-over'; fx.clearRect(0, 0, w, h); fx.drawImage(g, 0, 0, w, h);
+          fx.globalCompositeOperation = 'source-in'; fx.fillStyle = 'rgba(60,190,255,.14)'; fx.fillRect(0, 0, w, h);
+          fx.globalCompositeOperation = 'source-atop'; fx.save(); fx.translate(0, (now / 45) % 6); fx.globalAlpha = 0.3; fx.fillStyle = lines; fx.fillRect(0, -6, w, h + 12); fx.restore();
+          ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(fxC, 0, 0);
+          /* and a rim of light along every edge of it (inside and out) */
+          shx.globalCompositeOperation = 'source-over'; shx.clearRect(0, 0, sw, sh); shx.save(); shx.shadowColor = '#fff'; shx.shadowBlur = r; shx.shadowOffsetX = ox; shx.drawImage(g, -ox, 0, sw, sh); shx.restore();
+          shx.globalCompositeOperation = 'xor'; shx.drawImage(g, 0, 0, sw, sh);
+          shx.globalCompositeOperation = 'source-in'; shx.fillStyle = 'rgb(110,232,255)'; shx.fillRect(0, 0, sw, sh);
+          ctx.drawImage(shC, 0, 0, w, h); ctx.globalCompositeOperation = 'source-over';
+        } else ctx.drawImage(g, 0, 0, w, h);
+        ctx.restore();
+      }
+      if (y <= h) {                                       // the scan itself: light on the body, brightest at the line
+        lines ||= fx.createPattern(linesC, 'repeat'); const band = Math.max(18, body * 0.42), full = S.scan && S.scan.mode === 'scan';
+        fx.globalCompositeOperation = 'source-over'; fx.clearRect(0, 0, w, h);
+        if (full) { fx.globalAlpha = 0.3; fx.fillStyle = lines; fx.fillRect(0, y, w, h - y); fx.globalAlpha = 1; }
+        const gr = fx.createLinearGradient(0, y - band, 0, y + 3); gr.addColorStop(0, 'rgba(90,225,255,0)'); gr.addColorStop(0.8, 'rgba(110,232,255,.5)'); gr.addColorStop(0.97, 'rgba(235,252,255,1)'); gr.addColorStop(1, 'rgba(120,235,255,0)');
+        fx.fillStyle = gr; fx.fillRect(0, y - band, w, band + 3);
+        if (S.mask) { fx.globalCompositeOperation = 'destination-in'; fx.drawImage(maskC, 0, 0, w, h); } else { fx.globalCompositeOperation = 'destination-in'; fx.fillStyle = 'rgba(0,0,0,.35)'; fx.fillRect(0, 0, w, h); }
+        ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(fxC, 0, 0); ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.restore();
+    }
+    /* what the garment was fitted to, in words (in the Adjust panel) */
+    function fitNote(known) { const n = $('#toFitNote'); if (!n) return; const t = S.fit && S.fit.joints() ? (known >= 5 ? 'Shaped to your outline: chest, waist, hips, arms and legs.' : known >= 2 ? 'Shaped to part of your outline. Face the camera with your arms a little away from your sides for the rest.' : 'Face the camera with your arms a little away from your sides, and the garment is shaped to your outline.') : ''; if (n.textContent !== t) n.textContent = t; }
+    function formUi() { const f = S.fit && S.fit.form; $$('#toForm [data-form]').forEach(b => b.setAttribute('aria-pressed', b.dataset.form === f)); }
     /* match the cloth to the light in the picture */
     const probe = document.createElement('canvas'); probe.width = probe.height = 8; const pctx = probe.getContext('2d', { willReadFrequently: true });
-    function light(media) { try { pctx.drawImage(media, 0, 0, 8, 8); const d = pctx.getImageData(0, 0, 8, 8).data; let l = 0; for (let i = 0; i < d.length; i += 4) l += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; S.fit.light(Math.pow(l / (64 * 255), 0.8)); } catch {} }
+    function light(media) {
+      try {
+        pctx.drawImage(media, 0, 0, 8, 8); const d = pctx.getImageData(0, 0, 8, 8).data; let l = 0, L = 0, Rt = 0, r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4) { const v = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; l += v; if (((i >> 2) & 7) < 4) L += v; else Rt += v; if (v > 70) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; } }
+        const side = (Rt - L) / Math.max(1, Rt + L) * 3.2, o = { side, tint: n > 6 ? [r / n, g / n, b / n] : null }, lv = Math.pow(l / (64 * 255), 0.8);
+        /* ease towards it: light in a room changes slowly, and a jumpy exposure would make the cloth flicker */
+        S.lv = S.lv == null ? lv : S.lv + (lv - S.lv) * 0.35; S.ls = S.ls == null ? side : S.ls + (side - S.ls) * 0.35; if (o.tint) S.lt = S.lt ? S.lt.map((v, i) => v + (o.tint[i] - v) * 0.35) : o.tint;
+        S.fit.light(S.lv, { side: S.ls, tint: S.lt });
+      } catch {}
+    }
 
     /* ───── live: camera and video ───── */
     /* Each turn takes one frame, finds the body in that frame, and shows that same frame with the garment on it.
        The picture and the garment are therefore always from the same instant: the cloth never trails the person. */
     const frame = document.createElement('canvas'), fctx = frame.getContext('2d', { alpha: false });
     async function tick(now) {
-      if (S.ticking || !S.fit || video.readyState < 2) return; S.ticking = true;
+      if (S.ticking || !S.fit || video.readyState < 2) return; S.ticking = true; const now0 = performance.now();
       try {
         const dt = S.lastFrame ? Math.min(1000, now - S.lastFrame) : 0; S.lastFrame = now;
         if (!S.paused) {
@@ -95,20 +167,31 @@
           fctx.drawImage(video, 0, 0, S.w, S.h);
           const t0 = performance.now(), pose = await S.track.video(frame); S.detectMs = S.detectMs * 0.8 + (performance.now() - t0) * 0.2;
           if (pose) { pose.w = S.w; pose.h = S.h; }
-          if (pose && S.fit.setPose(pose, { smooth: true })) { if (S.miss > 10) msg(''); S.miss = 0; }
+          if (pose && S.fit.setPose(pose, { smooth: true })) {
+            if (S.miss > 10) msg(''); S.miss = 0; setMask(pose.mask);
+            const known = S.fit.setShape(pose); if (known !== S.known) { S.known = known; fitNote(known); }
+            S.bodyPx = Math.hypot((pose.lm[11].x - pose.lm[12].x) * S.w, (pose.lm[11].y - pose.lm[12].y) * S.h);
+            if (!S.scanned) scanStart('scan');
+          }
           else if (++S.miss === 12) { S.fit.reset(); msg(S.src === 'camera' ? 'Step back until your shoulders and hips are in view.' : 'No one in view in this part of the video.'); }
           if (now - S.lightT > 900) { S.lightT = now; light(frame); }
         }
-        const t1 = performance.now(), on = S.fit.step(S.paused ? 0 : dt); draw(frame, on);
+        const t1 = performance.now(), sw = S.fit.sway; if (S.paused) S.fit.sway = false;
+        const on = S.fit.step(dt); S.fit.sway = sw; compose(frame, on, now);
         /* a phone that cannot keep up gets a lighter garment layer rather than a stutter */
         const cost = performance.now() - t1; S.slow = cost > 30 ? S.slow + 1 : Math.max(0, S.slow - 2);
         if (S.slow > 45 && S.gl > 0.5) { S.gl = Math.max(0.5, S.gl * 0.75); S.fit.setSize(S.w, S.h, S.gl); S.slow = 0; }
+        /* An even beat: a turn that takes longer than one screen refresh is given two (or three), every time, instead of
+           landing on one or two at random. Even frames look smoother than fast, uneven ones. */
+        { const all = performance.now() - now0; S.all = (S.all || all) * 0.9 + all * 0.1; const want = Math.max(1, Math.min(6, Math.ceil(S.all * 1.15 / S.vsync)));
+          if (want > S.every) { if (++S.up > 5) { S.every = want; S.up = 0; } } else S.up = 0;
+          if (want < S.every) { if (++S.down > 50) { S.every = want; S.down = 0; } } else S.down = 0; }
         S.frames = (S.frames || 0) + 1; S.drawMs = (S.drawMs || cost) * 0.85 + cost * 0.15; if (S.tickAt) S.gapMs = (S.gapMs || now - S.tickAt) * 0.9 + (now - S.tickAt) * 0.1; S.tickAt = now;
-        if (S.meter && now - (S.meterAt || 0) > 400) S.meterAt = now, S.meter.textContent = `${S.gapMs ? Math.round(1000 / S.gapMs) : '–'} fps\nfind the body ${S.detectMs.toFixed(0)} ms\ndress and draw ${S.drawMs.toFixed(0)} ms\n${S.w}×${S.h}  garment layer ×${S.gl.toFixed(2)}\n${S.track.model} model on ${S.track.delegate}`;
+        if (S.meter && now - (S.meterAt || 0) > 400) S.meterAt = now, S.meter.textContent = `${S.gapMs ? Math.round(1000 / S.gapMs) : '–'} fps, every ${S.every === 1 ? '' : S.every + ' '}refresh${S.every === 1 ? '' : 'es'}\nfind the body ${S.detectMs.toFixed(0)} ms\ndress and draw ${S.drawMs.toFixed(0)} ms\n${S.w}×${S.h}  garment layer ×${S.gl.toFixed(2)}\n${S.track.model} model on ${S.track.delegate}`;
       } catch (e) { console.warn('Fashion Teller try-on:', e); } finally { S.ticking = false; }
     }
-    const loop = now => { S.raf = requestAnimationFrame(loop); tick(now); };
-    function run() { cancelAnimationFrame(S.raf); S.lastFrame = 0; S.miss = 0; S.tickAt = 0; S.raf = requestAnimationFrame(loop); }
+    const loop = now => { S.raf = requestAnimationFrame(loop); if (S.vsAt) { const d = now - S.vsAt; if (d > 4 && d < 40) S.vsync += (d - S.vsync) * 0.05; } S.vsAt = now; if (++S.vs % S.every === 0) tick(now); };
+    function run() { cancelAnimationFrame(S.raf); S.lastFrame = 0; S.miss = 0; S.tickAt = 0; S.vs = 0; S.vsAt = 0; S.every = 1; S.up = S.down = 0; S.all = 0; S.scanned = false; S.scan = null; S.known = -1; S.fit.clearShape(); fitNote(0); S.raf = requestAnimationFrame(loop); }
     /* ?fps=1 shows what this device manages: the numbers to read out when checking a real phone */
     try { if (qs.get('fps') === '1') sessionStorage.setItem('ft.fps', '1'); else if (qs.get('fps') === '0') sessionStorage.removeItem('ft.fps'); if (sessionStorage.getItem('ft.fps')) { S.meter = document.createElement('pre'); S.meter.className = 'v3d-meter'; S.meter.setAttribute('aria-hidden', 'true'); S.meter.textContent = 'waiting for the camera or a video'; $('#toStage').appendChild(S.meter); } } catch {}
 
@@ -138,11 +221,28 @@
       loading(true, 'Finding you in the picture', '');
       let pose = null; try { pose = await S.track.image(c); } catch (e) { console.warn(e); } loading(false);
       if (pose) { pose.w = S.w; pose.h = S.h; }
-      if (pose && S.fit.setPose(pose)) { points(false); msg(pose.people > 1 ? 'Dressed the person who fills most of the picture. Drag the points to choose someone else.' : 'Use Adjust to tune the fit, or Move points if it sits wrong.', 5200); }
+      S.fit.clearShape(); setMask(pose && pose.mask); S.scan = null; S.known = 0;
+      if (pose && S.fit.setPose(pose)) { S.known = S.fit.setShape(pose, { snap: true }); S.bodyPx = Math.hypot((pose.lm[11].x - pose.lm[12].x) * S.w, (pose.lm[11].y - pose.lm[12].y) * S.h); scanStart('scan'); points(false); msg(pose.people > 1 ? 'Dressed the person who fills most of the picture. Drag the points to choose someone else.' : 'Use Adjust to tune the fit, or Move points if it sits wrong.', 5200); }
       else { S.fit.reset(); S.fit.startFrom(S.w, S.h); points(true); msg('No body was found in this picture. Drag the points onto the shoulders, elbows, wrists, hips, knees and ankles.'); }
-      stageOn(); still();
+      fitNote(S.known); stageOn(); still(); glide(); if (S.holo) shimmer();
     }
-    function still() { if (!S.fit || !S.img) return; const on = S.fit.step(0); S.mirror = false; ctx.drawImage(S.img, 0, 0, S.w, S.h); if (on) ctx.drawImage(S.fit.canvas, 0, 0, S.w, S.h); if (S.points) drawPts(); }
+    function still() { if (!S.fit || !S.img) return; const on = S.on = S.fit.step(0); S.mirror = false; compose(S.img, on); if (S.points) drawPts(); }
+    /* hologram view of a still picture: the light keeps travelling over the garment (the garment itself is not drawn again) */
+    function shimmer() {
+      if (S.shim || still_.matches) return; S.shim = true; let last = 0;
+      const go = now => { if (!S.holo || S.src !== 'photo' || !S.img || !S.fit) { S.shim = false; return; } requestAnimationFrame(go); if (S.gliding || document.hidden || now - last < 66) return; last = now; S.mirror = false; compose(S.img, S.on, now); if (S.points) drawPts(); };
+      requestAnimationFrame(go);
+    }
+    /* on a still picture nothing is ticking, so a change (a slider, another garment, the scan) is played out here until it has settled */
+    function glide() {
+      if (S.gliding || S.src !== 'photo') return; S.gliding = true; let last = performance.now();
+      const go = now => {
+        if (S.src !== 'photo' || !S.fit || !S.img) { S.gliding = false; return; }
+        const dt = Math.min(50, Math.max(1, now - last)), sw = S.fit.sway; last = now; S.fit.sway = false; const on = S.on = S.fit.step(dt); S.fit.sway = sw; S.mirror = false; compose(S.img, on, now); if (S.points) drawPts();
+        if (!S.fit.settled || S.scan) requestAnimationFrame(go); else S.gliding = false;
+      };
+      requestAnimationFrame(go);
+    }
 
     /* ───── body points you can drag (photos) ───── */
     function points(on) { S.points = on; show(pts, on && S.src === 'photo'); $('#toPoints').setAttribute('aria-pressed', on); if (on) drawPts(); }
@@ -167,7 +267,7 @@
     const fmt = { width: v => v + '%', ease: v => v + '%', length: v => v + '%', dx: v => (v > 0 ? '+' : '') + v, dy: v => (v > 0 ? '+' : '') + v };
     function adjust(el) {
       const k = el.dataset.adj, v = +el.value; $('#' + el.id + 'O').textContent = fmt[k](v); el.style.setProperty('--p', ((v - el.min) / (el.max - el.min) * 100) + '%');
-      if (!S.fit) return; S.fit.adjust[k] = k === 'dx' ? v / 100 : k === 'dy' ? v / 100 : v / 100; if (S.src === 'photo') still();
+      if (!S.fit) return; S.fit.adjust[k] = v / 100; if (S.src === 'photo') glide();
     }
     $$('#toPanel [data-adj]').forEach(el => { el.addEventListener('input', () => adjust(el)); adjust(el); });
     /* on a phone the panel shows one slider at a time, picked from a row of chips, so the picture stays in view */
@@ -177,6 +277,9 @@
     $('#toChips').addEventListener('click', e => { const b = e.target.closest('[data-chip]'); if (b) chip(b.dataset.chip); }); chip('width');
     $('#toReset').addEventListener('click', () => { $$('#toPanel [data-adj]').forEach(el => { el.value = el.dataset.adj.startsWith('d') ? 0 : 100; adjust(el); }); });
     $('#toSway').addEventListener('change', e => { if (S.fit) S.fit.sway = e.target.checked; });
+    $('#toHolo').addEventListener('change', e => { S.holo = e.target.checked; if (S.src === 'photo') { still(); shimmer(); } });
+    /* the cut: a woman's or a man's form inside the garment. It starts as the design's own. */
+    $('#toForm').addEventListener('click', async e => { const b = e.target.closest('[data-form]'); if (!b || !S.fit || S.fit.form === b.dataset.form) return; S.formPick = b.dataset.form; await S.fit.setSpec(S.spec, { form: S.formPick }); formUi(); scanStart('swap'); if (S.src === 'photo') glide(); });
     $('#toMirror').addEventListener('change', e => { S.mirror = e.target.checked && S.facing === 'user'; });
     $('#toAdjust').addEventListener('click', () => { const p = $('#toPanel'), on = p.hidden; p.hidden = !on; $('#toAdjust').setAttribute('aria-expanded', on); });
 
@@ -222,7 +325,7 @@
       sh.querySelector('[data-share]')?.addEventListener('click', () => navigator.share({ files: [file], title: title() }).catch(() => {}));
     }
     $('#toShot').addEventListener('click', () => {
-      if (!S.src || !S.w) return; if (S.src === 'photo') { const was = S.points; S.points = false; still(); S.points = was; }
+      if (!S.src || !S.w) return; if (S.src === 'photo') { const was = S.points; S.points = false; S.scan = null; still(); S.points = was; }
       view.toBlob(b => { if (b) result('image', b); if (S.src === 'photo' && S.points) still(); }, 'image/jpeg', 0.93);
       view.classList.remove('flash'); void view.offsetWidth; view.classList.add('flash');
     });

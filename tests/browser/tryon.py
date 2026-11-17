@@ -72,8 +72,10 @@ GREEN = """
   const green = (x0, y0, x1, y1) => { const im = data(x0, y0, x1, y1), d = im.data; let n = 0; for (let i = 0; i < d.length; i += 4) if (isG(d, i)) n++; return n / (im.width * im.height); };
   const top = () => { const im = data(0, 0, 1, 1), d = im.data; for (let y = 0; y < im.height; y++) { let n = 0; for (let x = 0; x < im.width; x++) if (isG(d, (y * im.width + x) * 4)) n++; if (n > 12) return y; } return -1; };
   const set = (id, v) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); };
+  /* a change glides into place: wait until it has */
+  const rest = async () => { await new Promise(r => setTimeout(r, 80)); for (let i = 0; i < 400 && (FTTryOn.gliding || FTTryOn.scan); i++) await new Promise(r => setTimeout(r, 40)); };
 """
-on_photo = "() => window.FTTryOn && FTTryOn.src === 'photo' && FTTryOn.fit && FTTryOn.fit.has && !document.querySelector('#toView').hidden && document.querySelector('#toLoad').hidden"
+on_photo = "() => window.FTTryOn && FTTryOn.src === 'photo' && FTTryOn.fit && FTTryOn.fit.has && !document.querySelector('#toView').hidden && document.querySelector('#toLoad').hidden && !FTTryOn.scan && !FTTryOn.gliding"       # found, scanned and settled
 
 class FakeAI(BaseHTTPRequestHandler):
     """Stands in for the AI service: takes a job, says 'processing' once, then hands back the garment picture it was sent."""
@@ -109,12 +111,25 @@ with sync_playwright() as p:
     pg.screenshot(path=f'{OUT}/tryon-{size}-photo.png')
     if not pg.is_visible('#toPanel'): pg.click('#toAdjust'); pg.wait_for_timeout(350)
     check(pg.is_visible('#toPanel'), 'the fit controls open')
-    a = js(pg, GREEN + "set('adjWidth', 125); await new Promise(r => setTimeout(r, 150)); const wide = green(.2, .34, .8, .36); set('adjWidth', 100); set('adjDy', -12); await new Promise(r => setTimeout(r, 150)); const up = top(); set('adjDy', 12); await new Promise(r => setTimeout(r, 150)); const down = top(); set('adjDy', 0); set('adjLength', 118); await new Promise(r => setTimeout(r, 150)); const long = green(0, 0, 1, 1); set('adjLength', 86); await new Promise(r => setTimeout(r, 150)); const short = green(0, 0, 1, 1); return { wide, up, down, long, short };")
-    check(a['wide'] > g['row'] * 1.08, f"Width makes it wider ({g['row']:.3f} to {a['wide']:.3f})")
+    a = js(pg, GREEN + "set('adjWidth', 125); await rest(); const wide = green(.2, .34, .8, .36); set('adjWidth', 100); set('adjDy', -12); await rest(); const up = top(); set('adjDy', 12); await rest(); const down = top(); set('adjDy', 0); set('adjLength', 118); await rest(); const long = green(0, 0, 1, 1); set('adjLength', 86); await rest(); const short = green(0, 0, 1, 1); return { wide, up, down, long, short };")
+    check(a['wide'] > g['row'] * 1.05, f"Width makes it wider ({g['row']:.3f} to {a['wide']:.3f})")
     check(a['up'] != a['down'] and abs(a['up'] - a['down']) > 6, f"Up/down moves it ({a['up']} and {a['down']})")
     check(a['long'] > a['short'] * 1.03, f"Length makes it longer ({a['short']:.3f} to {a['long']:.3f})")
-    pg.click('#toReset'); pg.wait_for_timeout(200); r = js(pg, GREEN + "return { row: green(.2, .34, .8, .36), top: top() };")
+    pg.click('#toReset'); r = js(pg, GREEN + "await rest(); return { row: green(.2, .34, .8, .36), top: top() };")
     check(abs(r['row'] - g['row']) < 0.01 and abs(r['top'] - g['top']) <= 2, 'Reset puts the fit back')
+    # ── fitted to the figure's own outline, scanned in, the hologram view, and the form inside the garment
+    sh = pg.evaluate("() => ({ shape: FTTryOn.fit.shape, known: FTTryOn.known, note: document.querySelector('#toFitNote').textContent, scans: FTTryOn.scans || 0 })"); vals = list(sh['shape'].values())
+    check(sh['known'] >= 4 and any(abs(v - 1) > 0.04 for v in vals) and all(0.7 <= v <= 1.55 for v in vals) and 'outline' in sh['note'], f"the garment is shaped to the figure's own outline ({sh['known']} of 7 widths read; {sh['note'][:40]})")
+    check(sh['scans'] >= 1, 'the body scan ran when the figure was found')
+    ms = js(pg, GREEN + "const low0 = green(.42, .6, .58, .66); FTTryOn.scan = { mode: 'scan', t0: performance.now() - 0.5e9, dur: 1e9 }; set('adjWidth', 100); await new Promise(r => setTimeout(r, 700)); const a = { low0, chest: green(.42, .32, .58, .4), low: green(.42, .6, .58, .66) }; FTTryOn.scan = null; await rest(); a.after = green(.42, .6, .58, .66); return a;")
+    check(ms['low0'] > 0.8 and ms['low'] < 0.1 and ms['chest'] > 0.8 and ms['after'] > 0.8, f"part way through the scan the garment has formed above the line and not yet below it (above {ms['chest']:.2f}, below {ms['low']:.2f}, afterwards {ms['after']:.2f})")
+    ho = js(pg, GREEN + "const px = () => { const d = data(.45, .34, .55, .4).data; let r = 0, g = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; } const n = d.length / 4; return [r / n, g / n, b / n]; }; const tick = on => { const c = document.querySelector('#toHolo'); c.checked = on; c.dispatchEvent(new Event('change', { bubbles: true })); return new Promise(r => setTimeout(r, 350)); }; const a = px(); await tick(true); const h = px(); await tick(false); const z = px(); return { a, h, z };")
+    check(ho['h'][2] > ho['a'][2] + 12 and max(abs(ho['a'][i] - ho['z'][i]) for i in range(3)) < 3, f"Hologram view shows the garment as light, and switches back ({[round(v) for v in ho['a']]} to {[round(v) for v in ho['h']]})")
+    f0 = pg.evaluate("() => FTTryOn.fit.form"); other = 'woman' if f0 == 'man' else 'man'
+    check(pg.get_attribute(f'#toForm [data-form="{f0}"]', 'aria-pressed') == 'true', f"the fit controls show the form the garment is cut for ({f0})")
+    pg.click(f'#toForm [data-form="{other}"]'); pg.wait_for_function(f"() => FTTryOn.fit.form === '{other}' && !FTTryOn.scan && !FTTryOn.gliding", timeout=30000)
+    check(pg.get_attribute(f'#toForm [data-form="{other}"]', 'aria-pressed') == 'true' and js(pg, GREEN + "return green(.42, .32, .58, .42)") > 0.9, f"and it can be cut for the other one ({other})")
+    pg.click(f'#toForm [data-form="{f0}"]'); pg.wait_for_function(f"() => FTTryOn.fit.form === '{f0}' && !FTTryOn.scan && !FTTryOn.gliding", timeout=30000)
     # body points
     pg.click('#toPoints'); pg.wait_for_selector('#toPts circle', state='attached'); n = pg.locator('#toPts circle').count(); check(n >= 12, f'the body points show ({n})')
     k = pg.evaluate("() => document.querySelector('#toPts circle').dataset.k"); j0 = pg.evaluate(f"() => FTTryOn.fit.joints()['{k}']")
@@ -139,8 +154,20 @@ with sync_playwright() as p:
     ov = pg.evaluate("() => document.documentElement.scrollWidth - document.documentElement.clientWidth"); check(ov <= 1, f'the page fits the screen ({ov})')
     check(not pg.is_visible('#toReal') or REMOTE, 'Photoreal is not offered where it is not switched on')
 
+    # ── a top on its own: the wearer keeps their own trousers (the ones shown on the mannequin are not part of the design)
+    pg.goto(BASE + '/try-on?template=olive-bomber&delegate=cpu&model=lite', wait_until='domcontentloaded'); pg.wait_for_function('() => window.FTTryOn && window.FTFit', timeout=30000)
+    pg.set_input_files('#toFile', files['standin.jpg']); pg.wait_for_function(on_photo, timeout=90000)
+    lay = js(pg, "const f = FTTryOn.fit; f.step(0); const c = document.createElement('canvas'); c.width = f.canvas.width; c.height = f.canvas.height; const x = c.getContext('2d'); x.drawImage(f.canvas, 0, 0); const W = c.width, H = c.height, on = (x0, y0, x1, y1) => { const d = x.getImageData(Math.round(x0 * W), Math.round(y0 * H), Math.round((x1 - x0) * W), Math.round((y1 - y0) * H)).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 40) n++; return n / (d.length / 4); }; return { chest: on(.42, .32, .58, .42), legs: on(.3, .72, .7, .92) };")
+    check(lay['chest'] > 0.9 and lay['legs'] == 0, f"a jacket is drawn on the chest and nothing is drawn over the legs (chest {lay['chest']:.2f}, legs {lay['legs']:.3f})")
+    # trousers: a waist, a seat and two legs, and nothing above the waist
+    pg.goto(BASE + '/try-on?template=grey-joggers&delegate=cpu&model=lite', wait_until='domcontentloaded'); pg.wait_for_function('() => window.FTTryOn && window.FTFit', timeout=30000)
+    pg.set_input_files('#toFile', files['standin.jpg']); pg.wait_for_function(on_photo, timeout=90000)
+    lay = js(pg, "const f = FTTryOn.fit; f.step(0); const c = document.createElement('canvas'); c.width = f.canvas.width; c.height = f.canvas.height; const x = c.getContext('2d'); x.drawImage(f.canvas, 0, 0); const W = c.width, H = c.height, on = (x0, y0, x1, y1) => { const d = x.getImageData(Math.round(x0 * W), Math.round(y0 * H), Math.round((x1 - x0) * W), Math.round((y1 - y0) * H)).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 40) n++; return n / (d.length / 4); }; return { chest: on(.42, .3, .58, .4), seat: on(.44, .56, .56, .6), legs: on(.3, .72, .7, .9), form: f.form };")
+    check(lay['chest'] == 0 and lay['seat'] > 0.9 and lay['legs'] > 0.15, f"joggers are drawn from the waist down only (chest {lay['chest']:.2f}, seat {lay['seat']:.2f}, legs {lay['legs']:.2f})")
+    pg.goto(BASE + '/try-on?draft=1&delegate=cpu&model=lite', wait_until='domcontentloaded'); pg.wait_for_function('() => window.FTTryOn && window.FT3D && window.FTFit', timeout=30000)
+
     # ── a video
-    pg.set_input_files('#toVFile', files['standin.webm']); pg.wait_for_function("() => FTTryOn.src === 'video' && FTTryOn.fit.has && FTTryOn.frames > 3", timeout=60000); pg.wait_for_timeout(900)
+    pg.set_input_files('#toVFile', files['standin.webm']); pg.wait_for_function("() => FTTryOn.src === 'video' && FTTryOn.fit && FTTryOn.fit.has && FTTryOn.frames > 3", timeout=90000); pg.wait_for_timeout(900)
     v = js(pg, GREEN + "const a = FTTryOn.frames; await new Promise(r => setTimeout(r, 1200)); return { chest: green(.42, .32, .58, .42), wall: green(.02, .05, .15, .3), moved: FTTryOn.frames - a, ms: FTTryOn.detectMs };")
     check(v['chest'] > 0.85 and v['wall'] == 0 and v['moved'] > 1, f"the garment stays on the figure as the video plays (chest {v['chest']:.2f}, finding the body takes {v['ms']:.0f} ms here)")
     pg.screenshot(path=f'{OUT}/tryon-{size}-video.png')

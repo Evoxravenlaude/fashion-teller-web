@@ -75,12 +75,12 @@
   const SAMPLE_VENDORS = [
     { id: 'v_luxe', name: 'Luxe Ankara Hubs', city: 'Lagos', country: 'Nigeria', specialties: ['Kaftans', 'Agbada', 'Dresses', 'Embroidery'], bio: 'Lekki atelier known for hand-finished embroidery on kaftans and agbada. Fabric sourced from Balogun market or supplied by you.', rating: 4.8, reviews: 212, ordersDone: 640, priceFactor: 1.05, speedFactor: 1.1, leadMin: 6, since: 2016 },
     { id: 'v_kano', name: 'Kano Embroidery Works', city: 'Kano', country: 'Nigeria', specialties: ['Kaftans', 'Agbada', 'Embroidery'], bio: 'Third-generation embroiderers. Machine and hand embroidery in gold, silver and tonal thread.', rating: 4.9, reviews: 148, ordersDone: 410, priceFactor: 1.22, speedFactor: 0.8, leadMin: 4, since: 2009 },
-    { id: 'v_island', name: 'Lagos Island Fashion House', city: 'Lagos', country: 'Nigeria', specialties: ['Suits', 'Shirts', 'Dresses'], bio: 'Bespoke suits and shirts from Lagos Island. Canvassed jackets, working cuffs, two fittings by video.', rating: 4.7, reviews: 96, ordersDone: 320, priceFactor: 1.15, speedFactor: 1.2, leadMin: 7, since: 2014 },
+    { id: 'v_island', name: 'Lagos Island Fashion House', city: 'Lagos', country: 'Nigeria', specialties: ['Suits', 'Shirts', 'Dresses', 'Streetwear'], bio: 'Bespoke suits and shirts from Lagos Island. Canvassed jackets, working cuffs, two fittings by video.', rating: 4.7, reviews: 96, ordersDone: 320, priceFactor: 1.15, speedFactor: 1.2, leadMin: 7, since: 2014 },
     { id: 'v_asoebi', name: 'Aso Ebi Atelier', city: 'Ibadan', country: 'Nigeria', specialties: ['Dresses', 'Bridal', 'Production runs'], bio: 'Occasion wear and aso ebi for groups of 5 to 200. Consistent sizing across a run.', rating: 4.6, reviews: 301, ordersDone: 1900, priceFactor: 0.9, speedFactor: 1.0, leadMin: 8, since: 2012 },
     { id: 'v_abuja', name: 'Maitama Bespoke', city: 'Abuja', country: 'Nigeria', specialties: ['Kaftans', 'Suits', 'Shirts'], bio: 'Senator styles and sharp kaftans for the capital. Quick turnarounds for travel.', rating: 4.5, reviews: 74, ordersDone: 210, priceFactor: 0.95, speedFactor: 0.7, leadMin: 3, since: 2019 },
-    { id: 'v_ph', name: 'Garden City Tailors', city: 'Port Harcourt', country: 'Nigeria', specialties: ['Kaftans', 'Dresses', 'Shirts'], bio: 'Everyday custom wear at honest prices. Good with linen and cotton.', rating: 4.4, reviews: 158, ordersDone: 520, priceFactor: 0.82, speedFactor: 1.3, leadMin: 7, since: 2017 },
+    { id: 'v_ph', name: 'Garden City Tailors', city: 'Port Harcourt', country: 'Nigeria', specialties: ['Kaftans', 'Dresses', 'Shirts', 'Streetwear'], bio: 'Everyday custom wear at honest prices. Good with linen and cotton.', rating: 4.4, reviews: 158, ordersDone: 520, priceFactor: 0.82, speedFactor: 1.3, leadMin: 7, since: 2017 },
     { id: 'v_ndiaye', name: 'Maison Ndiaye', city: 'Dakar', country: 'Senegal', specialties: ['Agbada', 'Kaftans', 'Embroidery'], bio: 'Grand boubou and kaftan specialists. Bazin riche and hand embroidery.', rating: 4.7, reviews: 63, ordersDone: 180, priceFactor: 1.1, speedFactor: 1.4, leadMin: 9, since: 2011 },
-    { id: 'v_lbv', name: 'Casa Libreville Tailoring', city: 'Libreville', country: 'Gabon', specialties: ['Dresses', 'Shirts', 'Suits'], bio: 'Francophone cuts with African prints. Ships across Central and West Africa.', rating: 4.6, reviews: 41, ordersDone: 130, priceFactor: 0.88, speedFactor: 1.5, leadMin: 10, since: 2018 },
+    { id: 'v_lbv', name: 'Casa Libreville Tailoring', city: 'Libreville', country: 'Gabon', specialties: ['Dresses', 'Shirts', 'Suits', 'Streetwear'], bio: 'Francophone cuts with African prints. Ships across Central and West Africa.', rating: 4.6, reviews: 41, ordersDone: 130, priceFactor: 0.88, speedFactor: 1.5, leadMin: 10, since: 2018 },
   ];
   const SAMPLE_DESIGNERS = [
     { id: 'u_d1', name: 'Zainab Bello', handle: 'zainabcuts', city: 'Abuja', country: 'Nigeria', specialties: ['Kaftans', 'Senator sets', 'Embroidery'], bio: 'Menswear designer. Clean senator sets and kaftans with embroidery that sits exactly where it should.', feeFrom: 15000, turnaroundDays: 3, open: true, rating: 4.9, reviews: 58, completed: 73, featured: true },
@@ -222,7 +222,8 @@
   const need = role => { const u = me(); if (!u) fail('Sign in to continue.', 401); if (role && u.role !== role && u.role !== 'admin') fail('This area is for ' + role + ' accounts.', 403); return u; };
   const profileOf = id => db.designers.find(p => p.userId === id);
   const vendorOf = u => u && db.vendors.find(v => v.userId === u.id);
-  const pub = u => u && ({ id: u.id, email: u.email, name: u.name, role: u.role, phone: u.phone || '', city: u.city || '', country: u.country || '', vendorId: u.vendorId || null, status: u.status, createdAt: u.createdAt, demo: !!u.demo, emailVerified: verified(u), emailPrefs: prefsOf(u), designer: !!profileOf(u.id), handle: profileOf(u.id)?.handle || null, hue: hash32(u.id) % 360 });
+  const pub = u => u && ({ id: u.id, email: u.email, name: u.name, role: u.role, phone: u.phone || '', city: u.city || '', country: u.country || '', vendorId: u.vendorId || null, status: u.status, createdAt: u.createdAt, demo: !!u.demo, emailVerified: verified(u), emailPrefs: prefsOf(u), designer: !!profileOf(u.id), handle: profileOf(u.id)?.handle || null, hue: hash32(u.id) % 360,
+    ...(earner(u) ? { fees: { order: feeRate(u, 'order'), commission: feeRate(u, 'commission') }, ownFee: u.feePercent ?? null } : {}) });
   const verified = u => u.emailVerified ?? !!(u.demo || u.sample), prefsOf = u => ({ orders: true, messages: true, ...(u.emailPrefs || {}) });
   /* what anyone may see of a person */
   const person = id => { const u = userById(id); if (!u) return { id, name: 'Former member', handle: null, hue: 0, city: '', country: '', designer: false, vendorId: null }; const p = profileOf(id); return { id: u.id, name: u.vendorId && u.sample ? db.vendors.find(v => v.id === u.vendorId)?.name || u.name : u.name, handle: p?.handle || null, hue: hash32(u.id) % 360, city: u.city || '', country: u.country || '', designer: !!p, vendorId: u.vendorId || null }; };
@@ -236,14 +237,25 @@
   function token(kind, u, hours) { db.tokens = db.tokens.filter(t => !(t.userId === u.id && t.kind === kind) && t.exp > now()); const t = { token: uid('k') + uid(), kind, userId: u.id, email: u.email, exp: now() + hours * 3600000 }; db.tokens.push(t); return t.token; }
   function sendVerify(u) { mail(u.email, 'verify', 'Confirm your email address', `Hello ${u.name.split(' ')[0]}. Confirm this is your address so we can reach you about your orders and payments.`, '/signin?verify=' + token('verify', u, 72)); }
 
+  /* ───────── the platform fee ─────────
+     What Fashion Teller keeps when a payment is released. An admin sets it (one rate for tailor orders, one for designer
+     commissions) and can give an account its own rate. A quote or an offer records the rate when it is made, and the job
+     is paid at that rate, so a later change never alters work already agreed. config.js has the starting rate. */
+  const FEE_KINDS = ['order', 'commission'];
+  const cleanPct = v => { if (v === '' || v == null || typeof v === 'boolean') return null; v = Number(v); return Number.isFinite(v) && v >= 0 && v <= 50 ? Math.round(v * 100) / 100 : null; };
+  const startFee = () => cleanPct(C.payments?.platformFeePercent) ?? 20;
+  const platformFees = () => { const d = startFee(), s = db.fees || {}; return { order: cleanPct(s.order) ?? d, commission: cleanPct(s.commission) ?? d }; };
+  const feeRate = (u, kind, fees) => (u && u.feePercent != null ? u.feePercent : (fees || platformFees())[kind]);
+  const lockedRate = (userId, kind, job) => (job && job.feePercent != null ? job.feePercent : feeRate(userById(userId), kind));
+  const earner = u => !!(u && (u.vendorId || profileOf(u.id)));
+
   /* ───────── payouts ─────────
      When a payment is released, the tailor or designer is owed it less the platform fee. Built-in mode pretends to send it:
      a payout waits until they have added bank details, then goes "on its way" and arrives a few seconds later. */
-  const feePct = () => Math.max(0, Math.min(50, +(C.payments?.platformFeePercent ?? 10) || 0));
   const BANKS = [['044', 'Access Bank'], ['050', 'Ecobank'], ['070', 'Fidelity Bank'], ['011', 'First Bank'], ['214', 'FCMB'], ['058', 'GTBank'], ['082', 'Keystone Bank'], ['50211', 'Kuda'], ['50515', 'Moniepoint'], ['999992', 'OPay'], ['999991', 'PalmPay'], ['076', 'Polaris Bank'], ['101', 'Providus Bank'], ['221', 'Stanbic IBTC'], ['232', 'Sterling Bank'], ['032', 'Union Bank'], ['033', 'UBA'], ['035', 'Wema Bank'], ['057', 'Zenith Bank']];
-  function payout(userId, kind, refId, title, gross) {
+  function payout(userId, kind, refId, title, gross, job) {
     const u = userById(userId); if (!u || !(gross > 0)) return null;
-    const fee = Math.round(gross * feePct() / 100), po = { id: uid('po_'), userId, kind, refId, title: txt(title, 120), gross, fee, net: gross - fee, status: u.sample ? 'paid' : 'pending', createdAt: iso(), sentAt: u.sample ? iso() : null, paidAt: u.sample ? iso() : null, reference: 'FTP' + hash32(refId + userId).toString(36).toUpperCase(), note: '' };
+    const rate = lockedRate(userId, kind, job), fee = Math.round(gross * rate / 100), po = { id: uid('po_'), userId, kind, refId, title: txt(title, 120), gross, feePercent: rate, fee, net: gross - fee, status: u.sample ? 'paid' : 'pending', createdAt: iso(), sentAt: u.sample ? iso() : null, paidAt: u.sample ? iso() : null, reference: 'FTP' + hash32(refId + userId).toString(36).toUpperCase(), note: '' };
     db.payouts.unshift(po); if (!u.sample) settle(userId); return po;
   }
   function settle(userId) {
@@ -307,7 +319,7 @@
       const due = ms(req.createdAt) + sampleDelay(req.id, v.id); if (now() < due) continue;
       const p = E.price(spec, v), jitter = 1 + ((h % 9) - 4) / 100, price = Math.round((p.price * jitter) / 500) * 500;
       const notes = ['Fabric included. Two fittings by video.', 'Price includes fabric and delivery within Nigeria.', 'Can start this week. Fabric sourced locally or send yours.', 'Embroidery done by hand. Fabric included.', 'Includes fabric; add 2 days for delivery outside Lagos.'];
-      db.quotes.push({ id: uid('q_'), requestId: req.id, designId: design.id, vendorId: v.id, price, deliveryDays: p.deliveryDays, note: notes[h % notes.length], includesFabric: true, status: 'offered', createdAt: iso(due), validUntil: iso(now() + 7 * DAY) });
+      db.quotes.push({ id: uid('q_'), requestId: req.id, designId: design.id, vendorId: v.id, price, feePercent: feeRate(userById(v.userId), 'order'), deliveryDays: p.deliveryDays, note: notes[h % notes.length], includesFabric: true, status: 'offered', createdAt: iso(due), validUntil: iso(now() + 7 * DAY) });
       const nq = db.quotes.filter(q => q.requestId === req.id && q.status === 'offered').length;
       notify(req.userId, 'quote', nq > 1 ? `${nq} quotes for "${design.title}"` : `${v.name} sent a quote`, nq > 1 ? `Latest: ${v.name}, ${fmt(price)}, ${p.deliveryDays} days.` : `${fmt(price)}, ${p.deliveryDays} days for "${design.title}".`, `/studio?design=${design.id}&step=4`, 'quote:' + req.id);
       changed = true;
@@ -343,7 +355,7 @@
     if (c.status === 'requested' && age > pace * 0.6) {
       if (!p.open) { c.status = 'declined'; c.updatedAt = iso(); say(c.threadId, 'system', `${first} is not taking commissions right now.`); notify(c.clientId, 'commission', `${first} declined your request`, c.title, `/commissions?id=${c.id}`); return true; }
       const fee = Math.max(p.feeFrom, Math.round(Math.min(c.budget || p.feeFrom, p.feeFrom * 2) / 1000) * 1000);
-      c.offer = { fee, days: p.turnaroundDays, note: 'One design, built for your measurements and the occasion. Two rounds of changes included.', at: iso() }; c.status = 'offered'; c.updatedAt = iso();
+      c.offer = { fee, days: p.turnaroundDays, note: 'One design, built for your measurements and the occasion. Two rounds of changes included.', at: iso() }; c.feePercent = feeRate(d, 'commission'); c.status = 'offered'; c.updatedAt = iso();
       say(c.threadId, d.id, 'Thank you for the brief. I would love to do this. I have sent my offer; once it is paid I start straight away.'); say(c.threadId, 'system', `${first} offered ${fmt(fee)}, ${p.turnaroundDays} days.`);
       notify(c.clientId, 'commission', `${first} sent an offer`, `${fmt(fee)}, ${p.turnaroundDays} days for "${c.title}".`, `/commissions?id=${c.id}`); return true;
     }
@@ -539,7 +551,7 @@
     /** The demo mailbox: every email this browser would have sent, newest first. Built-in mode only. */
     async mailbox() { return db.mail.slice(0, 40).map(clone); },
     /** What this installation has switched on. The backend answers the same question at /config/. */
-    async features() { return { feePercent: feePct(), payouts: 'test', mail: 'demo', tryOnAi: false, paymentsLive: false }; },
+    async features() { const fees = platformFees(); return { feePercent: fees.order, fees, payouts: 'test', mail: 'demo', tryOnAi: false, paymentsLive: false }; },
 
     /* ───── payouts: where to send the money, and what has been sent ───── */
     async listBanks() { return BANKS.map(([code, name]) => ({ code, name })); },
@@ -555,8 +567,14 @@
     },
     async earnings() {
       const u = need(); simulate(u); const mine = db.payouts.filter(x => x.userId === u.id), sum = st => mine.filter(x => x.status === st).reduce((n, x) => n + x.net, 0);
-      const held = db.payments.filter(p => p.status === 'paid' && ((u.vendorId && p.vendorId === u.vendorId) || p.designerId === u.id)).reduce((n, p) => n + p.amount, 0);
-      return { feePercent: feePct(), held, heldNet: held - Math.round(held * feePct() / 100), pending: sum('pending'), processing: sum('processing'), paid: sum('paid'), failed: sum('failed'), account: await S.payoutAccount(), payouts: mine.slice(0, 60).map(payoutOut) };
+      const jobs = new Map();                              // money held per job, so each job's fee is worked out at its own rate
+      for (const p of db.payments) if (p.status === 'paid' && ((u.vendorId && p.vendorId === u.vendorId) || p.designerId === u.id)) {
+        const k = p.orderId ? 'o' + p.orderId : 'c' + p.commissionId, j = jobs.get(k) || { amount: 0, kind: p.orderId ? 'order' : 'commission', job: p.orderId ? db.orders.find(o => o.id === p.orderId) : db.commissions.find(c => c.id === p.commissionId) };
+        j.amount += p.amount; jobs.set(k, j);
+      }
+      const held = [...jobs.values()].reduce((n, j) => n + j.amount, 0), heldNet = [...jobs.values()].reduce((n, j) => n + j.amount - Math.round(j.amount * lockedRate(u.id, j.kind, j.job) / 100), 0);
+      const fees = { order: feeRate(u, 'order'), commission: feeRate(u, 'commission') };
+      return { feePercent: fees[u.vendorId ? 'order' : 'commission'], fees, ownFee: u.feePercent ?? null, held, heldNet, pending: sum('pending'), processing: sum('processing'), paid: sum('paid'), failed: sum('failed'), account: await S.payoutAccount(), payouts: mine.slice(0, 60).map(payoutOut) };
     },
 
     /* ───── designs + versions ───── */
@@ -719,7 +737,7 @@
       if (!['requested', 'offered'].includes(c.status)) fail('This request is no longer open for an offer.');
       fee = Math.round(Number(fee)); days = Math.round(Number(days));
       if (!(fee >= 1000 && fee <= 5000000)) fail('Enter a fee of at least ₦1,000.'); if (!(days >= 1 && days <= 60)) fail('Enter a delivery time between 1 and 60 days.');
-      c.offer = { fee, days, note: txt(note, 400), at: iso() }; c.status = 'offered'; c.updatedAt = iso();
+      c.offer = { fee, days, note: txt(note, 400), at: iso() }; c.feePercent = feeRate(u, 'commission'); c.status = 'offered'; c.updatedAt = iso();
       say(c.threadId, 'system', `${u.name.split(' ')[0]} offered ${fmt(fee)}, ${days} day${days === 1 ? '' : 's'}.`);
       notify(c.clientId, 'commission', `${u.name.split(' ')[0]} sent an offer`, `${fmt(fee)}, ${days} days for "${c.title}".`, `/commissions?id=${c.id}`); save(); return commissionOut(c);
     },
@@ -768,9 +786,9 @@
       db.designs.unshift(nd); c.resultDesignId = nd.id; c.status = 'approved'; c.updatedAt = iso();
       db.payments.filter(p => p.commissionId === c.id && p.status === 'paid').forEach(p => (p.status = 'released'));
       const prof = profileOf(c.designerId); if (prof) prof.completed = (prof.completed || 0) + 1;
-      const po = payout(c.designerId, 'commission', c.id, c.title, c.paid);
+      const po = payout(c.designerId, 'commission', c.id, c.title, c.paid, c);
       say(c.threadId, 'system', `${u.name.split(' ')[0]} approved the design. ${fmt(c.paid)} released to ${designer.name.split(' ')[0]}.`);
-      notify(c.designerId, 'commission', 'Design approved, payment released', `${fmt(po ? po.net : c.paid)} for "${c.title}"${po && po.fee ? `, after the ${feePct()}% platform fee` : ''}.`, `/commissions?id=${c.id}`);
+      notify(c.designerId, 'commission', 'Design approved, payment released', `${fmt(po ? po.net : c.paid)} for "${c.title}"${po && po.fee ? `, after the ${po.feePercent}% platform fee` : ''}.`, `/commissions?id=${c.id}`);
       const dUser = userById(c.designerId); if (dUser && !dUser.sample) play(dUser, 'collab');
       const reward = play(u, 'collab'); save(); return { commission: commissionOut(c), design: designOut(nd), reward };
     },
@@ -892,7 +910,7 @@
       const req = db.requests.filter(x => x.designId === designId && x.userId === u.id && x.status !== 'closed').sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
       if (!req) return [];
       if (simulateQuotes(req)) save();
-      return db.quotes.filter(q => q.requestId === req.id && q.status !== 'withdrawn').map(q => ({ ...clone(q), vendor: vendorPub(db.vendors.find(v => v.id === q.vendorId)) }));
+      return db.quotes.filter(q => q.requestId === req.id && q.status !== 'withdrawn').map(q => { const { feePercent: _fee, ...rest } = clone(q); return { ...rest, vendor: vendorPub(db.vendors.find(v => v.id === q.vendorId)) }; });
     },
     /* tailor side */
     async openRequests() {
@@ -912,7 +930,7 @@
       if (!(deliveryDays >= 1 && deliveryDays <= 90)) fail('Enter a delivery time between 1 and 90 days.');
       let q = db.quotes.find(x => x.requestId === requestId && x.vendorId === v.id);
       const fresh = !q; if (!q) { q = { id: uid('q_'), requestId, designId: r.designId, vendorId: v.id, createdAt: iso() }; db.quotes.push(q); }
-      Object.assign(q, { price, deliveryDays, note: txt(note, 400), includesFabric: !!includesFabric, status: 'offered', validUntil: iso(now() + 7 * DAY), updatedAt: iso() });
+      Object.assign(q, { price, deliveryDays, feePercent: feeRate(u, 'order'), note: txt(note, 400), includesFabric: !!includesFabric, status: 'offered', validUntil: iso(now() + 7 * DAY), updatedAt: iso() });
       const d = db.designs.find(x => x.id === r.designId);
       notify(r.userId, 'quote', `${v.name} ${fresh ? 'sent' : 'updated'} a quote`, `${fmt(price)}, ${deliveryDays} days for "${d?.title || 'your design'}".`, `/studio?design=${r.designId}&step=4`);
       save(); return clone(q);
@@ -928,7 +946,7 @@
       const existing = db.orders.find(o => o.quoteId === quoteId && o.status === 'awaiting_payment'); if (existing) { existing.plan = plan; save(); return S._orderOut(existing); }
       const d = db.designs.find(x => x.id === q.designId), v = db.vendors.find(x => x.id === q.vendorId);
       let id; do { id = 'FT-' + String(100000 + Math.floor(Math.random() * 900000)); } while (db.orders.some(o => o.id === id));
-      const o = { id, userId: u.id, vendorId: q.vendorId, designId: q.designId, versionN: r.versionN, quoteId, requestId: r.id, measurementId: r.measurementId, total: q.price, paid: 0, plan, phase: 'concept_generated', status: 'awaiting_payment', createdAt: iso(), paidAt: null, eta: null, deliveredAt: null, receivedAt: null, issue: null, reviewId: null, events: [{ at: iso(), phase: 'concept_generated', title: 'Design approved', body: `Version ${r.versionN} of "${d.title}" approved. ${v.name} quoted ${fmt(q.price)}.`, by: 'system' }] };
+      const o = { id, userId: u.id, vendorId: q.vendorId, designId: q.designId, versionN: r.versionN, quoteId, requestId: r.id, measurementId: r.measurementId, total: q.price, paid: 0, feePercent: q.feePercent ?? feeRate(userById(v?.userId), 'order'), plan, phase: 'concept_generated', status: 'awaiting_payment', createdAt: iso(), paidAt: null, eta: null, deliveredAt: null, receivedAt: null, issue: null, reviewId: null, events: [{ at: iso(), phase: 'concept_generated', title: 'Design approved', body: `Version ${r.versionN} of "${d.title}" approved. ${v.name} quoted ${fmt(q.price)}.`, by: 'system' }] };
       db.orders.unshift(o); save(); return S._orderOut(o);
     },
     /** Payment. method: 'card' | 'transfer' | 'paystack'. kind: 'full' | 'deposit' | 'balance'. */
@@ -987,8 +1005,8 @@
       const v = db.vendors.find(x => x.id === o.vendorId);
       o.status = 'completed'; o.receivedAt = iso(); o.events.push({ at: iso(), phase: 'delivered', title: 'Received by the customer', body: `Payment released to ${v.name}.`, by: 'customer' });
       db.payments.filter(p => p.orderId === o.id && p.status === 'paid').forEach(p => (p.status = 'released')); v.ordersDone += 1;
-      const po = payout(v.userId, 'order', o.id, `Order ${o.id}`, o.paid);
-      notify(v.userId, 'order', `Order ${o.id} confirmed`, `${u.name.split(' ')[0]} has the garment. ${fmt(po ? po.net : o.paid)} released to you${po && po.fee ? `, after the ${feePct()}% platform fee` : ''}.`, '/workshop'); save(); return S._orderOut(o);
+      const po = payout(v.userId, 'order', o.id, `Order ${o.id}`, o.paid, o);
+      notify(v.userId, 'order', `Order ${o.id} confirmed`, `${u.name.split(' ')[0]} has the garment. ${fmt(po ? po.net : o.paid)} released to you${po && po.fee ? `, after the ${po.feePercent}% platform fee` : ''}.`, '/workshop'); save(); return S._orderOut(o);
     },
     async reportProblem(id, { reason = '', body = '' } = {}) {
       const u = need(), o = db.orders.find(x => x.id === id && x.userId === u.id); if (!o) fail('Order not found.', 404);
@@ -1023,6 +1041,31 @@
     /* ───── admin ───── */
     async adminPayouts() { need('admin'); simulatePayouts(); return db.payouts.slice(0, 200).map(x => { const a = db.payoutAccounts.find(y => y.userId === x.userId); return { ...payoutOut(x), payee: person(x.userId), account: a ? { bankName: a.bankName, accountName: a.accountName, last4: a.last4, number: a.number } : null }; }); },
     /** Mark a payout as sent by hand (with the bank reference), or send a failed one again. */
+    /* ───── the platform fee ───── */
+    async adminFees() {
+      need('admin'); const f = platformFees();
+      return { ...f, default: startFee(), accounts: db.users.filter(u => !u.sample && u.feePercent != null).sort((a, b) => a.name.localeCompare(b.name)).map(u => ({ ...person(u.id), email: u.email, role: u.role, feePercent: u.feePercent })) };
+    },
+    /** New platform rates ({order, commission}, 0 to 50). They apply to quotes and offers made from now on. */
+    async adminSetFees(body = {}) {
+      const a = need('admin'), was = platformFees(), next = {};
+      for (const k of FEE_KINDS) if (body[k] != null && body[k] !== '') { const v = cleanPct(body[k]); if (v == null) fail(`Enter a fee between 0% and 50% for ${k === 'order' ? 'tailor orders' : 'designer commissions'}.`); next[k] = v; }
+      if (!Object.keys(next).length) fail('Enter a fee between 0% and 50%.');
+      db.fees = { ...(db.fees || {}), ...next };
+      for (const k of Object.keys(next)) if (next[k] !== was[k]) audit('fee:' + k, `${was[k]}% to ${next[k]}%`, a.id);
+      save(); return S.adminFees();
+    },
+    /** An account's own rate, or '' / null to put it back on the platform rate. */
+    async adminSetUserFee(userId, pct) {
+      const a = need('admin'), u = userById(userId); if (!u || u.sample) fail('Account not found.', 404);
+      if (!earner(u)) fail('Only tailors and designers pay a platform fee.');
+      const blank = pct === '' || pct == null, v = blank ? null : cleanPct(pct); if (!blank && v == null) fail('Enter a fee between 0% and 50%, or leave it empty for the platform rate.');
+      if (v !== (u.feePercent ?? null)) {
+        u.feePercent = v; audit('fee:account', `${u.email} ${v != null ? v + '%' : 'platform rate'}`, a.id);
+        notify(u.id, 'payout', `Your platform fee is now ${feeRate(u, u.vendorId ? 'order' : 'commission')}%`, 'It applies to quotes and offers you make from now on. Work you have already quoted or offered keeps the rate it was agreed at.', '/account#payouts');
+      }
+      save(); return pub(u);
+    },
     async adminPayout(id, { action, reference = '' }) {
       const a = need('admin'), x = db.payouts.find(y => y.id === id); if (!x) fail('Payout not found.', 404);
       if (action === 'paid') { if (x.status === 'paid') fail('This payout is already marked as sent.'); x.status = 'paid'; x.paidAt = iso(); x.note = txt(reference, 80); notify(x.userId, 'payout', `${fmt(x.net)} sent to your bank`, x.title, '/account#payouts'); }

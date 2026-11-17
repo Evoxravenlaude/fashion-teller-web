@@ -192,6 +192,9 @@
     adminResolveReport: (r, action) => post(`/admin/reports/${id(r)}/resolve/`, { action }),
     adminPayouts: () => get('/admin/payouts/'),
     adminPayout: (p, o) => post(`/admin/payouts/${id(p)}/`, o),
+    adminFees: () => get('/admin/fees/'),
+    adminSetFees: body => put('/admin/fees/', body),
+    adminSetUserFee: (u, pct) => post(`/admin/users/${id(u)}/fee/`, { feePercent: pct === '' || pct == null ? null : pct }),
   };
 
   const A = (window.FTApi = {

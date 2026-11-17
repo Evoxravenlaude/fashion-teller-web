@@ -63,12 +63,60 @@
       panel('payments').onclick = async e => { const b = e.target.closest('[data-refund]'); if (!b) return; const p = list.find(x => x.id === b.closest('.tr').dataset.id); if (p && (await App.confirm(`Refund ${FT.money(p.amount)}?`, `${esc(p.commissionId ? 'Commission' : 'Order ' + p.orderId)} · ${esc(p.customer?.name || '')}. The ${p.commissionId ? 'commission' : 'order'} is closed.`, { ok: 'Refund', danger: true }))) { try { await A.adminRefund(p.id); FT.toast('Refunded'); payments(); overview(); } catch (x) { FT.toast(x.message); } } };
     }
     /* money owed to tailors and designers once a payment is released */
+    /* ───── the platform fee: two rates and any account's own rate ───── */
+    const EG = 60000, egLine = (rate, who) => `On ${FT.money(EG)}: Fashion Teller keeps ${FT.money(Math.round(EG * rate / 100))}, the ${who} receives ${FT.money(EG - Math.round(EG * rate / 100))}.`;
+    const earners = async () => (await A.adminUsers()).filter(x => x.status !== 'suspended' && (x.vendorId || x.designer));
+    function ownFee(person, after) {
+      const cur = person.ownFee ?? person.feePercent ?? '';
+      return App.ask(`Platform fee for ${person.name}`, 'Their own rate, instead of the platform rate. It applies to quotes and offers they make from now on; work they have already quoted or offered keeps its rate. They are told.',
+        [{ name: 'fee', label: 'Rate (%)', type: 'number', min: 0, maxValue: 50, step: 0.5, inputmode: 'decimal', value: cur, hint: 'From 0 to 50. Leave it empty to put them back on the platform rate.' }],
+        { ok: 'Save rate', submit: d => A.adminSetUserFee(person.id, d.fee) }).then(r => { if (r) { FT.toast('Rate saved'); after(); } });
+    }
+    async function feeBox() {
+      const fees = await A.adminFees();
+      return `<section class="feebox" aria-labelledby="feeH"><div><h2 class="h4" id="feeH">Platform fee</h2><p class="muted small">What Fashion Teller keeps when a payment is released. A change applies to quotes and offers made from now on; work already quoted or offered keeps the rate it was agreed at.</p></div>
+        <form class="form two" id="feeForm" novalidate>
+          <div class="field"><label for="fee-order">Tailor orders (%)</label><input id="fee-order" name="order" type="number" inputmode="decimal" min="0" max="50" step="0.5" value="${esc(fees.order)}"><small class="tip" data-eg="tailor">${egLine(fees.order, 'tailor')}</small></div>
+          <div class="field"><label for="fee-commission">Designer commissions (%)</label><input id="fee-commission" name="commission" type="number" inputmode="decimal" min="0" max="50" step="0.5" value="${esc(fees.commission)}"><small class="tip" data-eg="designer">${egLine(fees.commission, 'designer')}</small></div>
+          <p class="err full" role="alert"></p>
+          <div class="foot-row full"><p class="muted small">From 0 to 50. The starting rate is ${esc(fees.default)}%.</p><button class="btn ink" type="submit">Save rates</button></div>
+        </form>
+        <h3 class="h4" style="margin:22px 0 10px">Accounts with their own rate</h3>
+        ${fees.accounts.length ? tbl(['Account', 'Rate', ''], fees.accounts.map(x => `<div class="tr" data-uid="${esc(x.id)}">${td('Account', `<b>${esc(x.name)}</b><br><small class="muted">${esc(x.email)}</small>`)}${td('Rate', `<b>${esc(x.feePercent)}%</b>`)}${td('', `<div class="row-btns"><button class="btn ghost sm" type="button" data-ownfee>Change</button><button class="btn ghost sm" type="button" data-clearfee>Use platform rate</button></div>`)}</div>`)) : '<p class="muted small" style="margin:0">None. Every tailor and designer pays the platform rate.</p>'}
+        <div class="row-btns" style="margin-top:14px"><button class="btn ghost sm" type="button" data-addfee>Give an account its own rate</button></div></section>`;
+    }
+    function feeEvents(root, again) {
+      const form = $('#feeForm', root); if (!form) return;
+      form.addEventListener('input', e => { const i = e.target.closest('input'); if (!i) return; const tip = i.parentElement.querySelector('[data-eg]'), v = +i.value; if (tip) tip.textContent = i.value !== '' && v >= 0 && v <= 50 ? egLine(v, tip.dataset.eg) : 'Enter a number from 0 to 50.'; });
+      form.addEventListener('submit', async e => {
+        e.preventDefault(); const err = $('.err', form), btn = $('button[type="submit"]', form); err.textContent = ''; btn.disabled = true;
+        try { await A.adminSetFees(Object.fromEntries(new FormData(form))); A._features = null; FT.toast('Rates saved'); again(); } catch (x) { err.textContent = x.message; btn.disabled = false; }
+      });
+    }
+    async function feeClick(e, again) {
+      const add = e.target.closest('[data-addfee]'), chg = e.target.closest('[data-ownfee]'), clr = e.target.closest('[data-clearfee]'); if (!add && !chg && !clr) return false;
+      try {
+        if (add) {
+          const people = await earners(); if (!people.length) { FT.toast('No tailors or designers yet.'); return true; }
+          const pick = await App.ask('Give an account its own rate', 'Choose the tailor or designer.', [{ name: 'who', label: 'Account', type: 'select', options: people.map(x => [x.id, `${x.name} (${x.vendorId ? 'tailor' : 'designer'}${x.ownFee != null ? `, ${x.ownFee}% now` : ''})`]) }], { ok: 'Next' });
+          if (pick) { const p = people.find(x => x.id === pick.who); if (p) await ownFee(p, again); }
+        } else {
+          const row = e.target.closest('[data-uid]'), people = await earners(), p = people.find(x => x.id === row.dataset.uid); if (!p) return true;
+          if (chg) await ownFee(p, again); else { await A.adminSetUserFee(p.id, null); FT.toast(`${p.name} is back on the platform rate`); again(); }
+        }
+      } catch (x) { FT.toast(x.message); }
+      return true;
+    }
+
     async function payouts() {
-      const list = await A.adminPayouts(), f = await A.features(), manual = f.payouts === 'manual';
+      const [list, f, box] = await Promise.all([A.adminPayouts(), A.features(), feeBox()]), manual = f.payouts === 'manual';
       const ST = { pending: ['Waiting', 'warn'], processing: ['On its way', 'gold'], paid: ['Paid', 'ok'], failed: ['Failed', 'bad'], reversed: ['Returned', 'bad'] };
-      panel('payouts').innerHTML = `<p class="muted" style="margin:0 0 18px">${f.payouts === 'paystack' ? 'Sent automatically through Paystack when a payment is released. A failed one can be sent again.' : manual ? 'Transfers are not connected, so pay these from your bank and mark each one as sent.' : 'Test mode: payouts complete by themselves a few seconds after release. No money moves.'}${f.feePercent ? ` The platform fee is ${f.feePercent}%.` : ''}</p>` +
+      panel('payouts').innerHTML = `<p class="muted" style="margin:0 0 18px">${f.payouts === 'paystack' ? 'Sent automatically through Paystack when a payment is released. A failed one can be sent again.' : manual ? 'Transfers are not connected, so pay these from your bank and mark each one as sent.' : 'Test mode: payouts complete by themselves a few seconds after release. No money moves.'}</p>` + box +
+        `<h2 class="h4" style="margin:34px 0 12px">Payouts</h2>` +
         tbl(['Payee', 'For', 'Bank', 'They receive', 'Fee', 'Status', ''], list.map(x => `<div class="tr" data-id="${esc(x.id)}"><span data-l="Payee">${esc(x.payee?.name || '')}</span><span data-l="For">${esc(x.title)}<br><small class="muted">${esc(x.reference)}</small></span><span data-l="Bank">${x.account ? `${esc(x.account.bankName)} ${manual && x.account.number ? esc(x.account.number) : '••' + esc(x.account.last4)}<br><small class="muted">${esc(x.account.accountName)}</small>` : '<span class="muted">No bank details yet</span>'}</span><span data-l="They receive"><b>${FT.money(x.net)}</b></span><span data-l="Fee">${FT.money(x.fee)}</span><span data-l="Status">${App.badge(x.status, ST)}${x.note ? `<br><small class="muted">${esc(x.note)}</small>` : ''}</span><span>${(x.status === 'pending' || x.status === 'processing') && x.account && f.payouts !== 'paystack' ? '<button class="btn ghost sm" type="button" data-paid>Mark as sent</button>' : x.status === 'failed' || x.status === 'reversed' ? '<button class="btn ghost sm" type="button" data-retry>Send again</button>' : f.payouts === 'paystack' && x.status === 'processing' && x.sentAt && Date.now() - Date.parse(x.sentAt) > 6e5 ? '<button class="btn ghost sm" type="button" data-check>Check with Paystack</button>' : ''}</span></div>`));
+      feeEvents(panel('payouts'), payouts);
       panel('payouts').onclick = async e => {
+        if (await feeClick(e, payouts)) return;
         const paid = e.target.closest('[data-paid]'), retry = e.target.closest('[data-retry]'), chk = e.target.closest('[data-check]'); if (!paid && !retry && !chk) return; const x = list.find(y => y.id === e.target.closest('.tr').dataset.id); if (!x) return;
         try {
           if (paid) { const r = await App.ask('Mark as sent', `${FT.money(x.net)} to ${esc(x.payee?.name || '')}. Enter the reference from your bank so it can be traced.`, [{ name: 'reference', label: 'Bank reference', required: true }], { ok: 'Mark as sent' }); if (!r) return; await A.adminPayout(x.id, { action: 'paid', reference: r.reference }); }
@@ -94,9 +142,9 @@
     async function users() {
       const list = await A.adminUsers();
       panel('users').innerHTML = tbl(['Name', 'Role', 'Location', 'Activity', 'Status', ''], list.map(x => `<div class="tr" data-id="${esc(x.id)}">
-        ${td('Name', `<b>${esc(x.name)}</b><br><small class="muted">${esc(x.email)}</small>`)}${td('Role', esc(x.role) + (x.designer ? ' · designer' : ''))}${td('Location', where(x))}${td('Activity', `<small>${App.plural(x.designs, 'design')} · ${App.plural(x.orders, 'order')} · ${FT.money(x.spent)}</small>`)}${td('Status', x.status === 'suspended' ? App.badge('suspended') : '<span class="badge ok">Active</span>')}${td('', x.role !== 'admin' ? `<button class="btn ghost sm" type="button" data-status="${x.status === 'suspended' ? 'active' : 'suspended'}">${x.status === 'suspended' ? 'Reinstate' : 'Suspend'}</button>` : '')}
+        ${td('Name', `<b>${esc(x.name)}</b><br><small class="muted">${esc(x.email)}</small>`)}${td('Role', esc(x.role) + (x.designer ? ' · designer' : ''))}${td('Location', where(x))}${td('Activity', `<small>${App.plural(x.designs, 'design')} · ${App.plural(x.orders, 'order')} · ${FT.money(x.spent)}${x.fees ? ` · fee ${x.ownFee != null ? `<b>${esc(x.ownFee)}%</b> (own rate)` : `${esc(x.fees[x.vendorId ? 'order' : 'commission'])}%`}` : ''}</small>`)}${td('Status', x.status === 'suspended' ? App.badge('suspended') : '<span class="badge ok">Active</span>')}${td('', x.role !== 'admin' ? `<div class="row-btns">${x.fees ? '<button class="btn ghost sm" type="button" data-userfee>Fee</button>' : ''}<button class="btn ghost sm" type="button" data-status="${x.status === 'suspended' ? 'active' : 'suspended'}">${x.status === 'suspended' ? 'Reinstate' : 'Suspend'}</button></div>` : '')}
       </div>`));
-      panel('users').onclick = async e => { const b = e.target.closest('[data-status]'); if (!b) return; try { await A.adminSetUserStatus(b.closest('.tr').dataset.id, b.dataset.status); users(); } catch (x) { FT.toast(x.message); } };
+      panel('users').onclick = async e => { const fb = e.target.closest('[data-userfee]'); if (fb) { const x = list.find(y => y.id === fb.closest('.tr').dataset.id); if (x) ownFee(x, users); return; } const b = e.target.closest('[data-status]'); if (!b) return; try { await A.adminSetUserStatus(b.closest('.tr').dataset.id, b.dataset.status); users(); } catch (x) { FT.toast(x.message); } };
     }
     async function designs() {
       const list = (await A.adminDesigns()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 60);

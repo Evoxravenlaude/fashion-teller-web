@@ -58,9 +58,16 @@
     /* links that arrive as data (notifications) may only point inside the site */
     App.path = h => (typeof h === 'string' && /^\/(?![/\\])/.test(h) ? h : '#');
     /* under a price field: what the tailor or designer actually receives once the platform fee is taken */
+    /* The rate is this account's own (an admin can agree one), else the platform's for that kind of work. It is the rate the
+       quote or offer will be paid at, whatever changes later. */
     App.feeHints = async root => {
-      const els = $$('[data-fee]', root); if (!els.length) return; const f = await A.features(); if (!f.feePercent) return;
-      for (const el of els) { const input = el.closest('.field')?.querySelector('input'); if (!input) continue; const up = () => { const v = Math.round(+input.value || 0); el.textContent = v > 0 ? `You receive ${FT.money(v - Math.round(v * f.feePercent / 100))} after the ${f.feePercent}% platform fee.` : `Fashion Teller keeps ${f.feePercent}% as its platform fee.`; }; input.addEventListener('input', up); up(); }
+      const els = $$('[data-fee]', root); if (!els.length) return; const f = await A.features(), me = A.me();
+      for (const el of els) {
+        const kind = el.dataset.fee === 'commission' ? 'commission' : 'order', rate = me?.fees?.[kind] ?? f.fees?.[kind] ?? f.feePercent;
+        const input = el.closest('.field')?.querySelector('input'); if (!input || rate == null) continue;
+        const up = () => { const v = Math.round(+input.value || 0); el.textContent = !rate ? 'No platform fee: you receive the full amount.' : v > 0 ? `You receive ${FT.money(v - Math.round(v * rate / 100))} after the ${rate}% platform fee.` : `Fashion Teller keeps ${rate}% as its platform fee.`; };
+        input.addEventListener('input', up); up();
+      }
     };
     App.mailbox = async () => {
       const list = await A.mailbox();
@@ -127,7 +134,7 @@
     });
     /** A small form in a sheet. fields: [{name,label,type,value,placeholder,options,max,required,hint}]. Resolves with the values, or null. */
     App.ask = (title, intro, fields, { ok = 'Save', submit } = {}) => new Promise(res => {
-      const f = fields.map(x => `<div class="field"><label for="ask-${x.name}">${esc(x.label)}${x.optional ? ' <small class="muted">optional</small>' : ''}</label>${x.type === 'textarea' ? `<textarea id="ask-${x.name}" name="${x.name}" maxlength="${x.max || 1000}" placeholder="${esc(x.placeholder || '')}" rows="4">${esc(x.value || '')}</textarea>` : x.type === 'select' ? `<select id="ask-${x.name}" name="${x.name}">${x.options.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}"${String(x.value ?? '') === String(v) ? ' selected' : ''}>${esc(l)}</option>`; }).join('')}</select>` : x.type === 'stars' ? `<div class="starpick" data-stars="${x.name}">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-v="${n}" aria-label="${n} star${n === 1 ? '' : 's'}" aria-pressed="${n <= (x.value || 5)}">★</button>`).join('')}<input type="hidden" name="${x.name}" value="${x.value || 5}"></div>` : `<input id="ask-${x.name}" name="${x.name}" type="${x.type || 'text'}" value="${esc(x.value ?? '')}" maxlength="${x.max || 200}" placeholder="${esc(x.placeholder || '')}"${x.min != null ? ` min="${x.min}"` : ''}${x.step ? ` step="${x.step}"` : ''}${x.type === 'number' ? ' inputmode="numeric"' : ''}>`}${x.hint ? `<small class="tip">${esc(x.hint)}</small>` : ''}</div>`).join('');
+      const f = fields.map(x => `<div class="field"><label for="ask-${x.name}">${esc(x.label)}${x.optional ? ' <small class="muted">optional</small>' : ''}</label>${x.type === 'textarea' ? `<textarea id="ask-${x.name}" name="${x.name}" maxlength="${x.max || 1000}" placeholder="${esc(x.placeholder || '')}" rows="4">${esc(x.value || '')}</textarea>` : x.type === 'select' ? `<select id="ask-${x.name}" name="${x.name}">${x.options.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}"${String(x.value ?? '') === String(v) ? ' selected' : ''}>${esc(l)}</option>`; }).join('')}</select>` : x.type === 'stars' ? `<div class="starpick" data-stars="${x.name}">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-v="${n}" aria-label="${n} star${n === 1 ? '' : 's'}" aria-pressed="${n <= (x.value || 5)}">★</button>`).join('')}<input type="hidden" name="${x.name}" value="${x.value || 5}"></div>` : `<input id="ask-${x.name}" name="${x.name}" type="${x.type || 'text'}" value="${esc(x.value ?? '')}" maxlength="${x.max || 200}" placeholder="${esc(x.placeholder || '')}"${x.min != null ? ` min="${x.min}"` : ''}${x.maxValue != null ? ` max="${x.maxValue}"` : ''}${x.step ? ` step="${x.step}"` : ''}${x.type === 'number' ? ` inputmode="${x.inputmode || 'numeric'}"` : ''}>`}${x.hint ? `<small class="tip">${esc(x.hint)}</small>` : ''}</div>`).join('');
       let done = false;
       const s = App.sheet(`<h3>${esc(title)}</h3>${intro ? `<p class="muted">${intro}</p>` : ''}<form class="form one" novalidate>${f}<p class="err" role="alert"></p><div class="row-btns"><button class="btn ghost" type="button" data-c>Cancel</button><button class="btn ink" type="submit">${esc(ok)}</button></div></form>`, { onClose: () => { if (!done) res(null); } });
       $$('[data-stars]', s).forEach(sp => sp.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; $('input', sp).value = b.dataset.v; $$('button', sp).forEach(x => x.setAttribute('aria-pressed', +x.dataset.v <= +b.dataset.v)); }));

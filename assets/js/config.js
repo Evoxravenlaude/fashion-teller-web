@@ -16,8 +16,10 @@
  *              without moving money. Set a Paystack public key (pk_test_… or pk_live_…) to pay with Paystack;
  *              the backend then verifies every payment with Paystack before recording it (PAYSTACK_SECRET_KEY).
  *              depositPercent is the share paid up front on a tailoring order; the rest is due before delivery.
- *              platformFeePercent is what Fashion Teller keeps when a payment is released to a tailor or designer.
- *              It applies in built-in mode; the backend has its own setting (PLATFORM_FEE_PERCENT), which wins.
+ *              platformFeePercent is what Fashion Teller keeps when a payment is released to a tailor or designer:
+ *              the starting rate. An admin changes it in the dashboard (Admin → Payouts), with separate rates for
+ *              tailor orders and designer commissions and an own rate for any account. This number applies in
+ *              built-in mode; with the backend connected, the backend's rates are used (PLATFORM_FEE_PERCENT there).
  * tryOn        Try it on (/try-on) finds the body on the device itself, so nothing is uploaded and there is nothing
  *              to switch on. model: 'lite' is quicker, 'full' is steadier, 'auto' picks lite on phones and tablets.
  *              delegate: 'GPU' (falls back by itself) or 'CPU'. Photoreal try-on is separate: it appears by itself
@@ -44,7 +46,7 @@ window.FT_CONFIG = {
   formEndpoint: '',
 
   currency: { code: 'NGN', symbol: '₦', locale: 'en-NG' },
-  payments: { paystackPublicKey: '', depositPercent: 50, platformFeePercent: 10 },
+  payments: { paystackPublicKey: '', depositPercent: 50, platformFeePercent: 20 },
   tryOn: { model: 'auto', delegate: 'GPU' },
   demoAccounts: true,
   sample: { quoteDelayMs: [1800, 9000], orderPhaseMs: 30000 },

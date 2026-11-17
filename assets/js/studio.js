@@ -114,7 +114,8 @@
     const GARMENT_FILTERS = [['all', 'All'], ...E.OPTIONS.garment];
     function renderBuilder() {
       if (!draft) return;
-      const O = E.OPTIONS, g0 = draft.garment, off = { length: !O.lengthFor[g0].length, sleeves: !O.sleevesFor[g0].length, fit: !O.fitFor[g0] };
+      const O = E.OPTIONS, g0 = draft.garment, off = { length: !O.lengthFor[g0].length, sleeves: !O.sleevesFor[g0].length, fit: !O.fitFor[g0], embroidery: !O.embFor(g0) };
+      { const ct = $('#bldTabs [data-bt="collar"]'); if (ct) ct.textContent = O.collarTitle(g0); }
       if (off[S.tab]) S.tab = 'style';
       $$('#bldTabs [data-bt]').forEach(b => { const on = b.dataset.bt === S.tab; b.setAttribute('aria-selected', on); b.classList.toggle('on', on); b.tabIndex = on ? 0 : -1; b.hidden = !!off[b.dataset.bt]; });
       const d = draft, t = S.tab; let h = '';
@@ -295,10 +296,13 @@
         : `<button type="button" data-face="front">Front</button><button type="button" data-face="side">Side</button><button type="button" data-face="back">Back</button><span class="sep"></span><button type="button" data-spin aria-pressed="${!!viewer.spinning}">Spin</button>`;
       $('#toneGrp').hidden = viewer.flat; $('#snapBtn').hidden = viewer.flat;
       if (viewer.flat) $('#v3dNote').textContent = 'This device cannot draw 3D, so here are the flat front and back views. The tailor works from the same pattern.';
+      { const f = draft ? E.formOf(draft) : 'man'; $$('#formSeg [data-form]').forEach(b => b.setAttribute('aria-pressed', b.dataset.form === f)); }
       $('#tones').innerHTML = viewer.tones.map((t, i) => `<button type="button" class="swatch${i === viewer.tone ? ' on' : ''}" style="--c:${t[1]}" data-tone="${i}" aria-label="${t[0]} mannequin" aria-pressed="${i === viewer.tone}"></button>`).join('');
     }
     bar.addEventListener('click', e => { const b = e.target.closest('button'); if (!b || !viewer) return; if (b.dataset.face) { flatView = b.dataset.face === 'back' ? 'back' : 'front'; viewer.face(b.dataset.face); } else viewer.spin(); renderV3d(); });
     $('#tones').addEventListener('click', e => { const b = e.target.closest('[data-tone]'); if (!b || !viewer) return; viewer.setTone(+b.dataset.tone); renderV3d(); });
+    /* the mannequin is part of the design: it is saved with it and shown on that form everywhere */
+    $('#formSeg').addEventListener('click', e => { const b = e.target.closest('[data-form]'); if (!b || !draft || E.formOf(draft) === b.dataset.form) return; setDraft({ ...draft, form: b.dataset.form }); renderV3d(); });
     $('#stTools').addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (!b) return; const want = b.dataset.view === '3d' ? '3d' : 'edit'; if (S.step === 1) { S.view = b.dataset.view; save(); if (want === '3d' && S.tab === 'sketch') { S.tab = 'style'; renderBuilder(); } } setStageMode(want); });
     $('#snapBtn').addEventListener('click', () => {
       const url = viewer?.snapshot?.(); if (!url) return;

@@ -1471,6 +1471,14 @@ details.small[open] summary::before{content:"–"}
 .band-head p{margin:8px 0 0}
 
 /* ───────── print: the tech pack a tailor can pin to the wall ───────── */
+/* ══════════ Admin: platform fee ══════════ */
+.feebox{border:1px solid var(--hair);border-radius:var(--r);padding:clamp(18px,2.4vw,28px);margin:0 0 8px;background:#fff;display:flex;flex-direction:column;gap:14px}
+.feebox h2{margin:0 0 4px}
+.feebox p.small{margin:0;max-width:72ch}
+.feebox .form{margin:0}
+.feebox .foot-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.feebox .table .tr>span:last-child .row-btns{flex-wrap:wrap}
+
 /* ══════════ Speed check ══════════ */
 .speed{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:clamp(28px,5vw,72px);align-items:start}
 .speed-view{position:sticky;top:calc(var(--nav) + 20px);aspect-ratio:3/4;border-radius:var(--r);overflow:hidden}
@@ -1565,6 +1573,9 @@ body[data-page="tryon"] .tabbar{display:none}
   .to-title small{display:none}
   .to-seg button{height:34px;padding:0 12px;font-size:12.5px}
   .to-panel{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:62%;gap:8px;padding:12px 14px;border-radius:16px}
+  .to-opts{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 16px}
+  .to-row{font-size:12.5px;gap:8px}
+  .to-fitnote{font-size:11.5px;line-height:1.35}
   .to-panel-h b{font-size:14.5px}
   .to-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
   .to-chips button{flex:none;height:32px;padding:0 12px;border-radius:999px;background:var(--mist);font-size:12.5px;font-weight:500;color:var(--ink)}
@@ -1576,6 +1587,11 @@ body[data-page="tryon"] .tabbar{display:none}
   .to-btn{min-width:58px;padding:6px 4px}
   .to-shutter{width:60px;height:60px;margin:0 4px}
 }
+.to-opts{display:flex;flex-direction:column;gap:12px}
+.to-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px}
+.to-row>span{color:var(--slate);font-weight:500}
+.to-fitnote{margin:0;font-size:12.5px;line-height:1.45;color:var(--slate)}
+.to-fitnote:empty{display:none}
 /* a phone on its side: everything in one screen, the garments in a rail down the left and the controls down the right, like a camera app */
 @media (max-height:520px) and (orientation:landscape){
   .tryon{min-height:0;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr)}
@@ -1596,6 +1612,10 @@ body[data-page="tryon"] .tabbar{display:none}
   .to-start h2{font-size:22px}.to-start p{font-size:14px}
   .to-msg{bottom:8px;font-size:13px;padding:7px 12px}
   .to-panel{top:auto;left:auto;right:8px;bottom:8px;width:min(330px,62%);max-height:calc(100% - 16px);gap:8px;padding:10px 14px;border-radius:16px}
+  .to-opts{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 14px}
+  .to-row{gap:8px}
+  .to-row>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .to-fitnote{display:none}
   .to-panel-h b{font-size:14.5px}
   .to-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
   .to-chips button{flex:none;height:30px;padding:0 12px;border-radius:999px;background:var(--mist);font-size:12.5px;font-weight:500;color:var(--ink)}

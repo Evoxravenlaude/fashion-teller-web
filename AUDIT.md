@@ -7,15 +7,16 @@ What was checked on this build, what was found and fixed, and what is still open
 
 | Check | Scope | Result |
 |---|---|---|
-| Data layer | 117 checks on every product flow in built-in mode, including email links, payouts and hostile input | 117 pass |
-| Backend | 18 tests: rules match the site's engine on 143 recorded designs, every journey, access, payments, production guards, email, Paystack Transfers and its webhook, Photoreal (the last three against stand-ins) | 18 pass |
+| Data layer | 138 checks on every product flow in built-in mode, including email links, payouts, the adjustable fee and hostile input | 138 pass |
+| Backend | 19 tests: rules match the site's engine on 313 recorded designs, every journey, access, payments, production guards, email, Paystack Transfers and its webhook, Photoreal (the last three against stand-ins), fee rates set by an admin and kept per job | 19 pass |
 | Customer journey in a browser | Design → 3D → save → into the try-on from the studio and from the design room → quotes → pay → track → confirm → review → message → publish → commission → approve (30 checks) | Pass on desktop and phone (built-in) and against the backend |
-| Designer, tailor, admin journeys | Offer and deliver; quote, photo update, deliver; verify, moderate, resolve a problem (25 checks) | Pass built-in and against the backend |
-| Email and payouts in a browser | Confirm an address from the emailed link, forget and reset a password, add bank details, deliver, confirm, payout arrives less the fee, admin sees it (33 checks) | Pass on desktop and phone (built-in) and against the backend |
-| Try-on | Photo, video and camera: the garment lands on the body and nowhere else, every fit control, body points by drag and by keyboard, saved picture and exported video contain the garment, camera switches off (27 checks) | Pass at desktop, phone and phone-on-its-side; 32 against the backend, with Photoreal end to end against a stand-in service |
+| Designer, tailor, admin journeys | Offer (with what the designer receives) and deliver; quote, photo update, deliver; verify, moderate, resolve a problem (26 checks) | Pass built-in and against the backend |
+| Email, payouts and the fee in a browser | Confirm an address from the emailed link, forget and reset a password, add bank details, deliver, confirm, payout arrives less the fee; the admin changes the platform rate and gives the tailor an own rate, the tailor sees it (42 checks) | Pass on desktop and phone (built-in) and against the backend |
+| Try-on | Photo, video and camera: the garment lands on the body and nowhere else, is shaped to the figure's own outline, forms behind the scan line, shows as light in Hologram view, can be cut for either form; a top leaves the legs alone and trousers start at the waist; every fit control, body points by drag and by keyboard, saved picture and exported video contain the garment, camera switches off (35 checks) | Pass at desktop, phone and phone on its side; 40 against the backend with Photoreal |
+| Wardrobe | All 13 garment types and 49 templates draw front and back, have a price and build in 3D on both mannequins; the studio's controls fit the garment; the mannequin chosen is kept with the design (12 checks) | Pass on desktop and phone |
 | 3D speed handling | The speed-check page; the viewer stepping down on a slow device and remembering it; a hand-picked Graphics level left alone (13 checks) | Pass |
 | Every page × every size × every role | 20 pages, signed out and as customer, designer, tailor, admin, at 320, 390, 820, 1366, 1536 and 1920 px wide and a phone on its side: script errors, failed requests, sideways scroll | 0 problems |
-| Access between accounts | 113 attempts against the running API: read or change someone else's things, reach tailor or admin routes, add bank details without a confirmed email, forge a confirm or reset link, find out which addresses have accounts, post an unsigned payment webhook, crash it with bad input | 113 refused correctly |
+| Access between accounts | 123 attempts against the running API: read or change someone else's things, reach tailor or admin routes, change the platform fee or their own rate without being an admin, add bank details without a confirmed email, forge a confirm or reset link, find out which addresses have accounts, post an unsigned payment webhook, crash it with bad input | 123 refused correctly |
 | Security headers | Every page under the content security policy, the 3D view and the on-device body tracker included | 0 blocked resources |
 | Accessibility | axe-core, WCAG 2.1 A/AA and best practice, every page, tab and role, plus open dialogs, the try-on with a picture up, the speed check, the email-link screens and the bank form with an error | 0 violations, with two accepted exceptions (below) |
 | Links | Every link, asset and page path in the 20 pages and the scripts | 0 broken |
@@ -25,7 +26,37 @@ What was checked on this build, what was found and fixed, and what is still open
 All browser checks ran in Chromium, with phones and tablets emulated by screen size and touch, and 3D drawn in
 software. See "Not covered": the things this round added are exactly the things an emulator says least about.
 
-## Found and fixed in this round (try-on, email, payouts, speed)
+## Found and fixed in this round (wardrobe, mannequins, body-shaped try-on)
+
+Adding trousers, skirts and short tops put parts of the product on show that a long kaftan had always covered. Most
+of what follows was found by looking at pictures of the new garments, not by a failing test; the tests were written
+afterwards to keep them fixed.
+
+1. **The try-on painted trousers on everyone who tried a top.** The plain trousers a shirt is shown with on the
+   mannequin were being drawn on the wearer too, over their own. Only the design is drawn now.
+2. **Trousers in 3D looked like briefs worn over leggings.** The seat was a bowl hanging between the legs and each leg
+   began with a ledge at the hip. The seat now takes the shape of the two legs as it reaches them, and the mannequin's
+   trunk narrows away between the legs instead of ending in a bowl of its own.
+3. **A waistband showed its far side inside its near side** on a wearer (two horns at the hips). The waist of trousers
+   and skirts is now filled, as it is by the person in them.
+4. **The hidden body the garment is fitted round was cutting holes in it**: at the hips of anything close-fitting, and
+   beside the neck of anything with a wide neckline. It is narrower in both places.
+5. **Sleeve heads stood above the shoulder like pads, and a crease ran across the chest**, most visibly on plain, pale
+   garments (T-shirt, hoodie). The try-on draws shoulders lower than the pattern has them; sleeve heads now come down
+   with them, and the change in height is a curve, not a corner. In the 3D view a wide sleeve now rests on top of the
+   arm with its spare width underneath.
+6. **The first cut of the body-shaped fit let the wearer show through.** Where a limb measured wider than the standard
+   body, the hidden body grew and the sleeve or trouser leg did not grow enough. Garments are now compared with the
+   body in width and in depth, on their tight side, and a width that cannot be read (a chest with the arms against it)
+   takes after the ones beside it.
+7. **On a phone held sideways the fit controls, now taller, covered the person** and one of the body points. The new
+   controls share a row there and the note about the fit is left out.
+8. **Hologram view first drew the garment as a flat sheet of light.** It is now see-through cloth with moving lines and
+   a rim along every edge.
+9. **"Describe it" picked the wrong word** when one garment's name sits inside another's ("shirt" in "sweatshirt"); it
+   now takes the longest match.
+
+## Found and fixed in the previous round (try-on, email, payouts, speed)
 
 **Try-on**
 
@@ -68,10 +99,20 @@ software. See "Not covered": the things this round added are exactly the things 
     under the same reference, which Paystack accepts once.
 17. Finished Photoreal pictures were being kept for two days. Now an hour, enough for the page to collect them.
 
+**The platform fee (added after the first delivery of this round)**
+
+18. The fee is now 20% and set by an admin, with an own rate per account. Changing it raised one real risk, now
+    closed: if the rate were read at the moment money is released, a tailor who quoted while the hint said "you
+    receive ₦48,000" could be paid less after a later increase. Each quote and offer now records its rate, the order
+    copies it, and the payout uses it. Tested in both modes, including a change between quote and acceptance.
+19. The role journey against the backend failed when run after the payouts journey: it read the timeline of the
+    first order in the tailor's list, which was by then a finished one. A test fault, not a product one; the test now
+    reads the order it updated.
+
 **Other**
 
-18. A dialog on the try-on skipped a heading level (accessibility). Fixed.
-19. The try-on's readout and the speed-check page are new; so is the test media. The tests draw their own stand-in
+20. A dialog on the try-on skipped a heading level (accessibility). Fixed.
+21. The try-on's readout and the speed-check page are new; so is the test media. The tests draw their own stand-in
     figure, so the project ships no photographs of people.
 
 ## Found and fixed in the first audit
@@ -159,6 +200,14 @@ Listed because each was a visible bug at some point and has a test or a check be
   the body tracker; here it was tested with a pretend camera, at 2 to 7 frames a second in software. It works there,
   which shows the logic is right, not that it is smooth. `/speed` and `?fps=1` exist so that this can be measured on
   real phones in a few minutes; that has not been done.
+- **The body-shaped fit on real bodies.** The stand-in figure is drawn square, so its widths read at or near the upper
+  limit; that shows the measuring and the covering work, not that the result flatters a real person. In particular,
+  someone in loose clothes is read as broader than they are (the outline is all there is to go on), and the limits
+  on how far a garment narrows or grows (about three quarters to one and a half times the pattern) were chosen by eye.
+- **The scan and the Hologram view** were judged from still pictures. Their timing and feel in motion on a phone are
+  unseen.
+- **The new garments in the try-on** were looked at on the stand-in standing, and with joints moved by hand to a raised
+  arm, an arm across the body, a stepped leg and a lifted knee. Sitting, turning and walking were not looked at.
 - **A real person in front of a real camera.** The automated tests use a drawn stand-in figure. During development the
   try-on was also run on photographs and a video of real people (standing, three-quarter view, squatting, lunging, a
   group), which are not part of the project. It has not been tried across body shapes, loose clothing, headscarves,
@@ -180,8 +229,9 @@ Listed because each was a visible bug at some point and has a test or a check be
 
 ## Open risks to decide on
 
-1. **The platform fee is a placeholder: 10%.** It is one setting. It has to cover Paystack's charge for taking the
-   payment and for each transfer (about ₦1,100 on a ₦60,000 order).
+1. **The platform fee is 20%**, set from the admin dashboard, with an own rate possible for any tailor or designer.
+   It has to cover Paystack's charge for taking the payment and for each transfer (about ₦1,100 on a ₦60,000 order,
+   of the ₦12,000 kept). Anyone with an admin account can change it, which is one more reason for item 7.
 2. **Money held and money paid out are tracked in the database, not in separate bank accounts.** Paystack settles
    takings to your bank by default, while transfers are paid from the Paystack balance. Someone has to keep that
    balance funded, or payouts fail (they show as failed and can be sent again).

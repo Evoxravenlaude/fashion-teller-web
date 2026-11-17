@@ -41,14 +41,23 @@ The site runs in two modes, switched by one line in `assets/js/config.js`:
 
 ## What the product does
 
-**Designing.** 19 templates across kaftan, agbada, boubou, dress, suit and shirt; 10 fabrics, 9 patterns, palettes per
-fabric and style, collars, sleeves, lengths, fits, embroidery, details and a freehand sketch layer. Every save is a
+**Designing.** 13 garment types and 49 templates: kaftan, agbada, boubou, dress, suit, shirt, T-shirt (and polo and
+tank), hoodie (and sweatshirt), bomber jacket, kimono, joggers (and shorts), trousers (chinos, jeans, wide-leg,
+shorts) and skirt. Styles from elsewhere start from the cut they share: kurta, sherwani, thobe and abaya from the
+kaftan; the qipao from the dress (with its side closing and knot buttons); yukata and haori from the kimono; kilt,
+sarong and iro wrapper from the skirt; guayabera and aloha shirt from the shirt. 13 fabrics (jersey, denim and nylon
+are new), 9 patterns, palettes per fabric and style, collars (or a waist, for trousers and skirts), sleeves, lengths,
+fits, embroidery, details and a freehand sketch layer. Sari and hanbok are not built: neither is close enough to an
+existing cut to be honest about. Every save is a
 version with an automatic change list. "Describe it" turns a sentence into a starting design (plain text matching, no
 AI service).
 
 **Seeing it.** The 3D view is drawn live in the browser from the design itself: the garment is built from the same
-pattern pieces as the flat drawing and put on a mannequin with real fabric texture, lighting and shadow. Drag to turn,
-front / back / side, skin tones, snapshot. It needs WebGL; without it the flat front/back view is shown instead.
+pattern pieces as the flat drawing and put on a mannequin with real fabric texture, lighting and shadow. There is a
+woman's form and a man's form; a design starts on the one that suits it (a dress on the woman's, a kaftan on the
+man's), the switch is beside the skin tones, and the choice is saved with the design. Cloth has a weave you can see
+(knit for jersey, twill for denim), creases that depend on the fabric, and shading in the folds and under the arms.
+Drag to turn, front / back / side, skin tones, snapshot. It needs WebGL; without it the flat front/back view is shown instead.
 The viewer times its own frames and steps the picture down on a device that cannot keep up (see "3D speed").
 
 **Trying it on** (`/try-on`, opened from the studio or a design's page). The same 3D garment, worn by the customer:
@@ -58,9 +67,24 @@ The viewer times its own frames and steps the picture down on a device that cann
 - **A photo.** Upload a picture; the person in it is found and dressed. In a group it dresses whoever fills most of
   the picture.
 - **A video.** Upload a clip; the garment follows the person through it. Export saves a new video with the garment in.
-- **Fitting it.** Width, snug-to-loose, length, up/down and left/right sliders, and (on photos) twelve body points
-  that can be dragged or moved with the arrow keys when the automatic fit is off. Any saved design or template can be
-  swapped in from the rail.
+- **Fitted to the person, not to a standard body.** The body tracker also returns the person's outline. From it the
+  try-on reads seven widths (chest, waist, hips, upper arm, forearm, thigh, calf) and shapes the garment to them: it
+  narrows on a slim build, and grows as far as it must to cover a broad one or loose clothes, and no further. It reads
+  them when the person faces the camera with their arms a little away from their sides, and says in the fit controls
+  how much it could read.
+- **The scan.** When the person is found, a line of light travels down them and the garment forms behind it; changing
+  garment replays a short version. With Hologram view on, the garment is drawn as light (see-through, with a rim along
+  every edge) so the body can be seen inside it. Both are drawn into the picture, so a saved photo or clip has them.
+  People who ask their device for less motion get neither the scan nor the moving light.
+- **Movement.** Joints are steadied, a joint that goes out of view is carried by the one above it, frames are drawn on
+  an even beat (every refresh, or every second one on a slower device, never a mix), a soft shadow sits where the
+  garment meets the body, the garment takes the colour and direction of the light in the room, and a change to a
+  slider or to the garment glides into place.
+- **Fitting it by hand.** Width, snug-to-loose, length, up/down and left/right sliders, a switch between the woman's
+  and the man's form inside the garment, and (on photos) twelve body points that can be dragged or moved with the
+  arrow keys when the automatic fit is off. Any saved design or template can be swapped in from the rail.
+- **Only the design is drawn.** The trousers a shirt is shown with on the mannequin are styling, not part of the
+  design, so the person keeps their own; a two-piece set (kaftan and trousers) is drawn whole.
 
 All of that happens on the device. The body is found by a model that runs in the browser (Google MediaPipe, shipped
 in `assets/vendor/mediapipe/`, 20 to 24 MB before compression, downloaded once and cached); no picture, video or
@@ -88,8 +112,8 @@ customer confirms delivery, which releases the payment, or reports a problem, wh
 releases. Reviews follow.
 
 **Getting paid.** When a customer confirms delivery or approves a commission, the money is released to the tailor or
-designer less the platform fee. They add a bank account under Account → Payouts, see what is held, on its way and
-paid, and every price they enter shows what they will receive after the fee.
+designer less the platform fee (20% to start; see "The platform fee"). They add a bank account under Account →
+Payouts, see what is held, on its way and paid, and every price they enter shows what they will receive after the fee.
 
 **Messages and notifications.** One conversation per order, per commission, or direct. A bell in the nav with unread
 counts. Order, quote, commission and payout news is also emailed, and so is one email per conversation with something
@@ -155,7 +179,7 @@ command. `vercel.json` turns on clean URLs and sends the security headers; `.ver
 | `PAYSTACK_SECRET_KEY` | Turns on real payments; every payment is verified with Paystack before it is recorded. Also turns on automatic payouts (below). |
 | `SITE_URL` | The site's address. Links in emails point here. |
 | `EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL` | Turns on email (below). Without them no email is sent, so password reset and address confirmation do not work. |
-| `PLATFORM_FEE_PERCENT` | What Fashion Teller keeps from each released payment. Default 10. |
+| `PLATFORM_FEE_PERCENT` | The starting platform fee, 20 by default. After launch an admin changes it in the dashboard. |
 | `FASHN_API_KEY` | Optional. Turns on Photoreal try-on (below). |
 
 Then:
@@ -163,9 +187,8 @@ Then:
     python manage.py migrate
     python manage.py seed --admin you@example.com      # your admin account; asks for a password
 
-and in `assets/js/config.js` set `apiBaseUrl`, `payments.paystackPublicKey` and `demoAccounts: false`. Set
-`payments.platformFeePercent` there to the same number as `PLATFORM_FEE_PERCENT` (the site reads the backend's figure
-when it is connected; the one in `config.js` is what built-in mode uses).
+and in `assets/js/config.js` set `apiBaseUrl`, `payments.paystackPublicKey` and `demoAccounts: false`. (The fee in
+`config.js` only matters in built-in mode; with the backend connected the site shows the backend's rates.)
 
 On a server the backend is locked down unless you say otherwise: debug is off, the test checkout refuses to take
 "payments" (`ALLOW_TEST_PAYMENTS`), the sample tailors and designers are off (`SAMPLE_MODE`), and `seed` will not load
@@ -193,10 +216,29 @@ the `Mail` table with whether it was sent. Sample and demo accounts have made-up
 development, with no `EMAIL_HOST`, emails are printed to the console and listed at `/api/v1/dev/mail/`; that route
 does not exist with debug off.
 
+### The platform fee
+
+Fashion Teller keeps **20%** of each payment when it is released to the tailor or designer. It is set in the admin
+dashboard, under **Admin → Payouts → Platform fee**, with no code change or redeploy:
+
+- **Two rates:** one for tailor orders, one for designer commissions, each from 0% to 50% (half points allowed). The
+  box shows what each side receives on a ₦60,000 job as you type.
+- **An account's own rate:** "Give an account its own rate", or the Fee button beside a tailor or designer under
+  Admin → Users. Use it for a founding tailor, a promotion, a high-volume workshop. Clear it to put them back on the
+  platform rate. They get a notification (and an email) saying what their rate now is.
+- **Agreed work keeps its rate.** A quote or an offer records the rate when it is made, and that job is paid at that
+  rate even if the fee changes before the customer accepts or before delivery. Tailors and designers see the rate
+  while they quote ("You receive ₦48,000 after the 20% platform fee"), so what they see is what they get.
+- Every change is in the audit trail. Customers never see the fee; their price is the tailor's price.
+
+`PLATFORM_FEE_PERCENT` on the backend (and `payments.platformFeePercent` in `config.js` for built-in mode) is only the
+starting rate, used until an admin saves one.
+
 ### Payouts
 
 The customer pays Fashion Teller; the money is held; when the customer confirms delivery (or approves a commission)
-it is released: a payout is created for the total less `PLATFORM_FEE_PERCENT`. What happens next depends on the setup:
+it is released: a payout is created for the total less the platform fee at that job's rate. What happens next depends
+on the setup:
 
 | Setup | What happens to a payout |
 |---|---|
@@ -217,8 +259,8 @@ To turn automatic payouts on, in the Paystack dashboard:
 
 Paystack charges you for each transfer (₦10 up to ₦5,000, ₦25 up to ₦50,000, ₦50 above, plus ₦50 stamp duty from
 ₦10,000), on top of its charge for taking the payment (1.5% + ₦100, capped at ₦2,000, for local cards). The member
-receives the full amount after the platform fee; those charges come out of the fee. On a ₦60,000 order at 10% the
-platform keeps ₦6,000 and pays about ₦1,100 of it to Paystack.
+receives the full amount after the platform fee; those charges come out of the fee. On a ₦60,000 order at 20% the
+platform keeps ₦12,000 and pays about ₦1,100 of it to Paystack.
 
 A failed transfer (closed account, wrong number) shows as failed for the member and the admin; "Send again" retries
 it after the member fixes the account. A payout still "on its way" after ten minutes gets a "Check with Paystack"
@@ -272,8 +314,16 @@ and the live try-on on the cheapest phone your customers are likely to have.
 ## Known limits
 
 - **The try-on is a fitting-room mirror, not a photograph.** The garment is drawn over the person, so their own
-  clothes show around anything slimmer or shorter than what they have on. It is at its best on someone facing the
+  clothes show wherever the garment does not reach: sleeves below a T-shirt, a collar inside a wider neckline, trousers
+  under a skirt. The garment widens to cover loose clothes, which also means someone in a baggy top is read as broader
+  than they are. Photoreal is the only thing that takes the old clothes away. It is at its best on someone facing the
   camera, upper body or full length, in fitted clothes.
+- "Hologram" is an effect on the screen. Nothing is projected.
+- The cloth is moved by the body and given follow-through; it is not a cloth simulation. A tight skirt on legs set
+  wide apart, for example, shows the legs through it.
+- A hood is drawn down, as a cowl in the garment's colour: the pattern is not carried onto it.
+- Nothing here has been tried on a real phone, camera or person. It was tested on a drawn stand-in figure in a
+  desktop browser without a graphics card.
 - Extreme poses look rough: the hem of a robe in a deep squat, an agbada with both arms raised in front. With the
   face hidden (turned away, fully covered) the body tracker can lose which way the person faces; the garment holds
   its last position through a brief loss.
@@ -313,6 +363,7 @@ Orders        POST designs/{id}/requests     GET designs/{id}/requests/latest   
               GET/POST orders     GET orders/{number}
               POST orders/{number}/pay|pay/init|cancel|confirm|problem
 Payouts       GET payouts/banks     GET/PUT me/payout-account     GET me/earnings
+Fees          GET/PUT admin/fees   (the two platform rates)     POST admin/users/{id}/fee   (an account's own rate)
               POST webhooks/paystack   (called by Paystack; signature checked)
 Try-on        POST designs/{id}/try-on   (Photoreal: start a job)     GET try-on/{id}   (its status and result)
 Admin         GET admin/stats|users|vendors|designs|orders|payments|payouts|commissions|reports|messages|applications|audit
@@ -325,7 +376,7 @@ Other         GET config   (fee, and which of email, payouts and Photoreal are o
 
 The server owns the rules: it cleans every design spec against the catalogue, prices, awards XP and streaks, and
 decides who may see or change what. `backend/core/rules.py` is a port of the site's engine, and a test holds the two to
-identical output on 143 recorded designs. If you change templates, options, pricing or challenges in
+identical output on 313 recorded designs. If you change templates, options, pricing or challenges in
 `assets/js/engine.js` or `catalog.js`, run `node backend/tools/export_catalog.js` to refresh what the backend reads.
 
 ## Where things are
@@ -334,8 +385,8 @@ identical output on 143 recorded designs. If you change templates, options, pric
 |---|---|
 | `assets/js/config.js` | The one file to edit to go live or tune rendering |
 | `assets/js/engine.js`, `catalog.js` | Garment construction and drawing; templates, palettes, options, pricing, challenges |
-| `assets/js/viewer3d.js` | The 3D view (three.js, loaded only when opened); also builds the garment the try-on wears |
-| `assets/js/fit.js` | The try-on engine: finds the body, poses the garment on it, moves the cloth |
+| `assets/js/viewer3d.js` | The 3D view (three.js, loaded only when opened): the two mannequins, the cloth, and the garment the try-on wears |
+| `assets/js/fit.js` | The try-on engine: finds the body and its outline, measures it, shapes and poses the garment on it, moves the cloth |
 | `assets/js/tryon.js` | The try-on page: camera, photo, video, fit controls, saving |
 | `assets/vendor/` | three.js (a trimmed build) and the MediaPipe library and body models, each with its licence |
 | `assets/js/store.js` | Built-in data layer |

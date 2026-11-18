@@ -69,9 +69,11 @@ The viewer times its own frames and steps the picture down on a device that cann
 - **A video.** Upload a clip; the garment follows the person through it. Export saves a new video with the garment in.
 - **Fitted to the person, not to a standard body.** The body tracker also returns the person's outline. From it the
   try-on reads seven widths (chest, waist, hips, upper arm, forearm, thigh, calf) and shapes the garment to them: it
-  narrows on a slim build, and grows as far as it must to cover a broad one or loose clothes, and no further. It reads
-  them when the person faces the camera with their arms a little away from their sides, and says in the fit controls
-  how much it could read.
+  narrows freely on a slim build and widens a little on a broad one (a little, because loose clothes read as a broad
+  body). It reads them when the person faces the camera with their arms a little away from their sides, and says in
+  the fit controls how much it could read.
+- **Sitting at a laptop works.** With only the head and upper body in view the try-on does not need the hips: it
+  keeps the chest upright, puts the shoulders and collar where they are on a person, and dresses what it can see.
 - **The scan.** When the person is found, a line of light travels down them and the garment forms behind it; changing
   garment replays a short version. With Hologram view on, the garment is drawn as light (see-through, with a rim along
   every edge) so the body can be seen inside it. Both are drawn into the picture, so a saved photo or clip has them.
@@ -313,10 +315,11 @@ and the live try-on on the cheapest phone your customers are likely to have.
 
 ## Known limits
 
-- **The try-on is a fitting-room mirror, not a photograph.** The garment is drawn over the person, so their own
-  clothes show wherever the garment does not reach: sleeves below a T-shirt, a collar inside a wider neckline, trousers
-  under a skirt. The garment widens to cover loose clothes, which also means someone in a baggy top is read as broader
-  than they are. Photoreal is the only thing that takes the old clothes away. It is at its best on someone facing the
+- **The try-on is a fitting-room mirror, not a photograph.** It is a garment drawn in 3D and laid over the picture.
+  It sits in the right place and moves with the person, and it still looks drawn: the cloth does not crease the way
+  cloth does, and it is lit by a guess at the room. The person's own clothes show wherever the garment does not reach:
+  sleeves below a T-shirt, a collar inside a wider neckline, a loose top either side of a slimmer one. Photoreal is
+  the only thing here that gives a picture someone could take for a photograph. It is at its best on someone facing the
   camera, upper body or full length, in fitted clothes.
 - "Hologram" is an effect on the screen. Nothing is projected.
 - The cloth is moved by the body and given follow-through; it is not a cloth simulation. A tight skirt on legs set

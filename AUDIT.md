@@ -12,7 +12,7 @@ What was checked on this build, what was found and fixed, and what is still open
 | Customer journey in a browser | Design → 3D → save → into the try-on from the studio and from the design room → quotes → pay → track → confirm → review → message → publish → commission → approve (30 checks) | Pass on desktop and phone (built-in) and against the backend |
 | Designer, tailor, admin journeys | Offer (with what the designer receives) and deliver; quote, photo update, deliver; verify, moderate, resolve a problem (26 checks) | Pass built-in and against the backend |
 | Email, payouts and the fee in a browser | Confirm an address from the emailed link, forget and reset a password, add bank details, deliver, confirm, payout arrives less the fee; the admin changes the platform rate and gives the tailor an own rate, the tailor sees it (42 checks) | Pass on desktop and phone (built-in) and against the backend |
-| Try-on | Photo, video and camera: the garment lands on the body and nowhere else, is shaped to the figure's own outline, forms behind the scan line, shows as light in Hologram view, can be cut for either form; a top leaves the legs alone and trousers start at the waist; every fit control, body points by drag and by keyboard, saved picture and exported video contain the garment, camera switches off (35 checks) | Pass at desktop, phone and phone on its side; 40 against the backend with Photoreal |
+| Try-on | Photo, video and camera: the garment lands on the body and nowhere else, is shaped to the figure's own outline, forms behind the scan line, shows as light in Hologram view, can be cut for either form; a top leaves the legs alone and trousers start at the waist; every fit control, body points by drag and by keyboard, saved picture and exported video contain the garment, camera switches off ; a photo and a clip with odd dimensions do not freeze the page (37 checks) | Pass at desktop, phone and phone on its side; 42 against the backend with Photoreal |
 | Wardrobe | All 13 garment types and 49 templates draw front and back, have a price and build in 3D on both mannequins; the studio's controls fit the garment; the mannequin chosen is kept with the design (12 checks) | Pass on desktop and phone |
 | 3D speed handling | The speed-check page; the viewer stepping down on a slow device and remembering it; a hand-picked Graphics level left alone (13 checks) | Pass |
 | Every page × every size × every role | 20 pages, signed out and as customer, designer, tailor, admin, at 320, 390, 820, 1366, 1536 and 1920 px wide and a phone on its side: script errors, failed requests, sideways scroll | 0 problems |
@@ -26,7 +26,39 @@ What was checked on this build, what was found and fixed, and what is still open
 All browser checks ran in Chromium, with phones and tablets emulated by screen size and touch, and 3D drawn in
 software. See "Not covered": the things this round added are exactly the things an emulator says least about.
 
-## Found and fixed in this round (wardrobe, mannequins, body-shaped try-on)
+## Found from the first recording of a real person (seated at a laptop camera)
+
+Until this recording the try-on had only been looked at on a drawn figure standing full length, and on a few
+photographs of people standing. A person sitting close to a laptop camera, visible from the head to the waist, is
+the most common way anyone will open it, and it had never been tried. The recording was of the build before the last
+one; the problems below were in both unless it says otherwise.
+
+1. **The page could freeze for good** (last build only, never live). Asking the body tracker for the person's outline
+   stops it dead on a picture whose width is an odd number of pixels, and a stopped tracker never answers again. The
+   recording, cut down to the camera picture, happened to be 1181 pixels wide. Pictures are now always an even size,
+   and if the tracker ever stops it is started again without the outline and the try-on carries on from the joints
+   alone. Both were tested separately; the test suite now includes an odd-sized photo and clip.
+2. **The collar stood round the jaw like a neck brace, in torn pieces.** The chest was being tipped towards the camera
+   on the tracker's guess at depth, which is a guess outright when the hips are out of the picture. Lean is now
+   believed a little when the hips can be seen and not at all when they cannot, and unseen hips are placed where a
+   body of ordinary build has them.
+3. **Shoulders and neckline sat a hand's breadth too low**, so the wearer's own shoulders showed above the garment.
+   The height of everything above the shoulder joints had been set by eye against the drawn figure. On people the
+   top of the shoulder is about a sixth of the shoulder width above the joint, and the garment now follows that.
+4. **A collar stand was a level ring**, which on a person stands in front of the chin, and the hidden neck was cutting
+   into it. It now slopes from the nape to the pit of the throat, is shorter, and only its near half is drawn.
+5. **Sleeves and body ballooned** (last build): the wearer's loose clothes were read as a broad body and the garment
+   grown to match, up to half as wide again. Narrowing is still believed; widening is limited to about a seventh.
+6. **Plain cloth looked like graph paper.** The weave hinted at in the flat drawing is a centimetre across at life
+   size. In 3D and on a person it is now drawn several times finer.
+7. **A hood stood up behind the head** and **sleeve heads stood above the shoulder line**; both now lie where they do
+   on a person.
+
+What this was checked on: the recording itself (in which the old garment is already drawn over the person, so the
+body was being read through it), one photograph of a man seated and seen from the waist up, and one of a woman
+standing, with shirts, kaftan, T-shirt, hoodie, bomber, joggers and a dress. Neither photograph is part of the project.
+
+## Found and fixed in the round before (wardrobe, mannequins, body-shaped try-on)
 
 Adding trousers, skirts and short tops put parts of the product on show that a long kaftan had always covered. Most
 of what follows was found by looking at pictures of the new garments, not by a failing test; the tests were written
@@ -200,10 +232,12 @@ Listed because each was a visible bug at some point and has a test or a check be
   the body tracker; here it was tested with a pretend camera, at 2 to 7 frames a second in software. It works there,
   which shows the logic is right, not that it is smooth. `/speed` and `?fps=1` exist so that this can be measured on
   real phones in a few minutes; that has not been done.
-- **The body-shaped fit on real bodies.** The stand-in figure is drawn square, so its widths read at or near the upper
-  limit; that shows the measuring and the covering work, not that the result flatters a real person. In particular,
-  someone in loose clothes is read as broader than they are (the outline is all there is to go on), and the limits
-  on how far a garment narrows or grows (about three quarters to one and a half times the pattern) were chosen by eye.
+- **The body-shaped fit on real bodies.** It has been seen on three real people, one of them through an earlier
+  garment. Someone in loose clothes is still read as a little broader than they are (the outline is all there is to go
+  on); the limits on how far a garment narrows or grows (four fifths to about one and a seventh of the pattern) were
+  chosen from those three.
+- **Sitting, close to the camera,** is now looked at, on one photograph and one recording. Arms reaching towards the
+  camera, leaning far forward, and a phone held at arm's length have not been.
 - **The scan and the Hologram view** were judged from still pictures. Their timing and feel in motion on a phone are
   unseen.
 - **The new garments in the try-on** were looked at on the stand-in standing, and with joints moved by hand to a raised

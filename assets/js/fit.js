@@ -25,6 +25,12 @@
   /* where the tracker's landmarks sit on the rest body (frame px): shoulder joints, hip joints, leg centre lines */
   const R = { sh: ARM.jx, shY: ARM.jy, hip: 70, hipY: 639, leg: 50, kneeY: B.knee, ankleY: B.ankle, len: ARM.len, elbow: ARM.len * 0.55 };
   const TL = R.hipY - R.shY, THIGH = R.kneeY - R.hipY, SHIN = R.ankleY - R.kneeY;
+  /* How tall the part above the shoulder joints is, against the pattern. On people the top of the shoulder is about a
+     sixth of the shoulder width above the joint and the side of the neck about a quarter: a little more than the pattern. */
+  const UP = 1.06;
+  /* How far the wearer's own outline may narrow or widen a garment. The outline is the body plus what is being worn, so
+     a loose top reads as a broad body: narrowing is believed, widening only a little. */
+  const GROW = [0.8, 1.14];
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), lerp = (a, b, t) => a + (b - a) * t, smooth = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
   const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
   const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -60,7 +66,8 @@
       const [wasm, buf] = await fetchAll([`${VENDOR}/wasm/vision_wasm_internal.wasm`, `${VENDOR}/pose_landmarker_${model}.task`], o.onProgress);
       const mp = await import(`${VENDOR}/vision_bundle.mjs`);
       const files = { wasmLoaderPath: `${VENDOR}/wasm/vision_wasm_internal.js`, wasmBinaryPath: URL.createObjectURL(new Blob([wasm], { type: 'application/wasm' })) };
-      const make = delegate => mp.PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetBuffer: buf, delegate }, runningMode: 'IMAGE', numPoses: 4, minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5, outputSegmentationMasks: o.outline !== false });
+      let masks = o.outline !== false;
+      const make = delegate => mp.PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetBuffer: buf, delegate }, runningMode: 'IMAGE', numPoses: 4, minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5, outputSegmentationMasks: masks });
       let pl, delegate = want;
       try { pl = await make(delegate); } catch (e) { if (delegate === 'CPU') throw e; delegate = 'CPU'; pl = await make('CPU'); }
       let mode = 'IMAGE', clock = 0;
@@ -79,12 +86,21 @@
         return m;
       };
       const size = el => [el.videoWidth || el.naturalWidth || el.width, el.videoHeight || el.naturalHeight || el.height];
+      /* If the tracker stops while it is also drawing the outline, it is started again without the outline and carries
+         on: the garment is then fitted from the joints alone. A tracker that has stopped never answers again, so
+         without this the page would freeze. */
+      async function run(want, n, fn, w, h) {
+        for (let again = 0; ; again++) {
+          try { if (mode !== want) { await pl.setOptions({ runningMode: want, numPoses: n }); mode = want; } return out(fn(), w, h); }
+          catch (e) { if (!masks || again) throw e; masks = false; pl = await make(delegate); mode = 'IMAGE'; }      // the stopped one is left alone: closing it never returns
+        }
+      }
       return {
-        model, delegate,
+        model, delegate, get outline() { return masks; },
         /** one still picture */
-        async image(el) { if (mode !== 'IMAGE') { await pl.setOptions({ runningMode: 'IMAGE', numPoses: 4 }); mode = 'IMAGE'; } const [w, h] = size(el); return out(pl.detect(el), w, h); },
+        async image(el) { const [w, h] = size(el); return run('IMAGE', 4, () => pl.detect(el), w, h); },
         /** the current frame of a playing video or camera; keeps track from frame to frame */
-        async video(el) { if (mode !== 'VIDEO') { await pl.setOptions({ runningMode: 'VIDEO', numPoses: 1 }); mode = 'VIDEO'; } const [w, h] = size(el); clock = Math.max(clock + 1, Math.round(performance.now())); return out(pl.detectForVideo(el, clock), w, h); },
+        async video(el) { const [w, h] = size(el); return run('VIDEO', 1, () => { clock = Math.max(clock + 1, Math.round(performance.now())); return pl.detectForVideo(el, clock); }, w, h); },
         close() { try { pl.close(); } catch {} shared = null; },
       };
     })();
@@ -131,14 +147,14 @@
     const level = (restY, restW, key) => {
       const t = (restY - R.shY) / TL, c = [mS[0] + (mH[0] - mS[0]) * t, mS[1] + (mH[1] - mS[1]) * t], want = restW * lerp(g, gp, smooth(t)), got = [];
       for (const side of [1, -1]) { const r = reach(c, [X[0] * side, X[1] * side], want * 1.9); if (r != null && r > want * 0.55 && r < armAt(c, side) - 12 * g) got.push(r); }
-      if (got.length) out[key] = clamp(got.reduce((a, b) => a + b, 0) / got.length / want, 0.75, 1.5);
+      if (got.length) out[key] = clamp(got.reduce((a, b) => a + b, 0) / got.length / want, GROW[0], GROW[1]);
     };
     level(408, 89, 'chest'); level(B.waist, 76, 'waist'); if (hipOk) level(606, 97, 'hip');
     /* a limb: across it, from edge to edge, half way along. Both edges must be free (an arm against the body, or legs together, cannot be read). */
     const limb = (ka, kb, restR, sc, key) => {
       if (vis(ka) < 0.6 || vis(kb) < 0.6) return; const a = P(ka), b = P(kb), L = d2(a, b); if (L < 10) return;
       const n = [-(b[1] - a[1]) / L, (b[0] - a[0]) / L], want = restR * sc, r1 = reach(mid(a, b), n, want * 2.4), r2 = reach(mid(a, b), [-n[0], -n[1]], want * 2.4);
-      if (r1 != null && r2 != null && r1 + r2 > want) (out[key] ||= []).push(clamp((r1 + r2) / 2 / want, 0.75, 1.5));
+      if (r1 != null && r2 != null && r1 + r2 > want) (out[key] ||= []).push(clamp((r1 + r2) / 2 / want, GROW[0], GROW[1]));
     };
     for (const [sh, el, wr, hp, kn, an] of [['ls', 'le', 'lw', 'lh', 'lk', 'la'], ['rs', 're', 'rw', 'rh', 'rk', 'ra']]) { limb(sh, el, 27, g, 'arm'); limb(el, wr, 21.5, g, 'fore'); if (hipOk) { limb(hp, kn, 39, (g + gp) / 2, 'thigh'); limb(kn, an, 29, (g + gp) / 2, 'calf'); } }
     for (const k of ['arm', 'fore', 'thigh', 'calf']) if (out[k]) out[k] = out[k].reduce((a, b) => a + b, 0) / out[k].length;
@@ -226,7 +242,15 @@
       const pos = g.attributes.position, n = pos.count, type = new Uint8Array(n), p = new Float32Array(n * 3), loose = new Float32Array(n);
       const part = info.part, kind = info.kind || (part.type === 'tube' ? 'arm' : part.type === 'band' || part.type === 'hood' ? 'torso' : part.depth === 'leg' ? 'leg' : part.depth === 'panel' ? 'wing' : part.depth === 'round' ? 'seat' : 'body');
       let side = info.side || 0, xo = 0, lastY = 0, firstY = 1e9;
-      const fx = i => pos.getX(i) / U + CX, fy = i => FLOOR - pos.getY(i) / U, fz = i => pos.getZ(i) / U;
+      const fx = i => pos.getX(i) / U + CX, fz = i => pos.getZ(i) / U;
+      /* A collar stand is drawn level on the mannequin. On a person it slopes: high at the nape, low at the pit of the
+         throat, and not as tall. Level, it stood in front of the chin. */
+      const hoodTop = part && part.type === 'hood' ? (() => { let m = -1e9; for (let i = 0; i < n; i++) m = Math.max(m, FLOOR - pos.getY(i) / U); return m; })() : 0;
+      const band = part && part.type === 'band', fy = hoodTop ? i => hoodTop - (hoodTop - (FLOOR - pos.getY(i) / U)) * 0.5 : band ? i => { const y = FLOOR - pos.getY(i) / U, z = pos.getZ(i) / U; return part.y1 + (y - part.y1) * 0.7 + (z > 0 ? z * 0.42 : 0) + 4; } : i => FLOOR - pos.getY(i) / U;
+      if (band && g.index) {                               // the far half is behind the neck: leave it out, so nothing of it is painted over the neck's edges
+        const ix = g.index.array, keep = []; for (let i = 0; i < ix.length; i += 3) if (fz(ix[i]) > 5 && fz(ix[i + 1]) > 5 && fz(ix[i + 2]) > 5) keep.push(ix[i], ix[i + 1], ix[i + 2]);
+        g.setIndex(keep);
+      }
       if (!side && part) { if (part.type === 'tube') side = part.side; else if (part.rows) { const m = part.rows[part.rows.length >> 1]; side = (m[1] + m[2]) / 2 >= CX ? 1 : -1; } }
       for (let i = 0; i < n; i++) { xo = Math.max(xo, Math.abs(fx(i) - CX)); lastY = Math.max(lastY, fy(i)); firstY = Math.min(firstY, fy(i)); }
       const base = part ? ({ dress: part.flare > 0.2 ? 1 : 0.85, robe: 1, torso: 0.65, jacket: 0.2 }[part.depth] ?? 0.5) : 0;
@@ -242,8 +266,8 @@
         } else if (kind === 'wing') {
           type[i] = T_WING; p[q] = x - CX; p[q + 1] = y; p[q + 2] = z; loose[i] = 0.3 + 0.7 * smooth((y - 300) / 320);
         } else {
-          const nk = part ? 1 : (1 + 0.42 * (1 - smooth((y - 238) / 22))) * lerp(1, 0.3, smooth((y - 606) / 58));
-          type[i] = kind === 'seat' ? T_SEAT : y > R.hipY ? T_SKIRT : T_TORSO; p[q] = (x - CX) * shrink * nk; p[q + 1] = y; p[q + 2] = z * shrink * nk;
+          const neck = part ? 0 : 1 - smooth((y - 238) / 22), nk = part ? 1 : (1 + 0.24 * neck) * lerp(1, 0.3, smooth((y - 606) / 58));
+          type[i] = kind === 'seat' ? T_SEAT : y > R.hipY ? T_SKIRT : T_TORSO; p[q] = (x - CX) * shrink * nk; p[q + 1] = y; p[q + 2] = z * shrink * nk * (1 - 0.2 * neck) - 7 * neck;
           if (part && kind === 'body') loose[i] = base * smooth((y - (B.waist - 30)) / Math.max(60, lastY - B.waist + 30));
         }
       }
@@ -267,7 +291,7 @@
 
     async function setSpec(spec, opt = {}) {
       const my = ++token; if ('form' in opt) wantForm = opt.form || null;
-      const b = await kit.buildGarment(spec, { form: wantForm || undefined, seg: lite ? 16 : phone ? 20 : 26, texScale: lite ? 1 : phone ? 1.25 : 1.5, lite, aniso: renderer.capabilities.getMaxAnisotropy(), alive: () => my === token && !disposed });
+      const b = await kit.buildGarment(spec, { form: wantForm || undefined, seg: lite ? 16 : phone ? 20 : 26, texScale: lite ? 1 : phone ? 1.25 : 1.5, lite, fine: 6, aniso: renderer.capabilities.getMaxAnisotropy(), alive: () => my === token && !disposed });
       if (!b) return;
       b.group.traverse(m => { if (m.isMesh) { m.frustumCulled = false; m.castShadow = m.receiveShadow = false; } });
       if (built) { holder.remove(built.group); kit.disposeBuilt(built); }
@@ -288,13 +312,23 @@
       let LS = T('ls'), RS = T('rs'), LH = T('lh'), RH = T('rh');
       const mS0 = mul(add(LS, RS), 0.5), mH0 = mul(add(LH, RH), 0.5), wd = adj.width;
       LS = add(mS0, mul(sub(LS, mS0), wd)); RS = add(mS0, mul(sub(RS, mS0), wd)); LH = add(mH0, mul(sub(LH, mH0), wd)); RH = add(mH0, mul(sub(RH, mH0), wd));
-      const mS = mS0, mH = mH0, up = norm(sub(mS, mH));
-      const Xc = norm(sub(LS, RS), [1, 0, 0]), Zc = norm(cross(Xc, up), [0, 0, 1]), Yc = cross(Zc, Xc);
       const hv = smooth((Math.min(Jn.vis.lh ?? 1, Jn.vis.rh ?? 1) - 0.15) / 0.45);          // how far to trust the hips
+      /* Which way is up for the chest. In the picture it runs from the hips to the shoulders, or, when the hips are out
+         of the picture (someone sitting at a laptop), square to the shoulders. How far the body leans towards or away
+         from the camera comes from the tracker's idea of depth, which is weak at best and a guess when the hips are
+         unseen: it is believed a little, up to a moderate lean, and not at all without hips. A chest tipped on a guess
+         showed the inside of the collar like a neck brace and squashed the shoulders. */
+      const g = vlen(sub(LS, RS)) / (2 * R.sh), mS = mS0, sx = norm([LS[0] - RS[0], LS[1] - RS[1], 0], [1, 0, 0]), sq = [-sx[1], sx[0], 0];
+      const d0 = sub(mS, mH0), flat = Math.hypot(d0[0], d0[1]) || 1, toS = [d0[0] / flat, d0[1] / flat, 0], up2 = norm(mix(sq[1] > 0 ? sq : mul(sq, -1), toS, 0.2 + 0.8 * hv), [0, 1, 0]);
+      const lean = clamp(d0[2] / flat, -0.3, 0.3) * 0.6 * hv, up = norm([up2[0], up2[1], lean]);
+      const sy = clamp(lerp(g, flat * Math.hypot(1, lean) / TL, hv), g * 0.55, g * 1.7);
+      /* hips that cannot be seen are put where a body of ordinary build would have them */
+      { const mHs = sub(mS, mul(up, TL * sy)), hx = mul(norm(sub(LS, RS), [1, 0, 0]), R.hip * g); LH = mix(add(mHs, hx), LH, hv); RH = mix(sub(mHs, hx), RH, hv); }
+      const mH = mul(add(LH, RH), 0.5);
+      const Xc = norm(sub(LS, RS), [1, 0, 0]), Zc = norm(cross(Xc, up), [0, 0, 1]), Yc = cross(Zc, Xc);
       const Xp = norm(mix(Xc, norm(sub(LH, RH), Xc), hv), Xc), Zp = norm(cross(Xp, up), Zc), Yp = cross(Zp, Xp);
-      const g = vlen(sub(LS, RS)) / (2 * R.sh), gp = clamp(lerp(g, vlen(sub(LH, RH)) / (2 * R.hip), hv), g * 0.72, g * 1.45);
-      const sy = clamp(vlen(sub(mS, mH)) / TL, g * 0.55, g * 1.7), gz = (g + gp) / 2 * adj.ease;
-      const q = { mS, mH, Xc, Yc, Zc, Xp, Yp, Zp, g, gp, gz, sy, sUp: g * 0.62, arms: [], legs: [], sw: vlen(sub(LS, RS)) };
+      const gp = clamp(lerp(g, vlen(sub(LH, RH)) / (2 * R.hip), hv), g * 0.72, g * 1.45), gz = (g + gp) / 2 * adj.ease;
+      const q = { mS, mH, Xc, Yc, Zc, Xp, Yp, Zp, g, gp, gz, sy, sUp: g * UP, arms: [], legs: [], sw: vlen(sub(LS, RS)) };
       for (const [i, s, a, b, c, f] of [[0, 1, 'le', 'lw', 'li', LS], [1, -1, 're', 'rw', 'ri', RS]]) {
         const S = f, El = T(a), Wr = T(b), In = Jn[c] ? T(c) : null;
         const d1 = norm(sub(El, S), [s * SIN, -COS, 0]), d2 = norm(sub(Wr, El), d1), d3 = In && vlen(sub(In, Wr)) > 2 ? norm(sub(In, Wr), d2) : d2;
@@ -402,8 +436,10 @@
         case T_SEAT: { const yb = Math.min(y, B.crotch); grow(tw(y), at(BF.torso, yb, 1), at(BF.torso, yb, 2), bd, i); if (y > R.hipY) skirtPt(p[q] * gF, y, p[q + 2] * gD, 46, 1); else torsoPt(p[q] * gF, y, p[q + 2] * gD); break; }
         case T_ARM: {
           const t = p[q], f = round(aw(t), armR0(t), bd, i), ai = bd.side > 0 ? 0 : 1; armPt(ai, t, y * f, p[q + 2] * f);
-          const up = y * f * SIN - t * COS;                // how far above the shoulder joint this point is at rest
-          if (up > 0 && t < 70) { const k = up * (Q.g - Q.sUp) * (1 - smooth((t - 6) / 64)) * (1 - 0.8 * Q.arms[ai].raise); ox -= Q.Yc[0] * k; oy -= Q.Yc[1] * k; oz -= Q.Yc[2] * k; }
+          /* The head of a sleeve lies on the slope of the shoulder. How far above the shoulder joint this point is in
+             the pattern, and how far the shoulder line is there: anything standing above the line is brought down to it. */
+          const a2 = y * f, up = a2 * SIN - t * COS, rx = t * SIN + a2 * COS, line = (R.shY - B.sp) - Math.max(-40, rx - 18) * 0.4 + 3;
+          if (t < 70 && up > 0) { const over = Math.max(0, up - Math.max(0, line)), k = (up * (Q.g - Q.sUp) + over * Q.sUp) * (1 - smooth((t - 6) / 64)) * (1 - 0.8 * Q.arms[ai].raise); ox -= Q.Yc[0] * k; oy -= Q.Yc[1] * k; oz -= Q.Yc[2] * k; }
           break;
         }
         case T_LEG: { const fb = lw(y); let f = fb; if (fb > 1 && bd.part && bd.rw[i] > 1) f = clamp(Math.max(at(BF.leg, y, 2) / bd.rw[i], bd.rd[i] > 1 ? at(BF.leg, y, 3) / bd.rd[i] : 0) * fb * COVER, 1, fb); legPt(bd.side > 0 ? 0 : 1, p[q] * f, y, p[q + 2] * f); break; }

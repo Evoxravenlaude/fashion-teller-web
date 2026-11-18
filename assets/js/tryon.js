@@ -71,7 +71,8 @@
 
     /* ───── sizes ───── */
     function size(w, h, cap) {
-      const k = Math.min(1, cap / Math.max(w, h)); S.w = Math.max(2, Math.round(w * k)); S.h = Math.max(2, Math.round(h * k));
+      /* even numbers only: the body tracker stops dead on a picture with an odd width when it is also asked for the outline */
+      const k = Math.min(1, cap / Math.max(w, h)); S.w = Math.max(2, Math.round(w * k) & ~1); S.h = Math.max(2, Math.round(h * k) & ~1);
       view.width = S.w; view.height = S.h; S.fit.setSize(S.w, S.h, S.gl);
       pts.setAttribute('viewBox', `0 0 ${S.w} ${S.h}`);
     }
@@ -216,7 +217,7 @@
     /* ───── a still photo ───── */
     async function photo(file) {
       let bmp; try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { try { bmp = await createImageBitmap(file); } catch { msg('That picture could not be opened. Try a JPG or PNG.'); return home(); } }
-      const c = document.createElement('canvas'), k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height)); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k); c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close?.();
+      const c = document.createElement('canvas'), k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height)); c.width = Math.max(2, Math.round(bmp.width * k) & ~1); c.height = Math.max(2, Math.round(bmp.height * k) & ~1); c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close?.();
       S.img = c; size(c.width, c.height, 1600); light(c);
       loading(true, 'Finding you in the picture', '');
       let pose = null; try { pose = await S.track.image(c); } catch (e) { console.warn(e); } loading(false);

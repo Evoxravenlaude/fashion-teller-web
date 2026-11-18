@@ -254,7 +254,7 @@
 
   /* ───────── the garment ───────── */
   /** Build the garment for a spec: meshes in a group, plus each part's geometry so a caller can re-shape it (try-on).
-   *  o: { seg, texScale, lite, aniso, alive() } */
+   *  o: { seg, texScale, lite, aniso, fine, alive() } */
   async function buildGarment(spec, o = {}) {
     await load();
     const m = E.build3d(spec), tile = E.tile(spec), look = LOOK[m.fabric] || LOOK.cotton, form = BODY[o.form] ? o.form : m.form;
@@ -263,6 +263,9 @@
     if (o.alive && !o.alive()) return null;
     const texs = [], mats = [], tex = (c, repeat) => { const t = new THREE.CanvasTexture(c); if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, o.aniso || 1); texs.push(t); return t; };
     const tTile = tex(tileC, true); tTile.colorSpace = THREE.SRGBColorSpace;
+    /* The weave of a plain cloth: the flat drawing hints at it with a grid a centimetre across. At that size on a body
+       it reads as graph paper, so here it is drawn several times finer and blends into the colour unless seen close. */
+    if (tile.fine) { const k = o.fine || 3; tTile.repeat.set(k, k); }
     const tBump = tex(weave(m.fabric), true); tBump.repeat.set(tile.w / 22, tile.h / 22);
     const tCrease = o.lite ? null : tex(crumple(), true), crease = CREASE[m.fabric] ?? 0.3; if (tCrease) tCrease.repeat.set(tile.w / 300, tile.h / 300);
     const atlas = document.createElement('canvas'); atlas.width = AW * 2; atlas.height = AH; { const x = atlas.getContext('2d'); x.drawImage(df, 0, 0); x.drawImage(db, AW, 0); }

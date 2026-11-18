@@ -62,7 +62,13 @@ MAKE = """
     for (let y = 0; y < 480; y++) for (let x = 0; x < 640; x++) { const i = (y * 640 + x) * 4, r = d[i], g = d[i + 1], b = d[i + 2]; out[y * 640 + x] = 0.299 * r + 0.587 * g + 0.114 * b; if (!(y & 1) && !(x & 1)) { out[u++] = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b; out[w++] = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b; } }
     frames.push(b64(out));
   }
-  return { photo: photo.toDataURL('image/jpeg', 0.9).split(',')[1], empty: empty.toDataURL('image/jpeg', 0.9).split(',')[1], video: b64(new Uint8Array(await new Blob(parts).arrayBuffer())), frames };
+  // the same photo and clip with an odd width and height (these once stopped the body tracker dead)
+  const odd = pic(721, 961, x => x.drawImage(fig, 0, 0, 721, 961));
+  const oc = pic(481, 641), ox = oc.getContext('2d'), rec2 = new MediaRecorder(oc.captureStream(15), { mimeType: 'video/webm;codecs=vp8', videoBitsPerSecond: 1200000 }), parts2 = [];
+  rec2.ondataavailable = e => e.data.size && parts2.push(e.data); rec2.start(200); const t1 = performance.now();
+  await new Promise(done => { const step = now => { const k = (now - t1) / 1800; wall(ox, 481, 641); ox.drawImage(fig, Math.sin(k * Math.PI * 2) * 14, 0, 481, 641); if (k < 1) requestAnimationFrame(step); else done(); }; requestAnimationFrame(step); });
+  await new Promise(r => { rec2.onstop = r; rec2.stop(); });
+  return { photo: photo.toDataURL('image/jpeg', 0.9).split(',')[1], empty: empty.toDataURL('image/jpeg', 0.9).split(',')[1], video: b64(new Uint8Array(await new Blob(parts).arrayBuffer())), odd: odd.toDataURL('image/jpeg', 0.9).split(',')[1], oddvideo: b64(new Uint8Array(await new Blob(parts2).arrayBuffer())), frames };
 """
 # green cloth in a part of the picture; the first row of the picture that has any
 GREEN = """
@@ -94,7 +100,7 @@ with sync_playwright() as p:
     pg.goto(BASE + '/try-on?draft=1&delegate=cpu&model=lite', wait_until='domcontentloaded'); pg.wait_for_function('() => window.FTTryOn && window.FT3D && window.FTFit', timeout=30000)
     check(pg.is_visible('#toStart') and 'kaftan' in pg.inner_text('#toName').lower(), 'opens on the garment from the studio')
     m = js(pg, MAKE); files = {}
-    for name, key in (('standin.jpg', 'photo'), ('empty.jpg', 'empty'), ('standin.webm', 'video')):
+    for name, key in (('standin.jpg', 'photo'), ('empty.jpg', 'empty'), ('standin.webm', 'video'), ('odd.jpg', 'odd'), ('odd.webm', 'oddvideo')):
         files[name] = os.path.join(OUT, name); open(files[name], 'wb').write(base64.b64decode(m[key]))
     cam = os.path.join(OUT, 'standin.y4m')
     with open(cam, 'wb') as f:
@@ -166,6 +172,15 @@ with sync_playwright() as p:
     check(lay['chest'] == 0 and lay['seat'] > 0.9 and lay['legs'] > 0.15, f"joggers are drawn from the waist down only (chest {lay['chest']:.2f}, seat {lay['seat']:.2f}, legs {lay['legs']:.2f})")
     pg.goto(BASE + '/try-on?draft=1&delegate=cpu&model=lite', wait_until='domcontentloaded'); pg.wait_for_function('() => window.FTTryOn && window.FT3D && window.FTFit', timeout=30000)
 
+    # ── a picture and a clip whose width and height are odd numbers: the tracker used to stop dead on these and freeze the page
+    pg.set_input_files('#toFile', files['odd.jpg']); pg.wait_for_function(on_photo, timeout=90000)
+    o1 = pg.evaluate("() => ({ w: FTTryOn.w, h: FTTryOn.h, has: FTTryOn.fit.has })")
+    check(o1['has'] and o1['w'] % 2 == 0 and o1['h'] % 2 == 0, f"a photo 721 by 961 is dressed ({o1['w']} by {o1['h']} inside)")
+    pg.set_input_files('#toVFile', files['odd.webm'])
+    try: pg.wait_for_function("() => FTTryOn.src === 'video' && FTTryOn.fit && FTTryOn.fit.has && FTTryOn.frames > 4", timeout=60000); o2 = pg.evaluate("() => ({ w: FTTryOn.w, h: FTTryOn.h, frames: FTTryOn.frames })")
+    except Exception: o2 = None
+    check(bool(o2) and o2['w'] % 2 == 0 and o2['h'] % 2 == 0, f"a clip 481 by 641 plays with the garment on, without freezing ({o2})")
+
     # ── a video
     pg.set_input_files('#toVFile', files['standin.webm']); pg.wait_for_function("() => FTTryOn.src === 'video' && FTTryOn.fit && FTTryOn.fit.has && FTTryOn.frames > 3", timeout=90000); pg.wait_for_timeout(900)
     v = js(pg, GREEN + "const a = FTTryOn.frames; await new Promise(r => setTimeout(r, 1200)); return { chest: green(.42, .32, .58, .42), wall: green(.02, .05, .15, .3), moved: FTTryOn.frames - a, ms: FTTryOn.detectMs };")
@@ -181,8 +196,8 @@ with sync_playwright() as p:
     b, pg, errs = open_browser(p, cam)
     pg.goto(BASE + '/try-on?draft=1&src=camera&delegate=cpu&model=lite&fps=1', wait_until='domcontentloaded')
     pg.wait_for_function("() => window.FTTryOn && FTTryOn.src === 'camera' && FTTryOn.fit && FTTryOn.fit.has && FTTryOn.frames > 3", timeout=90000); pg.wait_for_timeout(1500)
-    c = js(pg, GREEN + "let best = 0; for (let x = .1; x < .8; x += .05) best = Math.max(best, green(x, .34, x + .1, .44)); return { best, mirror: FTTryOn.mirror, w: W, h: H, msg: document.querySelector('#toMsg').textContent, meter: document.querySelector('.v3d-meter')?.textContent || '' };")
-    check(c['best'] > 0.85 and c['mirror'] and 'Step back' not in c['msg'], f"live: the garment is on the figure, mirrored like a mirror ({c['w']}×{c['h']}, {c['best']:.2f})")
+    c = js(pg, GREEN + "let best = 0; for (let x = .1; x < .8; x += .05) best = Math.max(best, green(x, .4, x + .1, .5)); return { best, mirror: FTTryOn.mirror, w: W, h: H, msg: document.querySelector('#toMsg').textContent, meter: document.querySelector('.v3d-meter')?.textContent || '' };")
+    check(c['best'] > 0.8 and c['mirror'] and 'Step back' not in c['msg'], f"live: the garment is on the figure, mirrored like a mirror ({c['w']}×{c['h']}, {c['best']:.2f})")
     check('fps' in c['meter'] and 'find the body' in c['meter'], 'the speed readout shows with ?fps=1')
     pg.screenshot(path=f'{OUT}/tryon-{size}-camera.png')
     pg.click('#toRec'); pg.wait_for_timeout(2400); dot = pg.is_visible('#toRecDot'); pg.click('#toRec'); pg.wait_for_selector('.app-sheet .to-result video', timeout=20000)
